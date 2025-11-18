@@ -1,0 +1,42 @@
+import { describe, it, expect } from 'vitest';
+import { processAndRenderMergedData } from '$lib/merge';
+
+describe('processAndRenderMergedData', () => {
+  it('merges Google and OpenLibrary data with prioritization', () => {
+    const google = {
+      title: 'Google Title',
+      authors: ['G Author'],
+      publisher: 'G Publisher',
+      publishedDate: '2020-01-01',
+      pageCount: 123,
+      industryIdentifiers: [{ type: 'ISBN_13', identifier: '9780000000000' }],
+      categories: ['Fiction'],
+      printType: 'BOOK',
+      infoLink: 'http://google.example',
+      imageLinks: { thumbnail: 'http://image.example/thumb.jpg' }
+    } as any;
+
+    const openlib = {
+      title: 'OL Title',
+      authors: [{ name: 'OL Author' }],
+      publish_date: '2019',
+      number_of_pages: 200,
+      identifiers: { isbn_13: ['9780000000001'] },
+      classifications: { dewey_decimal_class: ['800'] },
+      cover: { large: 'http://ol.example/cover.jpg' }
+    } as any;
+
+    const merged = processAndRenderMergedData(google, openlib);
+
+    // Prioritization: OpenLibrary title preferred
+    expect(merged.title).toBe('OL Title');
+    // Author should come from OpenLibrary
+    expect(merged.author).toBe('OL Author');
+    // Publisher should come from Google
+    expect(merged.publisher).toBe('G Publisher');
+    // DDC comes from OpenLibrary
+    expect(merged.ddc).toBe('800');
+    // ISBN13 prefers Google
+    expect(merged.isbn13).toBe('9780000000000');
+  });
+});
