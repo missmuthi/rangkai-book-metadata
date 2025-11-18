@@ -88,6 +88,7 @@
 	}
 
 	import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
+	import { processAndRenderMergedData, placeholderImg } from '$lib/merge';
 	let searchQuery = $state('');
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
@@ -106,7 +107,7 @@
 	// Rate limit status
 	let rateLimitStatus = $state(getRateLimitStatus());
 
-	const placeholderImg = "https://placehold.co/300x450/e0e0e0/7c7c7c?text=No+Cover";
+
 
 	// --- Home Navigation Function ---
 	function goHome() {
@@ -358,9 +359,6 @@
 			return null;
 		}
 	}
-
-	// --- Data Processing: use shared module ---
-	import { processAndRenderMergedData, placeholderImg } from '$lib/merge';
 
 	// Helper for cover image error
 	function handleCoverError(event: any) {

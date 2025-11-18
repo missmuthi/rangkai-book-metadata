@@ -11,6 +11,7 @@ export interface GoogleBooksResponse {
 export interface OpenLibraryBookData {
   title?: string;
   authors?: Array<{ name?: string }>;
+  publishers?: Array<{ name?: string }>;
   publish_date?: string | number;
   number_of_pages?: number;
   description?: any;

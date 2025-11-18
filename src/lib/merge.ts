@@ -112,9 +112,9 @@ export function processAndRenderMergedData(
   merged.date = google?.publishedDate || (openlib?.publish_date ? openlib.publish_date.toString() : '-');
   merged.pages = google?.pageCount ? google.pageCount.toString() : (openlib?.number_of_pages ? openlib.number_of_pages.toString() : '-');
 
-  const googleISBN13 = google?.industryIdentifiers?.find((id) => id.type === 'ISBN_13')?.identifier;
+  const googleISBN13 = google?.industryIdentifiers?.find((id: { type?: string; identifier?: string } | any) => id?.type === 'ISBN_13')?.identifier;
   merged.isbn13 = googleISBN13 || openlib?.identifiers?.isbn_13?.[0] || '-';
-  const googleISBN10 = google?.industryIdentifiers?.find((id) => id.type === 'ISBN_10')?.identifier;
+  const googleISBN10 = google?.industryIdentifiers?.find((id: { type?: string; identifier?: string } | any) => id?.type === 'ISBN_10')?.identifier;
   merged.isbn10 = googleISBN10 || openlib?.identifiers?.isbn_10?.[0] || '-';
 
   merged.ddc = openlib?.classifications?.dewey_decimal_class?.[0] || '-';
