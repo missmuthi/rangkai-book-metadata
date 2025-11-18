@@ -21,3 +21,39 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Vite / Dev
+.vite/
+
+# Build outputs
+dist/
+public/build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea/
+.vscode/
+*.sublime-workspace
+
+# Mac
+.DS_Store
+
+# Temporary
+*.tmp
+*.temp
+
+# Lockfiles (if you intentionally commit lockfile, skip)
+# package-lock.json
+
+node_modules/
+.svelte-kit/
+dist/
+build/
+.vite/
+.env
+.env.local
+.DS_Store
