@@ -62,11 +62,13 @@
 		
 		// Only process if status changed AND is an error
 		if (currentStatus >= 400 && currentStatus !== lastPageStatus) {
+			// Read reactive values BEFORE untrack
+			const pageErrorMessage = $page.error?.message || 'Page error';
+			
 			// Use untrack to prevent infinite loops when setting state
 			untrack(() => {
 				try {
-					const errorMessage = $page.error?.message || 'Page error';
-					error = new Error(`HTTP ${currentStatus}: ${errorMessage}`);
+					error = new Error(`HTTP ${currentStatus}: ${pageErrorMessage}`);
 					errorId = `page_error_${Date.now()}`;
 					lastPageStatus = currentStatus;
 					safeLogError('Page error caught:', error);
