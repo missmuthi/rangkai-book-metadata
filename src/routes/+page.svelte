@@ -92,9 +92,14 @@
 
 	import { tick } from 'svelte';
 	import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
-	import { processAndRenderMergedData, placeholderImg } from '$lib/merge';
 	import { exportToSLiMSCSV, exportToMARCXML } from '$lib/export';
 	import { scanHistory } from '$lib/stores/history.svelte';
+	import { processAndRenderMergedData } from '$lib/merge';
+
+	// --- Constants ---
+	const FALLBACK_COVER =
+		'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTBlMGUwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjN2M3YzdjIj5ObyBDb3ZlcjwvdGV4dD48L3N2Zz4=';
+
 
 	// --- ISBN Sanitization Utility ---
 	/**
@@ -393,17 +398,18 @@
 			throw new Error(`OpenLibrary API rate limit exceeded. Try again in ${status.openlibrary.resetInSeconds} seconds.`);
 		}
 
-		let url: string;
-		if (isIsbn) {
-			url = `https://openlibrary.org/api/books?bibkeys=ISBN:${query}&format=json&jscmd=data`;
-		} else {
-			url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=${limit}`;
-		}
+		// Use server-side proxy to avoid CORS issues
+		const url = `/api/openlibrary?q=${encodeURIComponent(query)}&isbn=${isIsbn}&limit=${limit}`;
 
 		try {
 			const response = await fetch(url);
 			if (!response.ok) throw new Error(`OpenLibrary API error: ${response.statusText}`);
 			const data = await response.json();
+			
+			// Check for error in response
+			if (data.error) {
+				throw new Error(data.error);
+			}
 			
 			if (isIsbn) {
 				const key = `ISBN:${query}`;
@@ -505,8 +511,14 @@
 	}
 	
 	// Helper for cover image error
-	function handleCoverError(event: any) {
-		event.target.src = placeholderImg;
+	function handleCoverError(e: Event) {
+		const target = e.currentTarget as HTMLImageElement;
+		if (target && target.src === FALLBACK_COVER) {
+			return; // Prevent infinite loop
+		}
+		if (target) {
+			target.src = FALLBACK_COVER;
+		}
 	}
 </script>
 
@@ -652,8 +664,8 @@
 					
 					<div class="space-y-4">
 						<div class="w-1/3 float-right ml-4 mb-4">
-							<div class="aspect-[2/3] w-full bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 shadow-md overflow-hidden bg-cover bg-center" style="background-image: url({mergedData.cover !== placeholderImg ? mergedData.cover : 'none'});">
-    {#if mergedData.cover === placeholderImg}
+							<div class="aspect-[2/3] w-full bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 shadow-md overflow-hidden bg-cover bg-center" style="background-image: url({mergedData.cover !== FALLBACK_COVER ? mergedData.cover : 'none'});">
+    {#if mergedData.cover === FALLBACK_COVER}
         <span class="text-sm px-4 text-center">No Cover Available</span>
     {/if}
 </div>
@@ -759,7 +771,7 @@
 								{@const info = item.volumeInfo}
 								{@const title = info.title || 'No Title'}
 								{@const author = info.authors ? info.authors[0] : 'Unknown Author'}
-								{@const cover = info.imageLinks?.smallThumbnail || placeholderImg}
+								{@const cover = info.imageLinks?.smallThumbnail || FALLBACK_COVER}
 								
 							<button type="button" onclick={() => handleBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
 								<img src={cover} alt="Cover" class="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0" onerror={handleCoverError} />
@@ -782,7 +794,7 @@
 								{@const title = doc.title || 'No Title'}
 								{@const author = doc.author_name ? doc.author_name[0] : 'Unknown Author'}
 								{@const coverID = doc.cover_i}
-								{@const cover = coverID ? `https://covers.openlibrary.org/b/id/${coverID}-S.jpg` : placeholderImg}
+								{@const cover = coverID ? `https://covers.openlibrary.org/b/id/${coverID}-S.jpg` : FALLBACK_COVER}
 
 							<button type="button" onclick={() => handleOpenLibraryBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
 								<img src={cover} alt="Cover" class="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0" onerror={handleCoverError} />

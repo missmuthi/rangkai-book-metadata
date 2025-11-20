@@ -1,8 +1,6 @@
 import type { GoogleBookItem, OpenLibraryBookData, MergedBookData } from './types';
 import { generateCallNumber as generateCallNumberWithCutter, getCutterNumber, type CallNumberPattern } from './cutter';
 
-const placeholderImg = 'https://placehold.co/300x450/e0e0e0/7c7c7c?text=No+Cover';
-
 // Enhanced language mapping with comprehensive ISO 639-1, 639-2, and 639-3 codes
 export function mapLangCode(code: string): string {
   if (!code || code === '-') return '-';
@@ -286,7 +284,7 @@ export function processAndRenderMergedData(
     specificDetail: '-',
     gmd: '-',
     infoLink: '-',
-    cover: placeholderImg
+    cover: ''
   };
 
   merged.title = openlib?.title || google?.title || '-';
@@ -323,7 +321,7 @@ export function processAndRenderMergedData(
   else if (google?.printType) merged.gmd = google.printType;
 
   merged.infoLink = google?.infoLink || '-';
-  merged.cover = (google as any)?.imageLinks?.thumbnail || openlib?.cover?.large || placeholderImg;
+  merged.cover = (google as any)?.imageLinks?.thumbnail || openlib?.cover?.large || '';
 
   const pubYear = merged.date && typeof merged.date === 'string' ? merged.date.substring(0, 4) : '-';
   merged.callNumber = generateCallNumber(merged.ddc, merged.lcc, merged.subjects, merged.author, merged.title, merged.publisher, pubYear);
@@ -346,4 +344,4 @@ export function processAndRenderMergedData(
   return merged;
 }
 
-export { placeholderImg, getCutterNumber, type CallNumberPattern };
+export { getCutterNumber, type CallNumberPattern };
