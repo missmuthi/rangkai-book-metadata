@@ -15,9 +15,30 @@ export function getSecureImageUrl(url: string | null | undefined): string {
 		return ''; // Return empty string for invalid URLs
 	}
 
-	// If it's a data URI (Base64 encoded SVG), return as-is
+	// Validate data: URIs - only allow safe image types
 	if (url.startsWith('data:')) {
-		return url;
+		// Regex: Only allow image/svg+xml, image/png, image/jpeg, image/gif, image/webp
+		const safeDataUriPattern = /^data:image\/(svg\+xml|png|jpe?g|gif|webp);base64,/i;
+		
+		if (safeDataUriPattern.test(url)) {
+			return url; // Safe data URI
+		} else {
+			// Reject dangerous data URIs (e.g., data:text/html, data:application/javascript)
+			console.warn('[Security] Blocked unsafe data: URI:', url.substring(0, 50));
+			return ''; // Return empty to prevent XSS
+		}
+	}
+
+	// Validate URL scheme - prevent javascript:, file:, etc.
+	try {
+		const urlObj = new URL(url);
+		if (!['http:', 'https:'].includes(urlObj.protocol)) {
+			console.warn(`[Security] Blocked dangerous URL scheme: ${urlObj.protocol}`);
+			return '';
+		}
+	} catch {
+		// Invalid URL format
+		return '';
 	}
 
 	// Force HTTPS for all HTTP URLs (critical for Cloudflare Pages)

@@ -189,13 +189,23 @@
 		// Auto-submit when we detect a complete ISBN (backup for scanners without Enter key)
 		const isPotentialIsbn = /^\d{10,13}$/.test(cleanedQuery);
 		
+		// Clear any existing debounce timer
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+			debounceTimer = null;
+		}
+		
 		if (isPotentialIsbn && cleanedQuery.length >= 10) {
 			// Scanner Mode: Auto-submit complete ISBNs immediately
-			// Clear any existing debounce timer
-			if (debounceTimer) {
-				clearTimeout(debounceTimer);
-			}
 			handleSearch();
+		} else if (cleanedQuery.length >= 3) {
+			// Partial input: Debounce for 500ms (manual typing)
+			debounceTimer = setTimeout(() => {
+				if (cleanedQuery.length >= 9) {
+					// Prevent ghost scans - only search if looks like valid input
+					handleSearch();
+				}
+			}, 500);
 		}
 	}
 
