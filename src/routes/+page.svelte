@@ -58,6 +58,9 @@
 			title?: string;
 			author_name?: string[];
 			cover_i?: number;
+			isbn?: string[];
+			first_publish_year?: number;
+			number_of_pages_median?: number;
 			[key: string]: any;
 		}>;
 	}
@@ -89,6 +92,32 @@
 
 	import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
 	import { processAndRenderMergedData, placeholderImg } from '$lib/merge';
+
+	// --- Cache System ---
+	interface CacheEntry {
+		data: any;
+		timestamp: number;
+	}
+	const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+	const cache = new Map<string, CacheEntry>();
+
+	function getCacheKey(query: string, source: 'google' | 'openlibrary', isIsbn: boolean): string {
+		return `${source}:${query}:${isIsbn}`;
+	}
+
+	function getFromCache(key: string): any | null {
+		const entry = cache.get(key);
+		if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
+			return entry.data;
+		}
+		cache.delete(key);
+		return null;
+	}
+
+	function setInCache(key: string, data: any): void {
+		cache.set(key, { data, timestamp: Date.now() });
+	}
+
 	let searchQuery = $state('');
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
@@ -107,6 +136,9 @@
 	// Rate limit status
 	let rateLimitStatus = $state(getRateLimitStatus());
 
+	// Debounce timer
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 
 
 	// --- Home Navigation Function ---
@@ -121,6 +153,16 @@
 		openLibraryResults = [];
 		googleRaw = '';
 		openLibraryRaw = '';
+		if (debounceTimer) clearTimeout(debounceTimer);
+	}
+
+	// --- Debounced Search Function ---
+	function handleSearchWithDebounce() {
+		if (debounceTimer) clearTimeout(debounceTimer);
+		
+		debounceTimer = setTimeout(() => {
+			handleSearch();
+		}, 300); // Wait 300ms after user stops typing
 	}
 
 	// --- Main Search Function ---
@@ -241,42 +283,19 @@
 
 		const selectedDoc = openLibraryResults[index];
 		
-		let openLibraryData: OpenLibraryBookData | null = null;
-		if (selectedDoc.key) {
-			const detailsUrl = `https://openlibrary.org${selectedDoc.key}.json`;
-			try {
-				const detailsResponse = await fetch(detailsUrl);
-				if (!detailsResponse.ok) throw new Error("OpenLibrary details fetch error");
-				const detailsData = await detailsResponse.json();
-				
-				openLibraryData = {
-					title: detailsData.title,
-					authors: selectedDoc.author_name ? selectedDoc.author_name.map((name: string) => ({ name })) : [],
-					publish_date: selectedDoc.first_publish_year?.toString() || detailsData.publish_date,
-					number_of_pages: selectedDoc.number_of_pages_median || detailsData.number_of_pages,
-					description: detailsData.description?.value || detailsData.description,
-					languages: detailsData.languages,
-					subjects: detailsData.subjects,
-					publish_places: detailsData.publish_places,
-					edition_name: detailsData.edition_name,
-					series: detailsData.series,
-					identifiers: {
-						isbn_13: selectedDoc.isbn ? selectedDoc.isbn.filter((isbn: string) => isbn.length === 13) : [],
-						isbn_10: selectedDoc.isbn ? selectedDoc.isbn.filter((isbn: string) => isbn.length === 10) : []
-					},
-					classifications: { 
-						dewey_decimal_class: detailsData.dewey_decimal_class,
-						lc_classifications: detailsData.lc_classifications
-					},
-					cover: detailsData.covers ? { large: `https://covers.openlibrary.org/b/id/${detailsData.covers[0]}-L.jpg` } : undefined
-				};
-				openLibraryRaw = JSON.stringify(openLibraryData, null, 2);
-			} catch (err: any) {
-					openLibraryRaw = `Error fetching OL details: ${err.message}`;
-			}
-		} else {
-				openLibraryRaw = 'No key found to fetch OpenLibrary details.';
-		}
+		// OPTIMIZATION: Use search result data directly instead of fetching details
+		let openLibraryData: OpenLibraryBookData | null = {
+			title: selectedDoc.title,
+			authors: selectedDoc.author_name ? selectedDoc.author_name.map((name: string) => ({ name })) : [],
+			publish_date: selectedDoc.first_publish_year?.toString(),
+			number_of_pages: selectedDoc.number_of_pages_median,
+			identifiers: {
+				isbn_13: selectedDoc.isbn ? selectedDoc.isbn.filter((isbn: string) => isbn.length === 13) : [],
+				isbn_10: selectedDoc.isbn ? selectedDoc.isbn.filter((isbn: string) => isbn.length === 10) : []
+			},
+			cover: selectedDoc.cover_i ? { large: `https://covers.openlibrary.org/b/id/${selectedDoc.cover_i}-L.jpg` } : undefined
+		};
+		openLibraryRaw = JSON.stringify(openLibraryData, null, 2);
 
 		const isbn = openLibraryData?.identifiers?.isbn_13?.[0];
 		let googleData: GoogleBookItem['volumeInfo'] | null = null;
@@ -304,6 +323,14 @@
 	// --- API Fetch Functions ---
 
 	async function fetchGoogle(query: string, isIsbn: boolean, maxResults = 1): Promise<GoogleBooksResponse | null> {
+		// OPTIMIZATION: Check cache first
+		const cacheKey = getCacheKey(query, 'google', isIsbn);
+		const cachedData = getFromCache(cacheKey);
+		if (cachedData) {
+			console.log(`[Cache Hit] Google: ${query}`);
+			return cachedData;
+		}
+
 		// Check rate limit
 		if (!checkGoogleBooksLimit()) {
 			const status = getRateLimitStatus();
@@ -317,6 +344,9 @@
 			const response = await fetch(url);
 			if (!response.ok) throw new Error(`Google API error: ${response.statusText}`);
 			const data: GoogleBooksResponse = await response.json();
+			
+			// OPTIMIZATION: Cache the result
+			setInCache(cacheKey, data);
 			return data;
 		} catch (err: unknown) {
 			const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -327,6 +357,14 @@
 	}
 
 	async function fetchOpenLibrary(query: string, isIsbn: boolean, limit = 1): Promise<OpenLibraryBookData | OpenLibrarySearchResponse | null> {
+		// OPTIMIZATION: Check cache first
+		const cacheKey = getCacheKey(query, 'openlibrary', isIsbn);
+		const cachedData = getFromCache(cacheKey);
+		if (cachedData) {
+			console.log(`[Cache Hit] OpenLibrary: ${query}`);
+			return cachedData;
+		}
+
 		// Check rate limit
 		if (!checkOpenLibraryLimit()) {
 			const status = getRateLimitStatus();
@@ -348,8 +386,13 @@
 			if (isIsbn) {
 				const key = `ISBN:${query}`;
 				if (!data[key]) return null;
+				
+				// OPTIMIZATION: Cache the result
+				setInCache(cacheKey, data[key]);
 				return data[key] as OpenLibraryBookData;
 			} else {
+				// OPTIMIZATION: Cache the result
+				setInCache(cacheKey, data);
 				return data as OpenLibrarySearchResponse;
 			}
 		} catch (err: unknown) {
@@ -399,7 +442,13 @@
 				<input 
 					type="text" 
 					bind:value={searchQuery}
-					onkeydown={(e) => e.key === 'Enter' && handleSearch()}
+					onkeydown={(e) => {
+						if (e.key === 'Enter') {
+							handleSearch();
+						} else {
+							handleSearchWithDebounce();
+						}
+					}}
 					placeholder="e.g. 9780134092669 or Akulah Angin Bambang" 
 					class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm transition-all"
 				/>
