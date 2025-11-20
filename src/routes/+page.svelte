@@ -90,6 +90,7 @@
 		cover: string;
 	}
 
+	import { tick } from 'svelte';
 	import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
 	import { processAndRenderMergedData, placeholderImg } from '$lib/merge';
 	import { exportToSLiMSCSV, exportToMARCXML } from '$lib/export';
@@ -147,9 +148,6 @@
 	// Rate limit status
 	let rateLimitStatus = $state(getRateLimitStatus());
 
-	// Debounce timer
-	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
 	// Scanner Mode: Input reference for auto-focus
 	let searchInputRef: HTMLInputElement | null = null;
 	let scannerModeEnabled = $state(false);
@@ -175,26 +173,29 @@
 		openLibraryResults = [];
 		googleRaw = '';
 		openLibraryRaw = '';
-		if (debounceTimer) clearTimeout(debounceTimer);
-	}
-
-	// --- Debounced Search Function ---
-	function handleSearchWithDebounce() {
-		if (debounceTimer) clearTimeout(debounceTimer);
-		
-		debounceTimer = setTimeout(() => {
-			handleSearch();
-		}, 300); // Wait 300ms after user stops typing
 	}
 
 	// --- Main Search Function ---
 	async function handleSearch() {
-		if (!searchQuery) {
-			error = "Please enter an ISBN or Title.";
+		const trimmedQuery = searchQuery.trim();
+		if (!trimmedQuery) {
+			error = 'Please enter an ISBN or Title.';
 			return;
 		}
 
-		// 1. Reset UI
+		const cleanedQuery = cleanISBN(trimmedQuery);
+		// Ignore ghost scans (e.g., partial barcode reads) when scanner mode is active
+		if (scannerModeEnabled && cleanedQuery.length < 9) {
+			searchQuery = '';
+			await tick();
+			if (searchInputRef) {
+				searchInputRef.focus();
+				searchInputRef.select();
+			}
+			return;
+		}
+
+		// Prepare UI state
 		isLoading = true;
 		error = null;
 		mergedData = null;
@@ -202,87 +203,66 @@
 		openLibraryResults = [];
 		googleRaw = 'Fetching...';
 		openLibraryRaw = 'Fetching...';
-		currentView = 'search'; // Stay on search view to show lists
+		currentView = 'search';
 
-		// 2. Sanitize input (Scanner Mode: strip dashes, spaces)
-		const cleanedQuery = cleanISBN(searchQuery);
-		
-		// 3. Determine query type (ISBN or Title)
-		const isIsbn = /^\d{10}(\d{3})?$/.test(cleanedQuery);
-		
-		if (isIsbn) {
-			// --- ISBN Search ---
-			try {
+		try {
+			const isIsbn = /^\d{10}(\d{3})?$/.test(cleanedQuery);
+
+			if (isIsbn) {
 				const [googleResult, openLibraryResult] = await Promise.allSettled([
 					fetchGoogle(cleanedQuery, true, 1),
 					fetchOpenLibrary(cleanedQuery, true)
 				]);
 
-				const googleData = (googleResult.status === 'fulfilled' && googleResult.value && googleResult.value.totalItems > 0 && googleResult.value.items) 
-					? googleResult.value.items[0].volumeInfo 
+				const googleData = (googleResult.status === 'fulfilled' && googleResult.value && googleResult.value.totalItems > 0 && googleResult.value.items)
+					? googleResult.value.items[0].volumeInfo
 					: null;
-				const openLibraryData = openLibraryResult.status === 'fulfilled' ? openLibraryResult.value as OpenLibraryBookData | null : null;
+				const openLibraryData = openLibraryResult.status === 'fulfilled' ? (openLibraryResult.value as OpenLibraryBookData | null) : null;
 
 				googleRaw = JSON.stringify(googleData, null, 2) || 'Failed to fetch or no data found.';
 				openLibraryRaw = JSON.stringify(openLibraryData, null, 2) || 'Failed to fetch or no data found.';
 
 				if (!googleData && !openLibraryData) {
-					error = "No data found from any source for this ISBN.";
+					error = 'No data found from any source for this ISBN.';
 				} else {
 					mergedData = processAndRenderMergedData(googleData, openLibraryData);
-					currentView = 'result'; // Show the result card
-					
-					// Scanner Mode: Add to history
+					currentView = 'result';
+
 					if (scannerModeEnabled && mergedData) {
 						scanHistory.add(mergedData);
-						console.log('[Scanner Mode] Added to history:', mergedData.title);
 					}
 				}
-			} catch (err: any) {
-				error = err.message || 'An error occurred during search.';
-			}
-			
-		} else {
-			// --- Title Search ---
-			try {
+			} else {
 				const [googleResponse, openLibraryResponse] = await Promise.allSettled([
-					fetchGoogle(cleanedQuery, false, 10),
-					fetchOpenLibrary(cleanedQuery, false, 10)
+					fetchGoogle(trimmedQuery, false, 10),
+					fetchOpenLibrary(trimmedQuery, false, 10)
 				]);
 
-				const googleItems = googleResponse.status === 'fulfilled' ? googleResponse.value?.items : null;
-				const openLibraryItems = openLibraryResponse.status === 'fulfilled' ? (openLibraryResponse.value as OpenLibrarySearchResponse | null)?.docs : null;
+				const googleItems = googleResponse.status === 'fulfilled' ? googleResponse.value?.items ?? null : null;
+				const openLibraryItems = openLibraryResponse.status === 'fulfilled' ? (openLibraryResponse.value as OpenLibrarySearchResponse | null)?.docs ?? null : null;
 
 				if (!googleItems && !openLibraryItems) {
-					error = "No books found for that title from any source.";
+					error = 'No books found for that title from any source.';
 				}
 
 				if (googleItems && googleItems.length > 0) {
 					googleResults = googleItems;
 				}
 
-				if (openLibraryItems && openLibraryItems.length > 0) {
-					openLibraryResults = openLibraryItems;
-				} else {
-					openLibraryResults = undefined;
-				}
-			} catch (err: any) {
-				error = err.message || 'An error occurred during search.';
+				openLibraryResults = openLibraryItems && openLibraryItems.length > 0 ? openLibraryItems : undefined;
 			}
-		}
-		
-		isLoading = false;
-		rateLimitStatus = getRateLimitStatus();
-		
-		// Scanner Mode: The "Game Loop" - Clear input and refocus
-		if (scannerModeEnabled && mergedData) {
+		} catch (err) {
+			console.error('[Scanner Mode] Search failed:', err);
+			error = err instanceof Error ? err.message : 'An unexpected error occurred during search.';
+		} finally {
+			isLoading = false;
+			rateLimitStatus = getRateLimitStatus();
 			searchQuery = '';
-			setTimeout(() => {
-				if (searchInputRef) {
-					searchInputRef.focus();
-					searchInputRef.select();
-				}
-			}, 100); // Small delay to ensure UI updates
+			await tick();
+			if (searchInputRef) {
+				searchInputRef.focus();
+				searchInputRef.select();
+			}
 		}
 	}
 
@@ -511,9 +491,9 @@
 		
 		// Combine header and rows
 		const csvContent = [headers.join(','), ...rows].join('\n');
-		
-		// Download
-		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+		// Download (prepend UTF-8 BOM for Excel/SLiMS compatibility)
+		const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
 		const url = URL.createObjectURL(blob);
 		const link = document.createElement('a');
 		link.href = url;
@@ -569,16 +549,11 @@
 					bind:this={searchInputRef}
 					bind:value={searchQuery}
 					onfocus={(e) => {
-						// Scanner Mode: Select all on focus for quick overwrites
-						if (scannerModeEnabled) {
-							e.currentTarget.select();
-						}
+						e.currentTarget.select();
 					}}
 					onkeydown={(e) => {
 						if (e.key === 'Enter') {
 							handleSearch();
-						} else {
-							handleSearchWithDebounce();
 						}
 					}}
 					placeholder={scannerModeEnabled ? "Scan barcode or enter ISBN..." : "e.g. 9780134092669 or Akulah Angin Bambang"}
