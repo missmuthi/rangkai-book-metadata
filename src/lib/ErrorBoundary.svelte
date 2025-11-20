@@ -1,12 +1,13 @@
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
-	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
+	// Note: page store and untrack temporarily removed to debug infinite loop
+	// import { page } from '$app/stores';
+	// import { untrack } from 'svelte';
 
 	let { children } = $props();
 
 	let error = $state<Error | null>(null);
 	let errorId = $state<string | null>(null);
-	let lastPageStatus = $state<number>(200);
 
 	// Safe error logging helper
 	function safeLogError(label: string, err: unknown): void {
@@ -28,22 +29,16 @@
 	// Listen for unhandled errors (browser only)
 	onMount(() => {
 		const handleError = (event: ErrorEvent) => {
-			// Use untrack to avoid creating reactive dependencies
-			untrack(() => {
-				error = event.error;
-				errorId = `error_${Date.now()}`;
-			});
+			error = event.error;
+			errorId = `error_${Date.now()}`;
 			safeLogError('Global error caught:', event.error);
 		};
 
 		const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-			// Use untrack to avoid creating reactive dependencies
-			untrack(() => {
-				error = event.reason instanceof Error 
-					? event.reason 
-					: new Error(String(event.reason));
-				errorId = `rejection_${Date.now()}`;
-			});
+			error = event.reason instanceof Error 
+				? event.reason 
+				: new Error(String(event.reason));
+			errorId = `rejection_${Date.now()}`;
 			safeLogError('Unhandled promise rejection:', event.reason);
 		};
 
@@ -57,6 +52,9 @@
 	});
 
 	// Handle SvelteKit page errors (defensive - only trigger on status change)
+	// DISABLED: This was causing infinite loops when catching HTTP 500 errors
+	// The ErrorBoundary was catching errors it created itself
+	/*
 	$effect(() => {
 		const currentStatus = $page.status;
 		
@@ -81,6 +79,7 @@
 			lastPageStatus = currentStatus;
 		}
 	});
+	*/
 </script>
 
 {#if error}
