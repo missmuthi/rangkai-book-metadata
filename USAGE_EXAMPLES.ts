@@ -1,13 +1,19 @@
 /**
- * Example: Using Library of Congress Integration in Rangkai
- * 
- * This file demonstrates how to use the new 3-source API system
- * in your SvelteKit components.
+ * Usage Examples: Rangkai Book Metadata Harvester (3-Source API)
+ *
+ * This file contains comprehensive examples for using the 3-source book metadata system:
+ * - Google Books API (primary source for publishers, dates, descriptions)
+ * - OpenLibrary API (primary source for DDC classifications, subjects)
+ * - Library of Congress API (primary source for authoritative LCC classifications)
+ *
+ * IMPORTANT: This is a documentation file with example code.
+ * It is not meant to be compiled or executed directly.
+ * Copy the relevant examples into your actual components.
  */
 
-import { BookApiService, locCache } from '$lib/api';
-import { processAndRenderMergedData } from '$lib/merge';
-import type { LoCBookData, MergedBookData } from '$lib/types';
+import { BookApiService, locCache } from './src/lib/api';
+import { processAndRenderMergedData } from './src/lib/merge';
+import type { LoCBookData, MergedBookData, OpenLibraryBookData, OpenLibrarySearchResponse } from './src/lib/types';
 
 /**
  * Example 1: Fetch book data from all 3 sources (ISBN search)
@@ -30,10 +36,10 @@ async function fetchBookByISBN(isbn: string): Promise<MergedBookData | null> {
 
     // Extract Google Books volumeInfo
     const googleData = google?.items?.[0]?.volumeInfo || null;
-    
-    // Extract OpenLibrary data
-    const openLibraryData = openlibrary as any; // Type depends on search type
-    
+
+    // Extract OpenLibrary data (for ISBN search, this is OpenLibraryBookData)
+    const openLibraryData = openlibrary as OpenLibraryBookData | null;
+
     // Merge data using "Waterfall of Data" strategy
     const mergedData = processAndRenderMergedData(googleData, openLibraryData, loc);
 
@@ -50,6 +56,42 @@ async function fetchBookByISBN(isbn: string): Promise<MergedBookData | null> {
 }
 
 /**
+ * Example 1b: Fetch book data from all sources (Title search)
+ */
+async function fetchBooksByTitle(title: string): Promise<MergedBookData[]> {
+  try {
+    // Title search returns multiple results (LoC doesn't support title search)
+    const { google, openlibrary, errors } = await BookApiService.fetchAll(title, false, 10, 10);
+
+    const results: MergedBookData[] = [];
+
+    // Process Google Books results
+    if (google?.items) {
+      for (const item of google.items) {
+        const mergedData = processAndRenderMergedData(item.volumeInfo, null, null);
+        results.push(mergedData);
+      }
+    }
+
+    // Process OpenLibrary results (returns OpenLibrarySearchResponse for title search)
+    const olResponse = openlibrary as OpenLibrarySearchResponse | null;
+    if (olResponse?.docs) {
+      for (const doc of olResponse.docs.slice(0, 10)) { // Limit to 10 results
+        // For title search results, we need to fetch individual book data
+        const isbn = doc.isbn?.[0];
+        if (isbn) {
+          const bookData = await fetchBookByISBN(isbn);
+          if (bookData) results.push(bookData);
+        }
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error('❌ Failed to fetch books by title:', error);
+    return [];
+  }
+}/**
  * Example 2: Legacy backward-compatible method (2-source only)
  */
 async function fetchBookLegacy(isbn: string): Promise<MergedBookData | null> {
@@ -58,7 +100,7 @@ async function fetchBookLegacy(isbn: string): Promise<MergedBookData | null> {
     const { google, openlibrary, errors } = await BookApiService.fetchBoth(isbn, true, 1, 1);
 
     const googleData = google?.items?.[0]?.volumeInfo || null;
-    const openLibraryData = openlibrary as any;
+    const openLibraryData = openlibrary as OpenLibraryBookData | null;
     
     // Note: processAndRenderMergedData accepts null for LoC parameter
     const mergedData = processAndRenderMergedData(googleData, openLibraryData, null);
@@ -161,7 +203,7 @@ function getClassificationQuality(mergedData: MergedBookData): {
       }
 
       const googleData = google?.items?.[0]?.volumeInfo || null;
-      mergedData = processAndRenderMergedData(googleData, openlibrary as any, loc);
+      mergedData = processAndRenderMergedData(googleData, openlibrary as OpenLibraryBookData | null, loc);
 
       // Show warnings for partial data
       if (mergedData.isPartialData) {
@@ -216,7 +258,7 @@ function getClassificationQuality(mergedData: MergedBookData): {
 /**
  * Example 6: Cache management
  */
-import { googleCache, openLibraryCache, locCache } from '$lib/api';
+import { googleCache, openLibraryCache } from './src/lib/api';
 
 function clearAllCaches() {
   googleCache.clear();
@@ -234,12 +276,110 @@ function getCacheStats() {
 }
 
 /**
- * Example 7: Testing LoC API directly
+ * Example 8: Advanced error handling and retry logic
+ */
+async function fetchBookWithRetry(isbn: string, maxRetries = 3): Promise<MergedBookData | null> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 Attempt ${attempt}/${maxRetries} for ISBN: ${isbn}`);
+
+      const result = await BookApiService.fetchAll(isbn, true, 1, 1);
+
+      // If we got some data from at least one source, proceed
+      if (result.google || result.openlibrary || result.loc) {
+        const googleData = result.google?.items?.[0]?.volumeInfo || null;
+        const openLibraryData = result.openlibrary as OpenLibraryBookData | null;
+
+        const mergedData = processAndRenderMergedData(googleData, openLibraryData, result.loc);
+
+        // Log partial data warnings
+        if (mergedData.isPartialData) {
+          console.warn(`⚠️ Partial data on attempt ${attempt}:`, mergedData.dataSource);
+        }
+
+        return mergedData;
+      }
+
+      // If no data from any source, wait before retry
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        console.log(`⏳ No data found, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+    } catch (error) {
+      console.error(`❌ Attempt ${attempt} failed:`, error);
+
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  console.error('❌ All retry attempts failed');
+  return null;
+}
+
+/**
+ * Example 9: Data quality assessment
+ */
+function assessDataQuality(mergedData: MergedBookData): {
+  score: number; // 0-100
+  level: 'excellent' | 'good' | 'fair' | 'poor';
+  issues: string[];
+} {
+  const issues: string[] = [];
+  let score = 100;
+
+  // Check data source completeness
+  if (mergedData.dataSource !== 'all-three') {
+    score -= 20;
+    issues.push('Missing data from one or more sources');
+  }
+
+  // Check critical fields
+  if (mergedData.title === '-' || mergedData.title.length < 3) {
+    score -= 15;
+    issues.push('Title missing or too short');
+  }
+
+  if (mergedData.author === '-') {
+    score -= 15;
+    issues.push('Author information missing');
+  }
+
+  if (mergedData.lcc === '-' && mergedData.ddc === '-') {
+    score -= 20;
+    issues.push('No classification data available');
+  } else if (mergedData.lcc === '-' && !mergedData.dataSource?.includes('loc')) {
+    score -= 10;
+    issues.push('LCC classification missing (not from authoritative LoC source)');
+  }
+
+  if (mergedData.isbn13 === '-') {
+    score -= 10;
+    issues.push('ISBN-13 missing');
+  }
+
+  // Determine quality level
+  let level: 'excellent' | 'good' | 'fair' | 'poor';
+  if (score >= 90) level = 'excellent';
+  else if (score >= 75) level = 'good';
+  else if (score >= 50) level = 'fair';
+  else level = 'poor';
+
+  return { score: Math.max(0, score), level, issues };
+}
+
+/**
+ * Example 10: Testing LoC API directly
  */
 async function testLoCAPI(isbn: string): Promise<LoCBookData | null> {
   try {
     const loc = await BookApiService.fetchLibraryOfCongress(isbn);
-    
+
     if (!loc) {
       console.log('❌ LoC returned no data');
       return null;
@@ -261,10 +401,13 @@ async function testLoCAPI(isbn: string): Promise<LoCBookData | null> {
 // Example usage
 export {
   fetchBookByISBN,
+  fetchBooksByTitle,
   fetchBookLegacy,
   renderDataSourceBadge,
   getClassificationQuality,
   clearAllCaches,
   getCacheStats,
+  fetchBookWithRetry,
+  assessDataQuality,
   testLoCAPI
 };
