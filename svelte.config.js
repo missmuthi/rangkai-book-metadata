@@ -9,12 +9,7 @@ const config = {
 
 	kit: {
 		// Configure Cloudflare Pages adapter
-		adapter: adapter({
-			routes: {
-				include: ['/*'],
-				exclude: ['<all>']
-			}
-		})
+		adapter: adapter()
 	}
 };
 
