@@ -1,4 +1,5 @@
 import type { GoogleBookItem, OpenLibraryBookData, MergedBookData } from './types';
+import { generateCallNumber as generateCallNumberWithCutter, getCutterNumber, type CallNumberPattern } from './cutter';
 
 const placeholderImg = 'https://placehold.co/300x450/e0e0e0/7c7c7c?text=No+Cover';
 
@@ -208,36 +209,55 @@ export function mapSubjectToDDC(subjects: string): string {
   return '-';
 }
 
-function generateCallNumber(ddc: string, lcc: string, subjects: string, author: string, title: string, publisher: string, year: string) {
+/**
+ * Generate call number using Cutter-Sanborn tables
+ * Supports multiple patterns configurable by the user
+ * 
+ * @param ddc - Dewey Decimal Classification
+ * @param lcc - Library of Congress Classification
+ * @param subjects - Subject headings (for fallback DDC mapping)
+ * @param author - Author name
+ * @param title - Book title
+ * @param publisher - Publisher name (fallback if no author)
+ * @param year - Publication year
+ * @param pattern - Call number pattern (default: 'ddc-cutter-title')
+ * @returns Formatted call number using Cutter-Sanborn system
+ */
+function generateCallNumber(
+  ddc: string, 
+  lcc: string, 
+  subjects: string, 
+  author: string, 
+  title: string, 
+  publisher: string, 
+  year: string,
+  pattern: CallNumberPattern = 'ddc-cutter-title'
+) {
+  // Determine classification number (DDC preferred, then LCC, then subject-based)
   let classification: string = ddc;
   if (!classification || classification === '-') classification = lcc;
   if (!classification || classification === '-') classification = mapSubjectToDDC(subjects);
   if (!classification || classification === '-') return '-';
 
-  let abbr = '???';
-  if (author && author !== '-') {
-    const nameParts = author.split(' ');
-    const lastName = nameParts[nameParts.length - 1];
-    abbr = lastName.substring(0, 3).toUpperCase();
-  } else if (publisher && publisher !== '-') {
-    const publisherParts = publisher.split(' ');
-    const firstWord = publisherParts[0].replace(/,/g, '');
-    abbr = firstWord.substring(0, 3).toUpperCase();
+  // Determine author name for Cutter number (fallback to publisher if no author)
+  let authorForCutter = author;
+  if (!authorForCutter || authorForCutter === '-') {
+    authorForCutter = publisher;
+  }
+  
+  if (!authorForCutter || authorForCutter === '-') {
+    // No author or publisher - just return classification
+    return classification;
   }
 
-  let titleLetter = '?';
-  if (title && title !== '-') {
-    let cleanTitle = title.replace(/^(the |a |an |sebuah |seorang )/i, '');
-    if (cleanTitle.length === 0) cleanTitle = title;
-    titleLetter = cleanTitle.substring(0, 1).toLowerCase();
-  }
-
-  const base = `${classification} ${abbr} ${titleLetter}`;
-  if (year && year !== '-') {
-    return `${base} ${year}`;
-  } else {
-    return base;
-  }
+  // Use the Cutter-Sanborn system to generate the call number
+  return generateCallNumberWithCutter(
+    pattern,
+    classification,
+    authorForCutter,
+    title,
+    year
+  );
 }
 
 export function processAndRenderMergedData(
@@ -326,4 +346,4 @@ export function processAndRenderMergedData(
   return merged;
 }
 
-export { placeholderImg };
+export { placeholderImg, getCutterNumber, type CallNumberPattern };
