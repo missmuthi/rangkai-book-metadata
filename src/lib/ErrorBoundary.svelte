@@ -62,23 +62,20 @@
 		
 		// Only process if status changed AND is an error
 		if (currentStatus >= 400 && currentStatus !== lastPageStatus) {
-			// Read reactive values BEFORE untrack
+			// Read ALL reactive values and create objects BEFORE untrack
 			const pageErrorMessage = $page.error?.message || 'Page error';
+			const errorObject = new Error(`HTTP ${currentStatus}: ${pageErrorMessage}`);
+			const newErrorId = `page_error_${Date.now()}`;
 			
-			// Use untrack to prevent infinite loops when setting state
+			// Use untrack ONLY for state updates
 			untrack(() => {
-				try {
-					error = new Error(`HTTP ${currentStatus}: ${pageErrorMessage}`);
-					errorId = `page_error_${Date.now()}`;
-					lastPageStatus = currentStatus;
-					safeLogError('Page error caught:', error);
-				} catch (e) {
-					// Fallback if error handling itself fails
-					error = new Error('An unexpected error occurred');
-					errorId = `fallback_${Date.now()}`;
-					safeLogError('Error boundary fallback triggered:', e);
-				}
+				error = errorObject;
+				errorId = newErrorId;
+				lastPageStatus = currentStatus;
 			});
+			
+			// Log outside of untrack
+			safeLogError('Page error caught:', errorObject);
 		} else if (currentStatus < 400) {
 			// Reset tracking when page recovers
 			lastPageStatus = currentStatus;
