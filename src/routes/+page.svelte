@@ -142,6 +142,60 @@
 	// Scanner Mode: Input reference for auto-focus
 	let searchInputRef: HTMLInputElement | null = null;
 	let scannerModeEnabled = $state(false);
+	let autoAddMode = $state(false); // Auto-add to batch without showing detail card
+
+	// Toast Notification System
+	interface ToastMessage {
+		id: number;
+		message: string;
+		type: 'success' | 'error' | 'info';
+	}
+	let toasts = $state<ToastMessage[]>([]);
+	let toastIdCounter = 0;
+
+	/**
+	 * Show a toast notification
+	 * Automatically dismisses after 2 seconds
+	 */
+	function showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
+		const id = toastIdCounter++;
+		toasts = [...toasts, { id, message, type }];
+		
+		// Auto-dismiss after 2 seconds
+		setTimeout(() => {
+			toasts = toasts.filter(t => t.id !== id);
+		}, 2000);
+	}
+
+	/**
+	 * Play audio feedback for scan success/error
+	 * Uses Web Audio API for non-intrusive beep sounds
+	 */
+	function playFeedbackSound(type: 'success' | 'error') {
+		if (typeof window === 'undefined' || !window.AudioContext) return;
+		
+		try {
+			const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+			const oscillator = audioContext.createOscillator();
+			const gainNode = audioContext.createGain();
+			
+			oscillator.connect(gainNode);
+			gainNode.connect(audioContext.destination);
+			
+			// Success: Higher pitch (800Hz), Error: Lower pitch (400Hz)
+			oscillator.frequency.value = type === 'success' ? 800 : 400;
+			oscillator.type = 'sine';
+			
+			// Quick beep (100ms)
+			gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+			gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+			
+			oscillator.start(audioContext.currentTime);
+			oscillator.stop(audioContext.currentTime + 0.1);
+		} catch (err) {
+			console.warn('[Audio] Feedback sound failed:', err);
+		}
+	}
 
 	// Auto-focus input on mount (Scanner Mode)
 	$effect(() => {
@@ -322,10 +376,32 @@
 					is_partial: isPartialData
 				});
 				
-				// Note: dataSource is already set by processAndRenderMergedData
-				currentView = 'result';					if (scannerModeEnabled && mergedData) {
+				// AUTO-ADD MODE: Add directly to batch without showing detail card
+				if (scannerModeEnabled && autoAddMode && mergedData) {
+					scanHistory.add(mergedData);
+					playFeedbackSound('success');
+					
+					// Show toast notification with book title
+					const truncatedTitle = mergedData.title.length > 40 
+						? mergedData.title.substring(0, 40) + '...' 
+						: mergedData.title;
+					showToast(`✓ Added: ${truncatedTitle}`, 'success');
+					
+					Analytics.track('user_interaction', {
+						action: 'auto_add_to_batch',
+						source: 'scanner_mode'
+					});
+					
+					// Skip showing result card - stay in search view for continuous scanning
+					currentView = 'search';
+				} else {
+					// MANUAL MODE: Show result card for review
+					currentView = 'result';
+					
+					if (scannerModeEnabled && mergedData) {
 						scanHistory.add(mergedData);
 					}
+				}
 				}
 			} else {
 				// Title Search - Get multiple results from all 3 APIs (LoC skipped for title search)
@@ -367,7 +443,14 @@
 			}
 		} catch (err) {
 			console.error('[Scanner Mode] Search failed:', err);
-			error = err instanceof Error ? err.message : 'An unexpected error occurred during search.';
+			const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred during search.';
+			error = errorMessage;
+			
+			// AUTO-ADD MODE: Show error toast and play error sound
+			if (scannerModeEnabled && autoAddMode) {
+				playFeedbackSound('error');
+				showToast(`✗ Error: ${errorMessage}`, 'error');
+			}
 		} finally {
 			isLoading = false;
 			rateLimitStatus = getRateLimitStatus();
@@ -668,18 +751,47 @@
 			</div>
 			
 			<!-- Scanner Mode Toggle -->
-			<div class="flex items-center justify-center gap-3 mt-4">
-				<button
-					onclick={toggleScannerMode}
-					class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all {scannerModeEnabled ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
-				>
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-					</svg>
-					{scannerModeEnabled ? 'Scanner Mode: ON' : 'Enable Scanner Mode'}
-				</button>
+			<div class="flex flex-col items-center justify-center gap-3 mt-4">
+				<div class="flex items-center gap-3">
+					<button
+						onclick={toggleScannerMode}
+						class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all {scannerModeEnabled ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+						</svg>
+						{scannerModeEnabled ? 'Scanner Mode: ON' : 'Enable Scanner Mode'}
+					</button>
+					{#if scannerModeEnabled}
+						<span class="text-xs text-gray-500">📦 Scanned: {scanHistory.count}</span>
+					{/if}
+				</div>
+				
+				<!-- Auto-Add to Batch Toggle (Only visible when Scanner Mode is ON) -->
 				{#if scannerModeEnabled}
-					<span class="text-xs text-gray-500">📦 Scanned: {scanHistory.count}</span>
+					<label class="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+						<input 
+							type="checkbox" 
+							bind:checked={autoAddMode}
+							onchange={() => {
+								Analytics.track('user_interaction', {
+									action: 'auto_add_mode_toggled',
+									enabled: autoAddMode
+								});
+								if (autoAddMode) {
+									showToast('⚡ Auto-Add Mode: ON - Books will be added to batch automatically', 'info');
+								}
+							}}
+							class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+						/>
+						<div class="flex items-center gap-2">
+							<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+							</svg>
+							<span class="text-sm font-medium text-gray-700">Auto-Add to Batch</span>
+							<span class="text-xs text-gray-500">(No review card)</span>
+						</div>
+					</label>
 				{/if}
 			</div>
 		</div>
@@ -1134,4 +1246,72 @@
 		<!-- End Grid Layout -->
 
 	</main>
+	
+	<!-- Toast Notification Container -->
+	<div class="fixed bottom-4 right-4 z-50 space-y-2">
+		{#each toasts as toast (toast.id)}
+			<div 
+				class="flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border backdrop-blur-sm animate-slide-in-right max-w-md"
+				class:bg-green-50={toast.type === 'success'}
+				class:border-green-300={toast.type === 'success'}
+				class:bg-red-50={toast.type === 'error'}
+				class:border-red-300={toast.type === 'error'}
+				class:bg-blue-50={toast.type === 'info'}
+				class:border-blue-300={toast.type === 'info'}
+			>
+				<!-- Icon -->
+				{#if toast.type === 'success'}
+					<svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+				{:else if toast.type === 'error'}
+					<svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+				{:else}
+					<svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+				{/if}
+				
+				<!-- Message -->
+				<p 
+					class="text-sm font-medium flex-1"
+					class:text-green-800={toast.type === 'success'}
+					class:text-red-800={toast.type === 'error'}
+					class:text-blue-800={toast.type === 'info'}
+				>
+					{toast.message}
+				</p>
+				
+				<!-- Close Button -->
+				<button 
+					onclick={() => toasts = toasts.filter(t => t.id !== toast.id)}
+					class="text-gray-400 hover:text-gray-600 transition-colors"
+					aria-label="Dismiss notification"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+			</div>
+		{/each}
+	</div>
 </div>
+
+<style>
+	@keyframes slide-in-right {
+		from {
+			transform: translateX(100%);
+			opacity: 0;
+		}
+		to {
+			transform: translateX(0);
+			opacity: 1;
+		}
+	}
+	
+	.animate-slide-in-right {
+		animation: slide-in-right 0.3s ease-out;
+	}
+</style>
