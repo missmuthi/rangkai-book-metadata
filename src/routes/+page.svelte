@@ -174,31 +174,28 @@
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function handleInputChange() {
-		// Clear any existing timer
-		if (debounceTimer) {
-			clearTimeout(debounceTimer);
+		// Only auto-search in Scanner Mode
+		// In Manual Mode, user must press Enter or click "Harvest" button
+		if (!scannerModeEnabled) {
+			return; // No auto-search in manual mode
 		}
 
+		// --- Scanner Mode Auto-Submit Logic ---
 		const trimmedQuery = searchQuery.trim();
 		if (!trimmedQuery) return;
 
 		const cleanedQuery = cleanISBN(trimmedQuery);
 		
-		// Check if this is likely an ISBN (10 or 13 digits)
+		// Auto-submit when we detect a complete ISBN (backup for scanners without Enter key)
 		const isPotentialIsbn = /^\d{10,13}$/.test(cleanedQuery);
-
-		// For ISBN searches, trigger immediately (barcode scanner use case)
-		// For title searches, debounce to save API quota
-		if (isPotentialIsbn) {
-			// Don't debounce ISBNs - they're likely from scanner or complete manual entry
-			return;
-		}
-
-		// Only debounce title searches when user is typing
-		if (trimmedQuery.length > 2) {
-			debounceTimer = setTimeout(() => {
-				handleSearch();
-			}, 500); // 500ms delay for manual typing
+		
+		if (isPotentialIsbn && cleanedQuery.length >= 10) {
+			// Scanner Mode: Auto-submit complete ISBNs immediately
+			// Clear any existing debounce timer
+			if (debounceTimer) {
+				clearTimeout(debounceTimer);
+			}
+			handleSearch();
 		}
 	}
 
