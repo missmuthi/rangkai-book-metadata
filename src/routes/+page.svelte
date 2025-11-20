@@ -93,6 +93,16 @@
 	import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
 	import { processAndRenderMergedData, placeholderImg } from '$lib/merge';
 	import { exportToSLiMSCSV, exportToMARCXML } from '$lib/export';
+	import { scanHistory } from '$lib/stores/history.svelte';
+
+	// --- ISBN Sanitization Utility ---
+	/**
+	 * Clean ISBN input from barcode scanners
+	 * Strips all non-alphanumeric characters (dashes, spaces)
+	 */
+	function cleanISBN(input: string): string {
+		return input.replace(/[^a-zA-Z0-9]/g, '');
+	}
 
 	// --- Cache System ---
 	interface CacheEntry {
@@ -140,6 +150,17 @@
 	// Debounce timer
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+	// Scanner Mode: Input reference for auto-focus
+	let searchInputRef: HTMLInputElement | null = null;
+	let scannerModeEnabled = $state(false);
+
+	// Auto-focus input on mount (Scanner Mode)
+	$effect(() => {
+		if (searchInputRef && scannerModeEnabled) {
+			searchInputRef.focus();
+		}
+	});
+
 
 
 	// --- Home Navigation Function ---
@@ -183,15 +204,18 @@
 		openLibraryRaw = 'Fetching...';
 		currentView = 'search'; // Stay on search view to show lists
 
-		// 2. Determine query type (ISBN or Title)
-		const isIsbn = /^\d{10}(\d{3})?$/.test(searchQuery.replace(/-/g, ''));
+		// 2. Sanitize input (Scanner Mode: strip dashes, spaces)
+		const cleanedQuery = cleanISBN(searchQuery);
+		
+		// 3. Determine query type (ISBN or Title)
+		const isIsbn = /^\d{10}(\d{3})?$/.test(cleanedQuery);
 		
 		if (isIsbn) {
 			// --- ISBN Search ---
 			try {
 				const [googleResult, openLibraryResult] = await Promise.allSettled([
-					fetchGoogle(searchQuery, true, 1),
-					fetchOpenLibrary(searchQuery, true)
+					fetchGoogle(cleanedQuery, true, 1),
+					fetchOpenLibrary(cleanedQuery, true)
 				]);
 
 				const googleData = (googleResult.status === 'fulfilled' && googleResult.value && googleResult.value.totalItems > 0 && googleResult.value.items) 
@@ -207,6 +231,12 @@
 				} else {
 					mergedData = processAndRenderMergedData(googleData, openLibraryData);
 					currentView = 'result'; // Show the result card
+					
+					// Scanner Mode: Add to history
+					if (scannerModeEnabled && mergedData) {
+						scanHistory.add(mergedData);
+						console.log('[Scanner Mode] Added to history:', mergedData.title);
+					}
 				}
 			} catch (err: any) {
 				error = err.message || 'An error occurred during search.';
@@ -216,8 +246,8 @@
 			// --- Title Search ---
 			try {
 				const [googleResponse, openLibraryResponse] = await Promise.allSettled([
-					fetchGoogle(searchQuery, false, 10),
-					fetchOpenLibrary(searchQuery, false, 10)
+					fetchGoogle(cleanedQuery, false, 10),
+					fetchOpenLibrary(cleanedQuery, false, 10)
 				]);
 
 				const googleItems = googleResponse.status === 'fulfilled' ? googleResponse.value?.items : null;
@@ -243,6 +273,17 @@
 		
 		isLoading = false;
 		rateLimitStatus = getRateLimitStatus();
+		
+		// Scanner Mode: The "Game Loop" - Clear input and refocus
+		if (scannerModeEnabled && mergedData) {
+			searchQuery = '';
+			setTimeout(() => {
+				if (searchInputRef) {
+					searchInputRef.focus();
+					searchInputRef.select();
+				}
+			}, 100); // Small delay to ensure UI updates
+		}
 	}
 
 	// --- Book Selection Handlers ---
@@ -404,6 +445,85 @@
 		}
 	}
 
+	// --- Scanner Mode Functions ---
+	
+	function toggleScannerMode() {
+		scannerModeEnabled = !scannerModeEnabled;
+		if (scannerModeEnabled && searchInputRef) {
+			searchInputRef.focus();
+			searchInputRef.select();
+		}
+	}
+	
+	/**
+	 * Batch export all scanned books to SLiMS CSV
+	 */
+	function exportBatchToCSV() {
+		const allBooks = scanHistory.getAll();
+		if (allBooks.length === 0) {
+			alert('No scanned books to export.');
+			return;
+		}
+		
+		// Generate CSV header
+		const headers = [
+			'Title',
+			'GMD',
+			'Series Title',
+			'Call Number',
+			'Publisher',
+			'Collation',
+			'Language',
+			'ISBN/ISSN',
+			'Classification',
+			'Subject(s)',
+			'Specific Detail Info',
+			'Statement of Responsibility',
+			'Edition'
+		];
+		
+		// Escape CSV value
+		const escapeCSV = (value: string): string => {
+			if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+				return `"${value.replace(/"/g, '""')}"`;
+			}
+			return value;
+		};
+		
+		// Generate rows
+		const rows = allBooks.map(book => {
+			return [
+				escapeCSV(book.title),
+				escapeCSV(book.gmd),
+				escapeCSV(book.series),
+				escapeCSV(book.callNumber),
+				escapeCSV(book.publisherString),
+				escapeCSV(book.collation),
+				escapeCSV(book.language),
+				escapeCSV(book.isbn13),
+				escapeCSV(book.classification),
+				escapeCSV(book.subjects),
+				escapeCSV(book.specificDetail),
+				escapeCSV(book.author),
+				escapeCSV(book.edition)
+			].join(',');
+		});
+		
+		// Combine header and rows
+		const csvContent = [headers.join(','), ...rows].join('\n');
+		
+		// Download
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = `rangkai-batch-export-${new Date().toISOString().split('T')[0]}.csv`;
+		link.click();
+		URL.revokeObjectURL(url);
+		
+		console.log(`[Batch Export] Exported ${allBooks.length} books`);
+	}
+	
 	// Helper for cover image error
 	function handleCoverError(event: any) {
 		event.target.src = placeholderImg;
@@ -432,7 +552,11 @@
 	</header>
 
 	<!-- Main Content Area -->
-	<main class="max-w-5xl mx-auto px-4 py-12">
+	<main class="max-w-7xl mx-auto px-4 py-12">
+		
+		<div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+			<!-- Main Content Column -->
+			<div class="lg:col-span-3">
 		
 		<!-- Search Bar (from your design) -->
 		<div class="text-center mb-12 space-y-4 max-w-3xl mx-auto">
@@ -442,7 +566,14 @@
 			<div class="flex gap-2 max-w-lg mx-auto mt-6 relative">
 				<input 
 					type="text" 
+					bind:this={searchInputRef}
 					bind:value={searchQuery}
+					onfocus={(e) => {
+						// Scanner Mode: Select all on focus for quick overwrites
+						if (scannerModeEnabled) {
+							e.currentTarget.select();
+						}
+					}}
 					onkeydown={(e) => {
 						if (e.key === 'Enter') {
 							handleSearch();
@@ -450,8 +581,8 @@
 							handleSearchWithDebounce();
 						}
 					}}
-					placeholder="e.g. 9780134092669 or Akulah Angin Bambang" 
-					class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm transition-all"
+					placeholder={scannerModeEnabled ? "Scan barcode or enter ISBN..." : "e.g. 9780134092669 or Akulah Angin Bambang"}
+					class="w-full px-4 py-3 rounded-lg border {scannerModeEnabled ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm transition-all"
 				/>
 				
 				<button 
@@ -469,6 +600,22 @@
 						Harvest
 					{/if}
 				</button>
+			</div>
+			
+			<!-- Scanner Mode Toggle -->
+			<div class="flex items-center justify-center gap-3 mt-4">
+				<button
+					onclick={toggleScannerMode}
+					class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all {scannerModeEnabled ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+					</svg>
+					{scannerModeEnabled ? 'Scanner Mode: ON' : 'Enable Scanner Mode'}
+				</button>
+				{#if scannerModeEnabled}
+					<span class="text-xs text-gray-500">📦 Scanned: {scanHistory.count}</span>
+				{/if}
 			</div>
 		</div>
 
@@ -687,6 +834,97 @@
 				<p class="text-gray-500 mt-1">Search for a book to see the merged metadata here.</p>
 			</div>
 		{/if}
+		
+		</div>
+		<!-- End Main Content Column -->
+		
+		<!-- Recent Scans Sidebar (Scanner Mode) -->
+		{#if scannerModeEnabled}
+			<aside class="lg:col-span-1">
+				<div class="sticky top-20 bg-white rounded-xl border-2 border-green-200 shadow-lg p-4">
+					<div class="flex items-center justify-between mb-4">
+						<h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+							<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+							</svg>
+							Recent Scans
+						</h3>
+						<span class="text-sm font-medium text-green-700 bg-green-100 px-2 py-1 rounded-full">
+							{scanHistory.count}
+						</span>
+					</div>
+					
+					{#if scanHistory.isEmpty}
+						<div class="text-center py-8 text-gray-400 text-sm">
+							<svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+							</svg>
+							<p>No scans yet</p>
+							<p class="text-xs mt-1">Start scanning ISBNs</p>
+						</div>
+					{:else}
+						<!-- Batch Export Button -->
+						<div class="mb-3">
+							<button
+								onclick={exportBatchToCSV}
+								class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 transition-colors"
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+								</svg>
+								Download All ({scanHistory.count}) as CSV
+							</button>
+						</div>
+						
+						<!-- Clear All Button -->
+						<button
+							onclick={() => {
+								if (confirm(`Clear all ${scanHistory.count} scanned books from history?`)) {
+									scanHistory.clear();
+								}
+							}}
+							class="w-full mb-3 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+						>
+							Clear All
+						</button>
+						
+						<!-- Scanned Books List -->
+						<div class="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+							{#each scanHistory.items as book (book.isbn13)}
+								<div class="group relative bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition-colors">
+									<div class="pr-8">
+										<h4 class="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">
+											{book.title}
+										</h4>
+										<p class="text-xs text-gray-600 font-mono">
+											{book.isbn13}
+										</p>
+										<p class="text-xs text-gray-500 mt-1">
+											{book.author}
+										</p>
+									</div>
+									
+									<!-- Remove Button -->
+									<button
+										onclick={() => scanHistory.remove(book.isbn13)}
+										class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+										title="Remove from history"
+									>
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+										</svg>
+									</button>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			</aside>
+		{/if}
+		<!-- End Recent Scans Sidebar -->
+		
+		</div>
+		<!-- End Grid Layout -->
 
 	</main>
 </div>
