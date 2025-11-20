@@ -21,7 +21,8 @@ export type AnalyticsEvent =
 	| SingleExportEvent
 	| ErrorOccurredEvent
 	| ApiTimingEvent
-	| UserInteractionEvent;
+	| UserInteractionEvent
+	| AutoAddTriggeredEvent;
 
 /**
  * Search tracking (ISBN vs Title, with performance metrics)
@@ -146,8 +147,25 @@ interface ApiTimingEvent {
 interface UserInteractionEvent {
 	name: 'user_interaction';
 	properties: {
-		action: 'book_selected' | 'back_to_search' | 'home_navigation' | 'view_raw_data';
-		source?: 'google' | 'openlibrary';
+		action: 'book_selected' | 'back_to_search' | 'home_navigation' | 'view_raw_data' | 'auto_add_to_batch';
+		source?: 'google' | 'openlibrary' | 'scanner_mode';
+		is_partial?: boolean;
+		timestamp: string;
+	};
+}
+
+/**
+ * Auto-add triggered event (scanner mode continuous workflow)
+ */
+interface AutoAddTriggeredEvent {
+	name: 'auto_add_triggered';
+	properties: {
+		isbn: string;
+		is_partial_data: boolean;
+		data_source: string;
+		has_google: boolean;
+		has_openlibrary: boolean;
+		has_loc: boolean;
 		timestamp: string;
 	};
 }
@@ -265,7 +283,8 @@ class AnalyticsService {
 			'single_export': '💾',
 			'error_occurred': '❌',
 			'api_timing': '⏱️',
-			'user_interaction': '🖱️'
+			'user_interaction': '🖱️',
+			'auto_add_triggered': '🚀'
 		};
 		return emojiMap[eventName] || '📌';
 	}
@@ -284,7 +303,8 @@ class AnalyticsService {
 			'single_export': '#06b6d4', // cyan
 			'error_occurred': '#ef4444', // red
 			'api_timing': '#14b8a6', // teal
-			'user_interaction': '#6366f1' // indigo
+			'user_interaction': '#6366f1', // indigo
+			'auto_add_triggered': '#22c55e' // lime green
 		};
 		return colorMap[eventName] || '#000000';
 	}
@@ -317,5 +337,6 @@ export type {
 	SingleExportEvent,
 	ErrorOccurredEvent,
 	ApiTimingEvent,
-	UserInteractionEvent
+	UserInteractionEvent,
+	AutoAddTriggeredEvent
 };

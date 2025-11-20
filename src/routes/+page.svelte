@@ -376,8 +376,12 @@
 					is_partial: isPartialData
 				});
 				
+				// Validate we have USABLE data (not just placeholder "-")
+				const hasUsableData = mergedData && mergedData.title !== '-' && mergedData.title.length > 0;
+				
 				// AUTO-ADD MODE: Add directly to batch without showing detail card
-				if (scannerModeEnabled && autoAddMode && mergedData) {
+				// Works even with partial data (e.g., Google-only when OpenLibrary fails)
+				if (scannerModeEnabled && autoAddMode && hasUsableData) {
 					scanHistory.add(mergedData);
 					playFeedbackSound('success');
 					
@@ -385,15 +389,38 @@
 					const truncatedTitle = mergedData.title.length > 40 
 						? mergedData.title.substring(0, 40) + '...' 
 						: mergedData.title;
-					showToast(`✓ Added: ${truncatedTitle}`, 'success');
+					
+					// Add partial data warning to toast if applicable
+					const toastMessage = isPartialData 
+						? `⚠️ Added (partial data): ${truncatedTitle}`
+						: `✓ Added: ${truncatedTitle}`;
+					const toastType = isPartialData ? 'info' : 'success';
+					
+					showToast(toastMessage, toastType);
+					
+					// Track auto-add with partial data context
+					Analytics.track('auto_add_triggered', {
+						isbn: cleanedQuery,
+						is_partial_data: isPartialData,
+						data_source: mergedData.dataSource || 'unknown',
+						has_google: hasGoogle,
+						has_openlibrary: hasOpenLib,
+						has_loc: hasLoC
+					});
 					
 					Analytics.track('user_interaction', {
 						action: 'auto_add_to_batch',
-						source: 'scanner_mode'
+						source: 'scanner_mode',
+						is_partial: isPartialData
 					});
 					
 					// Skip showing result card - stay in search view for continuous scanning
 					currentView = 'search';
+				} else if (!hasUsableData) {
+					// CRITICAL FAILURE: No usable data even after merge
+					error = 'Data fetched but no usable title found. Cannot add to batch.';
+					playFeedbackSound('error');
+					showToast('✗ No usable data found', 'error');
 				} else {
 					// MANUAL MODE: Show result card for review
 					currentView = 'result';
