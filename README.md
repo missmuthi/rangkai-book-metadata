@@ -1,119 +1,311 @@
-<<<<<<< HEAD
-# rangkai-book-metadata
-Rangkai is a SLiMS 9-ready metadata harvester built with SvelteKit &amp; Tailwind. It intelligently merges Google Books &amp; OpenLibrary APIs, prioritizing accurate classification and rich descriptions. Features a modern, reactive UI powered by Svelte 5 Runes to deliver clean, catalog-ready bibliographic data.
-=======
-# Rangkai Book Metadata Harvester
+# Rangkai: Book Metadata Harvester
 
-A sophisticated metadata harvesting tool that aggregates book information from **Google Books** and **OpenLibrary** to generate **SLiMS-ready** (Senayan Library Management System) bibliographic records.
+![SvelteKit](https://img.shields.io/badge/SvelteKit-FF3E00?style=flat&logo=svelte&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white)
+![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-F38020?style=flat&logo=cloudflare&logoColor=white)
+![MIT License](https://img.shields.io/badge/License-MIT-green.svg)
 
-## Features
+**A specialized tool for Indonesian librarians to harvest, format, and export book metadata directly into SLiMS (Senayan Library Management System).**
 
-✨ **Dual-Source Data Aggregation**
-- Fetches comprehensive metadata from Google Books and OpenLibrary APIs
-- Intelligently merges conflicting data with prioritization logic
-- Provides fallback data when sources have incomplete information
+Built for high-speed cataloging workflows, Rangkai combines metadata from Google Books and OpenLibrary to generate SLiMS-compatible records with classification numbers, call numbers, and properly formatted bibliographic data.
 
-📚 **SLiMS Integration**
-- Generates call numbers following Dewey Decimal Classification (DDC)
-- Produces SLiMS-compatible metadata fields
-- Includes LCC (Library of Congress Classification) support
-- Exports standardized bibliographic records
+---
 
-🔍 **Flexible Search**
-- Search by ISBN (10 or 13 digit)
-- Search by book title
-- Returns multiple results from each source
-- User-selectable results for detailed harvesting
+## ✨ Key Features
 
-📊 **Rich Metadata**
-- Title, authors, publisher, publication date
-- ISBNs (both 10 and 13 digit variants)
-- Page counts, language, subjects
-- Cover images with fallback placeholders
-- Classifications (DDC, LCC)
-- Publication location and series information
+### 🔍 **Dual-Source Harvesting**
+- **Google Books**: Rich metadata including titles, authors, publishers, descriptions, and cover images
+- **OpenLibrary**: Classification systems (DDC, LCC) and subject headings
+- **Smart Merging**: Automatically combines the best data from both sources
 
-⚡ **Modern UI/UX**
-- Real-time search with enter key support
-- Loading states with spinner indicators
-- Result pagination and scrolling
-- Dual-panel view (search results + merged data)
-- Responsive design (mobile-friendly)
-- Raw JSON data source viewers for debugging
+### 🚀 **NEW: Scanner Mode — High-Speed Cataloging**
+Transform your workflow with **Scanner Mode**, designed specifically for USB barcode scanners:
 
-## Tech Stack
+- ⚡ **Mouse-Free Operation**: Scan → Auto-fetch → Auto-save → Repeat
+- 🎯 **Auto-Focus Input**: "Unjammable" input loop keeps scanner ready
+- 🔊 **Audio Feedback**: Instant confirmation for successful scans
+- 📦 **Local Batch History**: Stores up to 50 scanned books in browser storage (localStorage)
+- 🚫 **Ghost Scan Protection**: Automatically ignores partial/corrupted barcode reads
+- 💾 **Batch Export**: Download 50+ books at once as SLiMS CSV
 
-- **Framework**: SvelteKit 5 (with Runes)
-- **Language**: TypeScript
-# Rangkai Book Metadata Harvester
+### 📂 **SLiMS Compatible Exports**
+- **SLiMS CSV**: UTF-8 with BOM encoding for direct import into SLiMS Bibliography module
+- **Auto-Generated Call Numbers**: DDC + Cutter-Sanborn format (e.g., `823.92 LAN a`)
+- **MARCXML**: Standard library catalog format
+- **Smart Formatting**:
+  - Publisher strings: `Jakarta : Gramedia, 2023`
+  - Author names: `Last, First` format
+  - Language mapping: ISO codes → Full names (e.g., `ind` → `Indonesian`)
 
-A sophisticated metadata harvesting tool that aggregates book information from **Google Books** and **OpenLibrary** to generate **SLiMS-ready** (Senayan Library Management System) bibliographic records.
+### 🧠 **Intelligent Data Processing**
+- **ISBN Sanitization**: Strips dashes, spaces from scanner input
+- **5-Minute Response Cache**: Reduces duplicate API calls
+- **Rate Limiting**: Protects against API throttling
+- **Subject-to-DDC Mapping**: Automatically assigns Dewey classifications based on content
+- **Collation Formatting**: Standardizes page counts and physical descriptions
 
-## Features
+---
 
-✨ **Dual-Source Data Aggregation**
-- Fetches comprehensive metadata from Google Books and OpenLibrary APIs
-- Intelligently merges conflicting data with prioritization logic
-- Provides fallback data when sources have incomplete information
+## 🛠️ Tech Stack
 
-📚 **SLiMS Integration**
-- Generates call numbers following Dewey Decimal Classification (DDC)
-- Produces SLiMS-compatible metadata fields
-- Includes LCC (Library of Congress Classification) support
-- Exports standardized bibliographic records
+| Layer | Technology |
+|-------|-----------|
+| **Framework** | SvelteKit (Svelte 5 with Runes) |
+| **Language** | TypeScript (Strict Mode) |
+| **Styling** | Tailwind CSS |
+| **State Management** | Svelte 5 Runes (`$state`, `$derived`, `$effect`) |
+| **Testing** | Vitest + Testing Library |
+| **Deployment** | Cloudflare Pages |
+| **Runtime** | Node.js 18+ |
 
-🔍 **Flexible Search**
-- Search by ISBN (10 or 13 digit)
-- Search by book title
-- Returns multiple results from each source
-- User-selectable results for detailed harvesting
+---
 
-📊 **Rich Metadata**
-- Title, authors, publisher, publication date
-- ISBNs (both 10 and 13 digit variants)
-- Page counts, language, subjects
-- Cover images with fallback placeholders
-- Classifications (DDC, LCC)
-- Publication location and series information
+## 📖 How to Use Scanner Mode
 
-⚡ **Modern UI/UX**
-- Real-time search with enter key support
-- Loading states with spinner indicators
-- Result pagination and scrolling
-- Dual-panel view (search results + merged data)
-- Responsive design (mobile-friendly)
-- Raw JSON data source viewers for debugging
+Perfect for cataloging large collections with a USB barcode scanner:
 
-## Tech Stack
+1. **Connect USB Scanner**: Plug in your scanner (configured for ISBN barcode format)
+2. **Enable Scanner Mode**: Click the "Enable Scanner Mode" button in the UI
+3. **Start Scanning**: 
+   - Point scanner at book's ISBN barcode
+   - Scan the barcode (data auto-submits on Enter)
+   - Wait for green confirmation and audio beep
+   - Repeat immediately for next book
+4. **Review Scanned Books**: Check the "Recent Scans" sidebar (right panel)
+5. **Batch Export**: Click **"Download All (X) as CSV"** when finished
+6. **Import to SLiMS**:
+   - Go to SLiMS → Bibliography → Import
+   - Upload the downloaded CSV file
+   - Map fields (auto-detected for SLiMS format)
+   - Complete import
 
-- **Framework**: SvelteKit 5 (with Runes)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **APIs**: 
-  - [Google Books API](https://developers.google.com/books)
-  - [OpenLibrary API](https://openlibrary.org/developers)
-- **Runtime**: Node.js 18+
+### 🎯 Scanner Mode Tips
+- **Keep input focused**: The app auto-refocuses after each scan
+- **Scan speed**: Process 50+ books in under 10 minutes
+- **Network resilience**: Local history preserved even if APIs fail temporarily
+- **Remove mistakes**: Click the "X" on any scanned item to remove it
 
-## Installation
+---
+
+## 🚀 Installation & Development
 
 ### Prerequisites
 - Node.js 18.x or higher
-- npm or yarn package manager
+- npm or pnpm
 
 ### Setup
 
+1. **Clone the repository:**
 ```bash
-# Clone repository
 git clone https://github.com/missmuthi/rangkai-book-metadata.git
 cd rangkai-book-metadata
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Open browser
-# Navigate to http://localhost:5173 (or the port shown in terminal)
-# Note: If port 5173 is busy, Vite will automatically use the next available port
 ```
+
+2. **Install dependencies:**
+```bash
+npm install
+```
+
+3. **Run development server:**
+```bash
+npm run dev
+```
+
+4. **Open in browser:**
+```
+http://localhost:5173
+```
+
+### Build for Production
+
+```bash
+npm run build
+npm run preview  # Test production build locally
+```
+
+### Deploy to Cloudflare Pages
+
+```bash
+npm run deploy
+```
+
+---
+
+## 📂 Project Structure
+
+```
+rangkai-book-metadata/
+├── src/
+│   ├── lib/
+│   │   ├── cutter.ts                   # Cutter-Sanborn call number generator
+│   │   ├── merge.ts                    # Dual-source data merging logic
+│   │   ├── export.ts                   # CSV & MARCXML exporters
+│   │   ├── rateLimiter.ts              # API rate limiting system
+│   │   ├── types.ts                    # TypeScript interfaces
+│   │   ├── ErrorBoundary.svelte        # Error handling component
+│   │   ├── stores/
+│   │   │   └── history.svelte.ts       # Scanner Mode history store (Svelte 5 Runes)
+│   │   └── __tests__/                  # Unit tests
+│   │       ├── cutter.test.ts
+│   │       ├── export.test.ts
+│   │       ├── formatting.test.ts
+│   │       └── merge.test.ts
+│   ├── routes/
+│   │   ├── +layout.svelte              # Global layout
+│   │   └── +page.svelte                # Main application (Search + Scanner UI)
+│   ├── app.css                         # Tailwind CSS imports
+│   └── app.html                        # HTML shell
+├── static/                             # Static assets
+├── agents.md                           # AI agent automation docs
+├── PERFORMANCE_ANALYSIS.md             # Performance optimization notes
+├── package.json
+├── svelte.config.js
+├── tailwind.config.ts
+├── tsconfig.json
+└── vite.config.ts
+```
+
+---
+
+## 🧪 Testing
+
+Run the test suite:
+
+```bash
+npm run test
+```
+
+Watch mode for development:
+
+```bash
+npm run test:watch
+```
+
+Type checking:
+
+```bash
+npm run check
+```
+
+---
+
+## 📊 Data Mapping & Processing
+
+### Call Number Generation
+```
+Format: [DDC] [Cutter] [Title Initial]
+
+Example: 823.92 LAN a
+         ↓      ↓   ↓
+       DDC  Cutter Title
+```
+
+### Field Priority (Google Books vs OpenLibrary)
+
+| SLiMS Field | Source Priority | Processing |
+|-------------|-----------------|------------|
+| Title | OpenLibrary → Google | Direct mapping |
+| Authors | First available | Formatted as `Last, First` |
+| Publisher | Google → OpenLibrary | Formatted as `Place : Publisher, Year` |
+| DDC | OpenLibrary only | First available classification |
+| LCC | OpenLibrary only | First available classification |
+| Call Number | Generated | DDC + Cutter-Sanborn + Title initial |
+| Cover Image | Google → OpenLibrary → Placeholder | Thumbnail URL |
+| Language | Mapped | ISO code → Full name |
+| Collation | Google → OpenLibrary | `X pages ; size` |
+
+### Subject-to-DDC Auto-Mapping
+
+When DDC is unavailable, the system maps subjects to Dewey classes:
+
+```typescript
+"Language" → 400
+"English Grammar" → 425
+"Mathematics" → 510
+"Physics" → 530
+"Chemistry" → 540
+"Biology" → 570
+"Medicine" → 610
+"Engineering" → 620
+"Fiction/Literature" → 800
+"History/Geography" → 900
+```
+
+---
+
+## 🔧 Configuration
+
+### Rate Limiting (Adjustable in `src/lib/rateLimiter.ts`)
+
+```typescript
+Google Books: 50 requests / minute
+OpenLibrary: 100 requests / minute
+```
+
+### Cache Settings (`src/routes/+page.svelte`)
+
+```typescript
+TTL: 5 minutes
+Storage: In-memory (Map)
+```
+
+### Scanner History (`src/lib/stores/history.svelte.ts`)
+
+```typescript
+Max Items: 50 books
+Storage: localStorage
+Key: 'rangkai-scan-history'
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### Development Guidelines
+- Follow the TypeScript strict mode requirements
+- Use Svelte 5 Runes for reactive state
+- Follow Tailwind CSS utility-first patterns
+- Add tests for new features
+- Update documentation as needed
+
+---
+
+## 📝 License
+
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Google Books API** — Rich bibliographic metadata
+- **OpenLibrary** — Classification systems and subject headings
+- **SLiMS Community** — Indonesian library automation standards
+- **Svelte Team** — Revolutionary reactive framework
+- **Cloudflare** — Edge deployment platform
+
+---
+
+## 📧 Support
+
+- **Issues**: [GitHub Issues](https://github.com/missmuthi/rangkai-book-metadata/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/missmuthi/rangkai-book-metadata/discussions)
+
+---
+
+<div align="center">
+
+**Built with ❤️ for Indonesian Libraries**
+
+⭐ Star this repo if Rangkai helps your cataloging workflow!
+
+</div>
