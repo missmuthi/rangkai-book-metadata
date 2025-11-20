@@ -544,13 +544,15 @@
 						<span class="text-sm font-medium text-gray-500 col-span-1">Media Type</span>
 						<p class="text-base text-gray-700 col-span-2">unmediated</p>
 
-						<span class="text-sm font-medium text-gray-500 col-span-1">Carrier Type</span>
-						<p class="text-base text-gray-700 col-span-2">volume</p>
+					<span class="text-sm font-medium text-gray-500 col-span-1">Carrier Type</span>
+					<p class="text-base text-gray-700 col-span-2">volume</p>
 
+					{#if mergedData.edition && mergedData.edition !== '-' && mergedData.edition !== ''}
 						<span class="text-sm font-medium text-gray-500 col-span-1">Edition</span>
 						<p class="text-base text-gray-700 col-span-2">{mergedData.edition}</p>
+					{/if}
 
-						<span class="text-sm font-medium text-gray-500 col-span-1">Subject(s)</span>
+					<span class="text-sm font-medium text-gray-500 col-span-1">Subject(s)</span>
 						<p class="text-base text-gray-700 col-span-2">{mergedData.subjects}</p>
 
 						<span class="text-sm font-medium text-gray-500 col-span-1">Specific Detail Info</span>

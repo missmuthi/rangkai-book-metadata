@@ -30,8 +30,8 @@ describe('processAndRenderMergedData', () => {
 
     // Prioritization: OpenLibrary title preferred
     expect(merged.title).toBe('OL Title');
-    // Author should come from OpenLibrary
-    expect(merged.author).toBe('OL Author');
+    // Author should come from OpenLibrary and be formatted as "Last, First"
+    expect(merged.author).toBe('Author, OL');
     // Publisher should come from Google
     expect(merged.publisher).toBe('G Publisher');
     // DDC comes from OpenLibrary
