@@ -97,6 +97,8 @@
 		gmd: string;
 		infoLink: string;
 		cover: string;
+		isPartialData?: boolean; // True when OpenLibrary failed but Google Books succeeded
+		dataSource?: 'both' | 'google-only' | 'openlibrary-only';
 	}
 
 	// --- Constants ---
@@ -128,6 +130,7 @@
 	let googleResults = $state<GoogleBookItem[]>([]);
 	let openLibraryResults = $state<OpenLibrarySearchResponse['docs'] | undefined>(undefined);
 	let mergedData = $state<MergedBookData | null>(null);
+	let isPartialData = $state(false); // Track when OpenLibrary failed
 
 	// Raw data for debugging
 	let googleRaw = $state('');
@@ -244,7 +247,19 @@
 				if (!googleData && !openLibraryData) {
 					error = 'No data found from any source for this ISBN.';
 				} else {
+					// Track partial data state (Google only, no OpenLibrary)
+					isPartialData = googleData && !openLibraryData;
+					
 					mergedData = processAndRenderMergedData(googleData, openLibraryData);
+					
+					// Mark merged data with partial data flag
+					if (mergedData && isPartialData) {
+						mergedData.isPartialData = true;
+						mergedData.dataSource = 'google-only';
+					} else if (mergedData) {
+						mergedData.dataSource = 'both';
+					}
+					
 					currentView = 'result';
 
 					if (scannerModeEnabled && mergedData) {
@@ -626,6 +641,19 @@
 			<!-- === SLiMS Result Card === -->
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 				<div class="md:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-lg">
+					{#if mergedData.isPartialData}
+						<div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+							<svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+							</svg>
+							<div class="flex-1">
+								<p class="text-sm font-medium text-amber-900">Partial Data Retrieved</p>
+								<p class="text-xs text-amber-700 mt-1">
+									OpenLibrary service is temporarily unavailable. Classification data (DDC/LCC) may be incomplete. Displaying Google Books data only.
+								</p>
+							</div>
+						</div>
+					{/if}
 					<div class="flex items-center justify-between mb-4 flex-wrap gap-3">
 						<button onclick={handleBackToSearch} class="text-sm text-blue-600 hover:text-blue-800 font-medium">
 							&larr; Back to Search Results
@@ -681,7 +709,17 @@
 						<p class="text-base text-gray-700 col-span-2">{mergedData.series}</p>
 
 						<span class="text-sm font-medium text-gray-500 col-span-1">Call Number</span>
-						<p class="font-mono text-blue-700 bg-blue-100 px-2 py-1 rounded-md inline-block col-span-2">{mergedData.callNumber}</p>
+						<div class="col-span-2 flex items-center gap-2">
+							<p class="font-mono text-blue-700 bg-blue-100 px-2 py-1 rounded-md inline-block">{mergedData.callNumber}</p>
+							{#if mergedData.isPartialData && (mergedData.callNumber === '-' || mergedData.ddc === '-')}
+								<span
+									class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-md"
+									title="OpenLibrary service is temporarily unavailable. Classification data (DDC/LCC) cannot be retrieved. Using Google Books data only."
+								>
+									⚠️ Classification Unavailable
+								</span>
+							{/if}
+						</div>
 						
 						<span class="text-sm font-medium text-gray-500 col-span-1">Publisher</span>
 						<p class="text-base text-gray-700 col-span-2">{mergedData.publisherString}</p>
@@ -696,7 +734,17 @@
 						<p class="text-base text-gray-700 col-span-2">{mergedData.isbn13}</p>
 
 						<span class="text-sm font-medium text-gray-500 col-span-1">Classification</span>
-						<p class="text-base text-gray-700 col-span-2">{mergedData.classification}</p>
+						<div class="col-span-2 flex items-center gap-2">
+							<p class="text-base text-gray-700">{mergedData.classification}</p>
+							{#if mergedData.isPartialData && (mergedData.classification === 'NONE' || mergedData.classification === '-')}
+								<span
+									class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-md"
+									title="OpenLibrary service is temporarily unavailable. Using Google Books data only."
+								>
+									⚠️ Data Incomplete
+								</span>
+							{/if}
+						</div>
 
 						<span class="text-sm font-medium text-gray-500 col-span-1">Content Type</span>
 						<p class="text-base text-gray-700 col-span-2">text</p>

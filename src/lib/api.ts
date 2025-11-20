@@ -25,12 +25,19 @@ export class BookApiService {
 
 	/**
 	 * Fetch book data from OpenLibrary API (via proxy)
+	 * Gracefully handles rate limiting and service unavailability
 	 */
 	static async fetchOpenLibrary(query: string, isIsbn: boolean, limit = 1): Promise<OpenLibraryBookData | OpenLibrarySearchResponse | null> {
 		const url = `${this.OPENLIBRARY_BASE}?q=${encodeURIComponent(query)}&isbn=${isIsbn}&limit=${limit}`;
 
 		const response = await fetch(url);
+		
+		// Graceful degradation: Don't throw on 503/429, return null to allow Google Books fallback
 		if (!response.ok) {
+			if (response.status === 503 || response.status === 429) {
+				console.warn(`⚠️ OpenLibrary ${response.status}: Gracefully degrading to Google Books only`);
+				return null; // Allow the app to continue with Google Books data
+			}
 			throw new Error(`OpenLibrary API error: ${response.status} ${response.statusText}`);
 		}
 
@@ -38,6 +45,11 @@ export class BookApiService {
 
 		// Check for API-level errors
 		if (data.error) {
+			// Graceful degradation for temporary unavailability
+			if (data.error.includes('temporarily unavailable') || data.error.includes('rate limit')) {
+				console.warn('⚠️ OpenLibrary temporarily unavailable:', data.error);
+				return null;
+			}
 			throw new Error(data.error);
 		}
 

@@ -66,4 +66,6 @@ export interface MergedBookData {
   gmd: string;
   infoLink: string;
   cover: string;
+  isPartialData?: boolean; // True when OpenLibrary failed but Google Books succeeded
+  dataSource?: 'both' | 'google-only' | 'openlibrary-only';
 }

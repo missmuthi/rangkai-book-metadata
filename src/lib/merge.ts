@@ -284,7 +284,9 @@ export function processAndRenderMergedData(
     specificDetail: '-',
     gmd: '-',
     infoLink: '-',
-    cover: ''
+    cover: '',
+    isPartialData: false,
+    dataSource: 'both'
   };
 
   merged.title = openlib?.title || google?.title || '-';

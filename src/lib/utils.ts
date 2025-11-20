@@ -36,12 +36,28 @@ export function throttle<T extends (...args: any[]) => any>(
 }
 
 /**
- * Retry mechanism for failed operations
+ * HTTP error class with status code support
+ */
+export class HttpError extends Error {
+	constructor(public status: number, message: string) {
+		super(message);
+		this.name = 'HttpError';
+	}
+}
+
+/**
+ * Enhanced retry mechanism with circuit breaker for API rate limits
+ * 
+ * Circuit Breaker Logic:
+ * - 503 Service Unavailable: Don't retry (service is down)
+ * - 429 Too Many Requests: Don't retry (rate limited)
+ * - 4xx Client Errors: Don't retry (bad request)
+ * - Network/Timeout: Retry with exponential backoff
  */
 export async function retry<T>(
 	operation: () => Promise<T>,
 	maxRetries: number = 3,
-	delay: number = 1000
+	initialDelay: number = 1000
 ): Promise<T> {
 	let lastError: Error;
 
@@ -50,8 +66,31 @@ export async function retry<T>(
 			return await operation();
 		} catch (error) {
 			lastError = error as Error;
+			
+			// Circuit Breaker: Don't retry on certain HTTP errors
+			if (error instanceof HttpError || (error as any).status) {
+				const status = error instanceof HttpError ? error.status : (error as any).status;
+				const message = error instanceof Error ? error.message : 'Unknown error';
+				
+				// Don't retry on rate limits, service unavailable, or client errors
+				if (status === 503 || status === 429 || (status >= 400 && status < 500)) {
+					console.warn(`[Circuit Breaker] Not retrying HTTP ${status}: ${message}`);
+					throw error;
+				}
+			}
+			
+			// Check if error message indicates rate limiting or service issues
+			const errorMsg = lastError.message.toLowerCase();
+			if (errorMsg.includes('rate limit') || errorMsg.includes('503') || errorMsg.includes('429') || errorMsg.includes('temporarily unavailable')) {
+				console.warn(`[Circuit Breaker] Detected rate limit/service issue, aborting retries`);
+				throw lastError;
+			}
+			
+			// Exponential backoff for retryable errors (network issues, timeouts)
 			if (i < maxRetries - 1) {
-				await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+				const backoffDelay = initialDelay * Math.pow(2, i);
+				console.log(`[Retry ${i + 1}/${maxRetries}] Waiting ${backoffDelay}ms before retry...`);
+				await new Promise(resolve => setTimeout(resolve, backoffDelay));
 			}
 		}
 	}

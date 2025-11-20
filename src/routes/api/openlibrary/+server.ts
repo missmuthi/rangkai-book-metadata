@@ -24,12 +24,24 @@ export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const response = await fetch(apiUrl, {
 			headers: {
-				'User-Agent': 'RangkaiBookMetadata/1.0 (https://github.com/missmuthi/rangkai-book-metadata)'
+				'User-Agent': 'RangkaiCataloger/1.0 (contact@rangkai.app; https://github.com/missmuthi/rangkai-book-metadata)',
+				'Accept': 'application/json',
+				'Accept-Language': 'en-US,en;q=0.9,id;q=0.8'
 			}
 		});
 
 		if (!response.ok) {
 			console.error(`OpenLibrary API error: ${response.status} ${response.statusText}`);
+			
+			// Special handling for rate limiting and service unavailability
+			if (response.status === 429 || response.status === 503) {
+				console.warn('⚠️ OpenLibrary rate limit or service unavailable - client should use cached data or Google Books only');
+				return json(
+					{ error: 'OpenLibrary temporarily unavailable', retryAfter: response.headers.get('Retry-After') || '60' },
+					{ status: response.status }
+				);
+			}
+			
 			return json(
 				{ error: `OpenLibrary API error: ${response.statusText}` },
 				{ status: response.status }
