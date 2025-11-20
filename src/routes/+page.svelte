@@ -1,4 +1,13 @@
 <script lang="ts">
+	import { tick } from 'svelte';
+	import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
+	import { exportToSLiMSCSV, exportToMARCXML } from '$lib/export';
+	import { scanHistory } from '$lib/stores/history.svelte';
+	import { processAndRenderMergedData } from '$lib/merge';
+	import { BookApiService, googleCache, openLibraryCache } from '$lib/api';
+	import { debounce, retry, isOnline } from '$lib/utils';
+	import SkeletonCard from '$lib/SkeletonCard.svelte';
+
 	// --- TypeScript Interfaces ---
 	interface GoogleBookItem {
 		volumeInfo: {
@@ -90,12 +99,6 @@
 		cover: string;
 	}
 
-	import { tick } from 'svelte';
-	import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
-	import { exportToSLiMSCSV, exportToMARCXML } from '$lib/export';
-	import { scanHistory } from '$lib/stores/history.svelte';
-	import { processAndRenderMergedData } from '$lib/merge';
-
 	// --- Constants ---
 	const FALLBACK_COVER =
 		'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTBlMGUwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjN2M3YzdjIj5ObyBDb3ZlcjwvdGV4dD48L3N2Zz4=';
@@ -110,29 +113,9 @@
 		return input.replace(/[^a-zA-Z0-9]/g, '');
 	}
 
-	// --- Cache System ---
-	interface CacheEntry {
-		data: any;
-		timestamp: number;
-	}
-	const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
-	const cache = new Map<string, CacheEntry>();
-
+	// --- Enhanced Cache System ---
 	function getCacheKey(query: string, source: 'google' | 'openlibrary', isIsbn: boolean): string {
 		return `${source}:${query}:${isIsbn}`;
-	}
-
-	function getFromCache(key: string): any | null {
-		const entry = cache.get(key);
-		if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
-			return entry.data;
-		}
-		cache.delete(key);
-		return null;
-	}
-
-	function setInCache(key: string, data: any): void {
-		cache.set(key, { data, timestamp: Date.now() });
 	}
 
 	let searchQuery = $state('');
@@ -180,11 +163,27 @@
 		openLibraryRaw = '';
 	}
 
-	// --- Main Search Function ---
+	// --- Debounced Search ---
+	let debouncedSearch: (() => void) | null = null;
+
+	// Initialize debounced search on mount
+	$effect(() => {
+		debouncedSearch = debounce(async () => {
+			await handleSearch();
+		}, 500); // 500ms delay
+	});
+
+	// --- Enhanced Main Search Function ---
 	async function handleSearch() {
 		const trimmedQuery = searchQuery.trim();
 		if (!trimmedQuery) {
 			error = 'Please enter an ISBN or Title.';
+			return;
+		}
+
+		// Check online status
+		if (!isOnline()) {
+			error = 'No internet connection. Please check your network and try again.';
 			return;
 		}
 
@@ -214,18 +213,33 @@
 			const isIsbn = /^\d{10}(\d{3})?$/.test(cleanedQuery);
 
 			if (isIsbn) {
-				const [googleResult, openLibraryResult] = await Promise.allSettled([
-					fetchGoogle(cleanedQuery, true, 1),
-					fetchOpenLibrary(cleanedQuery, true)
-				]);
+				// ISBN Search - Get single result from both APIs
+				const cacheKey = getCacheKey(cleanedQuery, 'google', true);
+				let cachedResult = googleCache.get(cacheKey);
 
-				const googleData = (googleResult.status === 'fulfilled' && googleResult.value && googleResult.value.totalItems > 0 && googleResult.value.items)
-					? googleResult.value.items[0].volumeInfo
-					: null;
-				const openLibraryData = openLibraryResult.status === 'fulfilled' ? (openLibraryResult.value as OpenLibraryBookData | null) : null;
+				if (!cachedResult) {
+					const result = await retry(() => BookApiService.fetchBoth(cleanedQuery, true, 1, 1));
+
+					cachedResult = {
+						googleData: (result.google && result.google.totalItems > 0 && result.google.items) ? result.google.items[0].volumeInfo : null,
+						openLibraryData: result.openlibrary as OpenLibraryBookData | null,
+						errors: result.errors
+					};
+					googleCache.set(cacheKey, cachedResult);
+				}
+
+				const { googleData, openLibraryData, errors } = cachedResult;
 
 				googleRaw = JSON.stringify(googleData, null, 2) || 'Failed to fetch or no data found.';
 				openLibraryRaw = JSON.stringify(openLibraryData, null, 2) || 'Failed to fetch or no data found.';
+
+				// Show API errors as warnings but continue processing
+				if (errors.google) {
+					console.warn('[ISBN Search] Google API error:', errors.google.message);
+				}
+				if (errors.openlibrary) {
+					console.warn('[ISBN Search] OpenLibrary API error:', errors.openlibrary.message);
+				}
 
 				if (!googleData && !openLibraryData) {
 					error = 'No data found from any source for this ISBN.';
@@ -238,13 +252,19 @@
 					}
 				}
 			} else {
-				const [googleResponse, openLibraryResponse] = await Promise.allSettled([
-					fetchGoogle(trimmedQuery, false, 10),
-					fetchOpenLibrary(trimmedQuery, false, 10)
-				]);
+				// Title Search - Get multiple results from both APIs
+				const result = await retry(() => BookApiService.fetchBoth(trimmedQuery, false, 10, 10));
 
-				const googleItems = googleResponse.status === 'fulfilled' ? googleResponse.value?.items ?? null : null;
-				const openLibraryItems = openLibraryResponse.status === 'fulfilled' ? (openLibraryResponse.value as OpenLibrarySearchResponse | null)?.docs ?? null : null;
+				const googleItems = result.google?.items ?? null;
+				const openLibraryItems = (result.openlibrary as OpenLibrarySearchResponse | null)?.docs ?? null;
+
+				// Show API errors as warnings but continue with available data
+				if (result.errors.google) {
+					console.warn('[Title Search] Google API error:', result.errors.google.message);
+				}
+				if (result.errors.openlibrary) {
+					console.warn('[Title Search] OpenLibrary API error:', result.errors.openlibrary.message);
+				}
 
 				if (!googleItems && !openLibraryItems) {
 					error = 'No books found for that title from any source.';
@@ -254,7 +274,9 @@
 					googleResults = googleItems;
 				}
 
-				openLibraryResults = openLibraryItems && openLibraryItems.length > 0 ? openLibraryItems : undefined;
+				if (openLibraryItems && openLibraryItems.length > 0) {
+					openLibraryResults = openLibraryItems;
+				}
 			}
 		} catch (err) {
 			console.error('[Scanner Mode] Search failed:', err);
@@ -271,7 +293,7 @@
 		}
 	}
 
-	// --- Book Selection Handlers ---
+	// --- Enhanced Book Selection Handlers ---
 
 	async function handleBookSelection(index: number) {
 		isLoading = true;
@@ -283,10 +305,22 @@
 		googleRaw = JSON.stringify(googleData, null, 2);
 
 		const isbn = googleData.industryIdentifiers?.find((id) => id.type === 'ISBN_13')?.identifier;
-		
+
 		let openLibraryData: OpenLibraryBookData | null = null;
 		if (isbn) {
-			openLibraryData = await fetchOpenLibrary(isbn, true) as OpenLibraryBookData | null;
+			try {
+				const cacheKey = getCacheKey(isbn, 'openlibrary', true);
+				openLibraryData = openLibraryCache.get(cacheKey);
+
+				if (!openLibraryData) {
+					openLibraryData = await retry(() => BookApiService.fetchOpenLibrary(isbn, true)) as OpenLibraryBookData | null;
+					if (openLibraryData) {
+						openLibraryCache.set(cacheKey, openLibraryData);
+					}
+				}
+			} catch (err) {
+				console.warn('[Book Selection] OpenLibrary fetch failed:', err);
+			}
 			openLibraryRaw = JSON.stringify(openLibraryData, null, 2) || 'No data found from OpenLibrary for this ISBN.';
 		} else {
 			openLibraryRaw = 'No ISBN found in Google data to search OpenLibrary for DDC/LCC.';
@@ -309,7 +343,7 @@
 		}
 
 		const selectedDoc = openLibraryResults[index];
-		
+
 		// OPTIMIZATION: Use search result data directly instead of fetching details
 		let openLibraryData: OpenLibraryBookData | null = {
 			title: selectedDoc.title,
@@ -327,8 +361,20 @@
 		const isbn = openLibraryData?.identifiers?.isbn_13?.[0];
 		let googleData: GoogleBookItem['volumeInfo'] | null = null;
 		if (isbn) {
-			const googleResponse = await fetchGoogle(isbn, true, 1);
-			googleData = (googleResponse && googleResponse.totalItems > 0 && googleResponse.items) ? googleResponse.items[0].volumeInfo : null;
+			try {
+				const cacheKey = getCacheKey(isbn, 'google', true);
+				googleData = googleCache.get(cacheKey);
+
+				if (!googleData) {
+					const googleResponse = await retry(() => BookApiService.fetchGoogleBooks(isbn, true, 1));
+					googleData = (googleResponse && googleResponse.totalItems > 0 && googleResponse.items) ? googleResponse.items[0].volumeInfo : null;
+					if (googleData) {
+						googleCache.set(cacheKey, googleData);
+					}
+				}
+			} catch (err) {
+				console.warn('[OpenLibrary Selection] Google fetch failed:', err);
+			}
 			googleRaw = JSON.stringify(googleData, null, 2) || 'No data found from Google for this ISBN.';
 		} else {
 			googleRaw = 'No ISBN found in OpenLibrary data to search Google.';
@@ -347,89 +393,7 @@
 		// so the user doesn't have to search again.
 	}
 
-	// --- API Fetch Functions ---
-
-	async function fetchGoogle(query: string, isIsbn: boolean, maxResults = 1): Promise<GoogleBooksResponse | null> {
-		// OPTIMIZATION: Check cache first
-		const cacheKey = getCacheKey(query, 'google', isIsbn);
-		const cachedData = getFromCache(cacheKey);
-		if (cachedData) {
-			console.log(`[Cache Hit] Google: ${query}`);
-			return cachedData;
-		}
-
-		// Check rate limit
-		if (!checkGoogleBooksLimit()) {
-			const status = getRateLimitStatus();
-			throw new Error(`Google Books API rate limit exceeded. Try again in ${status.google.resetInSeconds} seconds.`);
-		}
-
-		const q = isIsbn ? `isbn:${query}` : `intitle:${query}`;
-		const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=${maxResults}`;
-		
-		try {
-			const response = await fetch(url);
-			if (!response.ok) throw new Error(`Google API error: ${response.statusText}`);
-			const data: GoogleBooksResponse = await response.json();
-			
-			// OPTIMIZATION: Cache the result
-			setInCache(cacheKey, data);
-			return data;
-		} catch (err: unknown) {
-			const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-			console.error("Google Fetch Error:", err);
-			googleRaw = `Error: ${errorMessage}`;
-			return null;
-		}
-	}
-
-	async function fetchOpenLibrary(query: string, isIsbn: boolean, limit = 1): Promise<OpenLibraryBookData | OpenLibrarySearchResponse | null> {
-		// OPTIMIZATION: Check cache first
-		const cacheKey = getCacheKey(query, 'openlibrary', isIsbn);
-		const cachedData = getFromCache(cacheKey);
-		if (cachedData) {
-			console.log(`[Cache Hit] OpenLibrary: ${query}`);
-			return cachedData;
-		}
-
-		// Check rate limit
-		if (!checkOpenLibraryLimit()) {
-			const status = getRateLimitStatus();
-			throw new Error(`OpenLibrary API rate limit exceeded. Try again in ${status.openlibrary.resetInSeconds} seconds.`);
-		}
-
-		// Use server-side proxy to avoid CORS issues
-		const url = `/api/openlibrary?q=${encodeURIComponent(query)}&isbn=${isIsbn}&limit=${limit}`;
-
-		try {
-			const response = await fetch(url);
-			if (!response.ok) throw new Error(`OpenLibrary API error: ${response.statusText}`);
-			const data = await response.json();
-			
-			// Check for error in response
-			if (data.error) {
-				throw new Error(data.error);
-			}
-			
-			if (isIsbn) {
-				const key = `ISBN:${query}`;
-				if (!data[key]) return null;
-				
-				// OPTIMIZATION: Cache the result
-				setInCache(cacheKey, data[key]);
-				return data[key] as OpenLibraryBookData;
-			} else {
-				// OPTIMIZATION: Cache the result
-				setInCache(cacheKey, data);
-				return data as OpenLibrarySearchResponse;
-			}
-		} catch (err: unknown) {
-			const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-			console.error("OpenLibrary Fetch Error:", err);
-			openLibraryRaw = `Error: ${errorMessage}`;
-			return null;
-		}
-	}
+	// --- API Fetch Functions (Now handled by BookApiService) ---
 
 	// --- Scanner Mode Functions ---
 	
@@ -560,6 +524,15 @@
 					type="text" 
 					bind:this={searchInputRef}
 					bind:value={searchQuery}
+					oninput={(e) => {
+						// For title searches, use debounced search
+						const value = (e.target as HTMLInputElement).value;
+						const isPotentialIsbn = /^\d{10}(\d{3})?$/.test(value.replace(/[^0-9]/g, ''));
+						
+						if (!isPotentialIsbn && value.length > 2 && debouncedSearch) {
+							debouncedSearch();
+						}
+					}}
 					onfocus={(e) => {
 						e.currentTarget.select();
 					}}
@@ -616,13 +589,37 @@
 		<!-- === Main UI State Swap === -->
 
 		{#if isLoading && !mergedData && googleResults.length === 0}
-			<!-- Main Loading Spinner (only on initial search) -->
-			<div class="flex flex-col items-center justify-center p-12 text-gray-500">
-				<svg class="animate-spin h-12 w-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-				</svg>
-				<p class="mt-4 text-lg">Harvesting data...</p>
+			<!-- Enhanced Loading State with Skeletons -->
+			<div class="max-w-3xl mx-auto">
+				<div class="flex flex-col items-center justify-center p-8 text-gray-500 mb-6">
+					<svg class="animate-spin h-12 w-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+					</svg>
+					<p class="mt-4 text-lg">Harvesting data from Google Books & OpenLibrary...</p>
+					<p class="text-sm text-gray-400 mt-1">This may take a few seconds</p>
+				</div>
+				
+				<!-- Show skeleton cards for title searches -->
+				{#if searchQuery && !/^\d{10}(\d{3})?$/.test(searchQuery.replace(/[^0-9]/g, ''))}
+					<div class="space-y-4">
+						<h3 class="text-lg font-semibold text-gray-700">Loading results...</h3>
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div class="space-y-3">
+								<h4 class="text-sm font-medium text-gray-600">Google Books</h4>
+								{#each Array(3) as _}
+									<SkeletonCard />
+								{/each}
+							</div>
+							<div class="space-y-3">
+								<h4 class="text-sm font-medium text-gray-600">OpenLibrary</h4>
+								{#each Array(3) as _}
+									<SkeletonCard />
+								{/each}
+							</div>
+						</div>
+					</div>
+				{/if}
 			</div>
 		
 		{:else if currentView === 'result' && mergedData}
@@ -825,9 +822,10 @@
 		</div>
 		<!-- End Main Content Column -->
 		
-		<!-- Recent Scans Sidebar (Scanner Mode) -->
+		<!-- Performance Dashboard (Advanced Users) -->
 		{#if scannerModeEnabled}
-			<aside class="lg:col-span-1">
+			<aside class="lg:col-span-1 space-y-4">
+				<!-- Recent Scans Sidebar -->
 				<div class="sticky top-20 bg-white rounded-xl border-2 border-green-200 shadow-lg p-4">
 					<div class="flex items-center justify-between mb-4">
 						<h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -905,6 +903,39 @@
 							{/each}
 						</div>
 					{/if}
+				</div>
+				
+				<!-- Performance Stats -->
+				<div class="bg-white rounded-xl border border-gray-200 shadow-lg p-4">
+					<h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+						<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+						</svg>
+						Performance
+					</h3>
+					
+					<div class="space-y-3 text-sm">
+						<div class="flex justify-between">
+							<span class="text-gray-600">Cache Hit Rate</span>
+							<span class="font-mono text-green-600">
+								{Math.round((googleCache.getStats().totalHits / Math.max(1, googleCache.getStats().size + googleCache.getStats().totalHits)) * 100)}%
+							</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-gray-600">Google Cache</span>
+							<span class="font-mono text-blue-600">{googleCache.getStats().size} items</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-gray-600">OL Cache</span>
+							<span class="font-mono text-green-600">{openLibraryCache.getStats().size} items</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-gray-600">Avg Response</span>
+							<span class="font-mono text-purple-600">
+								{Math.round((googleCache.getStats().averageAge + openLibraryCache.getStats().averageAge) / 2 / 1000)}s
+							</span>
+						</div>
+					</div>
 				</div>
 			</aside>
 		{/if}

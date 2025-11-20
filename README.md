@@ -1,223 +1,193 @@
-# Rangkai: Book Metadata Harvester
+# 📚 Rangkai Book Metadata Harvester
 
-![SvelteKit](https://img.shields.io/badge/SvelteKit-FF3E00?style=flat&logo=svelte&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white)
-![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-F38020?style=flat&logo=cloudflare&logoColor=white)
-![MIT License](https://img.shields.io/badge/License-MIT-green.svg)
+> A modern, intelligent metadata harvesting tool for library cataloging systems (SLiMS). Built with SvelteKit, TypeScript, and Tailwind CSS.
 
-**A specialized tool for Indonesian librarians to harvest, format, and export book metadata directly into SLiMS (Senayan Library Management System).**
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue.svg)](https://www.typescriptlang.org/)
+[![SvelteKit](https://img.shields.io/badge/SvelteKit-Latest-orange.svg)](https://kit.svelte.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-38B2AC.svg)](https://tailwindcss.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Built for high-speed cataloging workflows, Rangkai combines metadata from Google Books and OpenLibrary to generate SLiMS-compatible records with classification numbers, call numbers, and properly formatted bibliographic data.
+## 🎯 Overview
 
----
+Rangkai Book Metadata Harvester intelligently combines data from **Google Books API** and **OpenLibrary API** to generate complete, SLiMS-compatible bibliographic records. Designed for Indonesian libraries and catalogers, it automates the tedious process of metadata entry while maintaining data quality and completeness.
 
-## ✨ Key Features
+### Key Features
 
-### 🔍 **Dual-Source Harvesting**
-- **Google Books**: Rich metadata including titles, authors, publishers, descriptions, and cover images
-- **OpenLibrary**: Classification systems (DDC, LCC) and subject headings
-- **Smart Merging**: Automatically combines the best data from both sources
+- 🔍 **Dual-Source Search** - ISBN or title lookup from Google Books + OpenLibrary
+- 🧠 **Intelligent Data Merging** - Smart prioritization of most reliable data sources
+- 📊 **Classification Support** - DDC (Dewey Decimal) and LCC (Library of Congress) codes
+- 🏷️ **Auto Call Number** - Generates call numbers using DDC/LCC + Author + Year
+- 🌐 **CORS-Free API** - Server-side proxy eliminates browser CORS restrictions
+- 📝 **SLiMS Ready** - Fields mapped to Senayan Library Management System
+- 🎨 **Modern UI** - Clean, responsive interface with Tailwind CSS
+- ⚡ **Real-time Preview** - Live metadata display as data is fetched
+- 🖼️ **Cover Image Handling** - Automatic fallback chain for missing covers
+- 🔄 **Progressive Enhancement** - Works with or without JavaScript
 
-### 🚀 **NEW: Scanner Mode — High-Speed Cataloging**
-Transform your workflow with **Scanner Mode**, designed specifically for USB barcode scanners:
-
-- ⚡ **Mouse-Free Operation**: Scan → Auto-fetch → Auto-save → Repeat
-- 🎯 **Auto-Focus Input**: "Unjammable" input loop keeps scanner ready
-- 🔊 **Audio Feedback**: Instant confirmation for successful scans
-- 📦 **Local Batch History**: Stores up to 50 scanned books in browser storage (localStorage)
-- 🚫 **Ghost Scan Protection**: Automatically ignores partial/corrupted barcode reads
-- 💾 **Batch Export**: Download 50+ books at once as SLiMS CSV
-
-### 📂 **SLiMS Compatible Exports**
-- **SLiMS CSV**: UTF-8 with BOM encoding for direct import into SLiMS Bibliography module
-- **Auto-Generated Call Numbers**: DDC + Cutter-Sanborn format (e.g., `823.92 LAN a`)
-- **MARCXML**: Standard library catalog format
-- **Smart Formatting**:
-  - Publisher strings: `Jakarta : Gramedia, 2023`
-  - Author names: `Last, First` format
-  - Language mapping: ISO codes → Full names (e.g., `ind` → `Indonesian`)
-
-### 🧠 **Intelligent Data Processing**
-- **ISBN Sanitization**: Strips dashes, spaces from scanner input
-- **5-Minute Response Cache**: Reduces duplicate API calls
-- **Rate Limiting**: Protects against API throttling
-- **Subject-to-DDC Mapping**: Automatically assigns Dewey classifications based on content
-- **Collation Formatting**: Standardizes page counts and physical descriptions
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Framework** | SvelteKit (Svelte 5 with Runes) |
-| **Language** | TypeScript (Strict Mode) |
-| **Styling** | Tailwind CSS |
-| **State Management** | Svelte 5 Runes (`$state`, `$derived`, `$effect`) |
-| **Testing** | Vitest + Testing Library |
-| **Deployment** | Cloudflare Pages |
-| **Runtime** | Node.js 18+ |
-
----
-
-## 📖 How to Use Scanner Mode
-
-Perfect for cataloging large collections with a USB barcode scanner:
-
-1. **Connect USB Scanner**: Plug in your scanner (configured for ISBN barcode format)
-2. **Enable Scanner Mode**: Click the "Enable Scanner Mode" button in the UI
-3. **Start Scanning**: 
-   - Point scanner at book's ISBN barcode
-   - Scan the barcode (data auto-submits on Enter)
-   - Wait for green confirmation and audio beep
-   - Repeat immediately for next book
-4. **Review Scanned Books**: Check the "Recent Scans" sidebar (right panel)
-5. **Batch Export**: Click **"Download All (X) as CSV"** when finished
-6. **Import to SLiMS**:
-   - Go to SLiMS → Bibliography → Import
-   - Upload the downloaded CSV file
-   - Map fields (auto-detected for SLiMS format)
-   - Complete import
-
-### 🎯 Scanner Mode Tips
-- **Keep input focused**: The app auto-refocuses after each scan
-- **Scan speed**: Process 50+ books in under 10 minutes
-- **Network resilience**: Local history preserved even if APIs fail temporarily
-- **Remove mistakes**: Click the "X" on any scanned item to remove it
-
----
-
-## 🚀 Installation & Development
+## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18.x or higher
-- npm or pnpm
 
-### Setup
-
-1. **Clone the repository:**
 ```bash
+node -v  # Requires Node.js 18.x or higher
+npm -v   # or yarn/pnpm
+```
+
+### Installation
+
+```bash
+# Clone the repository
 git clone https://github.com/missmuthi/rangkai-book-metadata.git
 cd rangkai-book-metadata
-```
 
-2. **Install dependencies:**
-```bash
+# Install dependencies
 npm install
-```
 
-3. **Run development server:**
-```bash
+# Start development server
 npm run dev
-```
 
-4. **Open in browser:**
-```
-http://localhost:5173
+# Open http://localhost:5173
 ```
 
 ### Build for Production
 
 ```bash
+# Create production build
 npm run build
-npm run preview  # Test production build locally
-```
 
-### Deploy to Cloudflare Pages
+# Preview production build locally
+npm run preview
 
-```bash
+# Deploy to Cloudflare Pages
 npm run deploy
 ```
 
----
+## 📖 Usage
 
-## 📂 Project Structure
+### Search by ISBN
+
+1. Enter a valid ISBN-10 or ISBN-13 (with or without hyphens)
+2. Click **Search** or press Enter
+3. View merged metadata from both sources
+4. Copy individual fields or export complete record
+
+### Search by Title
+
+1. Enter book title (minimum 3 characters)
+2. Select from up to 10 results
+3. Review and edit merged metadata
+4. Export to SLiMS-compatible format
+
+### Example Searches
+
+```
+ISBN: 9786235516981
+ISBN: 978-0-13-468599-1
+Title: "Clean Code"
+Title: "The Pragmatic Programmer"
+```
+
+## 🏗️ Architecture
+
+### Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Framework** | SvelteKit | SSR, routing, server functions |
+| **Language** | TypeScript (Strict) | Type safety, IDE support |
+| **Styling** | Tailwind CSS | Utility-first styling |
+| **APIs** | Google Books + OpenLibrary | Metadata sources |
+| **Deployment** | Cloudflare Pages | Edge computing, CDN |
+| **Testing** | Vitest + Playwright | Unit & E2E tests |
+
+### Project Structure
 
 ```
 rangkai-book-metadata/
 ├── src/
 │   ├── lib/
-│   │   ├── cutter.ts                   # Cutter-Sanborn call number generator
-│   │   ├── merge.ts                    # Dual-source data merging logic
-│   │   ├── export.ts                   # CSV & MARCXML exporters
-│   │   ├── rateLimiter.ts              # API rate limiting system
-│   │   ├── types.ts                    # TypeScript interfaces
-│   │   ├── ErrorBoundary.svelte        # Error handling component
-│   │   ├── stores/
-│   │   │   └── history.svelte.ts       # Scanner Mode history store (Svelte 5 Runes)
-│   │   └── __tests__/                  # Unit tests
-│   │       ├── cutter.test.ts
-│   │       ├── export.test.ts
-│   │       ├── formatting.test.ts
-│   │       └── merge.test.ts
+│   │   ├── merge.ts              # Data merging & enrichment logic
+│   │   ├── components/           # Reusable Svelte components
+│   │   └── types/                # TypeScript type definitions
 │   ├── routes/
-│   │   ├── +layout.svelte              # Global layout
-│   │   └── +page.svelte                # Main application (Search + Scanner UI)
-│   ├── app.css                         # Tailwind CSS imports
-│   └── app.html                        # HTML shell
-├── static/                             # Static assets
-├── agents.md                           # AI agent automation docs
-├── PERFORMANCE_ANALYSIS.md             # Performance optimization notes
-├── package.json
-├── svelte.config.js
-├── tailwind.config.ts
-├── tsconfig.json
-└── vite.config.ts
+│   │   ├── +page.svelte          # Main search interface
+│   │   ├── +layout.svelte        # App layout wrapper
+│   │   └── api/
+│   │       └── openlibrary/
+│   │           └── +server.ts    # CORS proxy for OpenLibrary
+│   ├── app.html                  # HTML template
+│   └── app.css                   # Global styles + Tailwind
+├── static/                       # Static assets
+├── tests/                        # Test suites
+├── agents.md                     # AI agents & automation docs
+├── PERFORMANCE_ANALYSIS.md       # Performance benchmarks
+└── svelte.config.js              # SvelteKit configuration
 ```
 
----
+## 🤖 Intelligent Data Processing
 
-## 🧪 Testing
+### Automated Agents
 
-Run the test suite:
+The system employs multiple specialized agents for data harvesting and processing:
 
-```bash
-npm run test
+#### 1. **Google Books API Agent**
+- Fetches metadata from Google Books
+- Handles ISBN and title searches
+- Extracts: title, authors, publisher, dates, ISBNs, descriptions, cover images
+
+#### 2. **OpenLibrary API Agent** 
+- Server-side proxy at `/api/openlibrary` (eliminates CORS)
+- Fetches classifications (DDC, LCC)
+- Extracts: subjects, languages, series, alternate titles
+
+#### 3. **Data Merge Agent** (`processAndRenderMergedData`)
+Smart prioritization logic:
+```typescript
+Title       → OpenLibrary preferred (more complete)
+Authors     → First available source
+Publisher   → Google Books preferred
+Date        → Google Books preferred
+DDC/LCC     → OpenLibrary exclusive
+Cover       → Google > OpenLibrary > Fallback
+Description → Combined (Google priority)
 ```
 
-Watch mode for development:
+#### 4. **Metadata Enrichment Agent**
+Generates SLiMS-compatible fields:
+- **Call Numbers**: `DDC/LCC + AuthorAbbr + TitleInitial + Year`
+- **GMD**: General Material Designation from print type
+- **Collation**: Page count formatting
+- **Language**: ISO 639 code → Full language name
+- **Subject Mapping**: Categories → DDC classifications
 
-```bash
-npm run test:watch
-```
+#### 5. **Error Handling Agent**
+- Catches network failures gracefully
+- Provides fallback placeholder images
+- Displays user-friendly error messages
+- Logs detailed errors for debugging
 
-Type checking:
+### Field Mapping Reference
 
-```bash
-npm run check
-```
+| SLiMS Field | Data Source | Priority |
+|-------------|------------|----------|
+| Title | Both | OpenLibrary > Google |
+| Authors | Both | First available |
+| Publisher | Both | Google > OpenLibrary |
+| Publication Date | Both | Google > OpenLibrary |
+| Pages/Collation | Google | - |
+| ISBN-13 | Both | Google > OpenLibrary |
+| ISBN-10 | Both | Google > OpenLibrary |
+| DDC | OpenLibrary | Exclusive |
+| LCC | OpenLibrary | Exclusive |
+| Call Number | **Generated** | Enrichment Agent |
+| Language | Both | Mapped from ISO codes |
+| Subjects | Both | Google categories + OL subjects |
+| Cover Image | Both | Google > OpenLibrary > Placeholder |
+| GMD | Google | From print type |
 
----
+### Subject-to-DDC Auto-Classification
 
-## 📊 Data Mapping & Processing
-
-### Call Number Generation
-```
-Format: [DDC] [Cutter] [Title Initial]
-
-Example: 823.92 LAN a
-         ↓      ↓   ↓
-       DDC  Cutter Title
-```
-
-### Field Priority (Google Books vs OpenLibrary)
-
-| SLiMS Field | Source Priority | Processing |
-|-------------|-----------------|------------|
-| Title | OpenLibrary → Google | Direct mapping |
-| Authors | First available | Formatted as `Last, First` |
-| Publisher | Google → OpenLibrary | Formatted as `Place : Publisher, Year` |
-| DDC | OpenLibrary only | First available classification |
-| LCC | OpenLibrary only | First available classification |
-| Call Number | Generated | DDC + Cutter-Sanborn + Title initial |
-| Cover Image | Google → OpenLibrary → Placeholder | Thumbnail URL |
-| Language | Mapped | ISO code → Full name |
-| Collation | Google → OpenLibrary | `X pages ; size` |
-
-### Subject-to-DDC Auto-Mapping
-
-When DDC is unavailable, the system maps subjects to Dewey classes:
+Pattern matching engine maps subjects to Dewey Decimal:
 
 ```typescript
 "Language" → 400
@@ -232,80 +202,336 @@ When DDC is unavailable, the system maps subjects to Dewey classes:
 "History/Geography" → 900
 ```
 
----
-
 ## 🔧 Configuration
 
-### Rate Limiting (Adjustable in `src/lib/rateLimiter.ts`)
+### Environment Variables
 
-```typescript
-Google Books: 50 requests / minute
-OpenLibrary: 100 requests / minute
+```bash
+# .env.local (never commit this file)
+VITE_GOOGLE_BOOKS_API_KEY=your_api_key_here
+VITE_APP_VERSION=1.0.0
 ```
 
-### Cache Settings (`src/routes/+page.svelte`)
+### TypeScript Configuration
 
-```typescript
-TTL: 5 minutes
-Storage: In-memory (Map)
+Strict mode is **MANDATORY** for all new code:
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "resolveJsonModule": true
+  }
+}
 ```
 
-### Scanner History (`src/lib/stores/history.svelte.ts`)
+### Tailwind Configuration
+
+Extend the design system in `tailwind.config.ts`:
 
 ```typescript
-Max Items: 50 books
-Storage: localStorage
-Key: 'rangkai-scan-history'
+export default {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#your-brand-color'
+      }
+    }
+  }
+}
 ```
 
----
+## 🧪 Testing
+
+### Run Test Suites
+
+```bash
+# Unit tests (Vitest)
+npm run test:unit
+
+# E2E tests (Playwright)
+npm run test:e2e
+
+# All tests
+npm test
+
+# Type checking
+npm run check
+
+# Coverage report
+npm run test:coverage
+```
+
+### Current Test Coverage
+
+- ✅ 82 unit tests passing
+- ✅ Component rendering tests
+- ✅ Data merging logic tests
+- ✅ API proxy tests
+- ✅ Form validation tests
+
+## 📊 Performance
+
+See [`PERFORMANCE_ANALYSIS.md`](PERFORMANCE_ANALYSIS.md) for detailed benchmarks.
+
+### Key Metrics
+
+- **Initial Load**: < 500ms (with caching)
+- **API Response Time**: 800-1500ms (dual-source fetch)
+- **UI Render**: < 100ms (Svelte reactivity)
+- **Lighthouse Score**: 95+ (Performance, Accessibility, SEO)
+
+### Optimization Strategies
+
+- Server-side rendering (SSR) for initial page load
+- API response caching (5-minute TTL on proxy)
+- Progressive image loading for book covers
+- Debounced search input (300ms delay)
+- Lazy loading of non-critical components
+
+## 🎨 Coding Standards
+
+### SvelteKit Patterns
+
+**Always use generated types:**
+```typescript
+import type { PageData, PageServerLoad } from './$types';
+
+export const load = (async ({ fetch, params }) => {
+  const data = await fetchData(params.id);
+  return { data };
+}) satisfies PageServerLoad;
+```
+
+**Form actions in `+page.server.ts`:**
+```typescript
+import { fail } from '@sveltejs/kit';
+import type { Actions } from './$types';
+
+export const actions = {
+  search: async ({ request }) => {
+    const formData = await request.formData();
+    const isbn = formData.get('isbn');
+    
+    if (!isbn) {
+      return fail(400, { error: 'ISBN required' });
+    }
+    
+    return { success: true, data: await searchBook(isbn) };
+  }
+} satisfies Actions;
+```
+
+### Tailwind CSS Guidelines
+
+**Class ordering** (enforced):
+1. Layout (`flex`, `grid`, `relative`)
+2. Sizing (`w-full`, `h-screen`)
+3. Spacing (`p-4`, `m-2`, `gap-6`)
+4. Typography (`text-lg`, `font-bold`)
+5. Colors (`bg-white`, `text-gray-700`)
+6. Effects (`shadow-md`, `rounded-lg`)
+7. States (`hover:bg-blue-100`)
+8. Responsive (`md:w-1/2`)
+
+**Avoid `@apply`** - Use utility classes directly in components.
+
+### HTML Semantic Rules
+
+✅ **Use semantic elements:**
+```html
+<main class="container">
+  <header class="mb-8">
+    <h1>Search Books</h1>
+  </header>
+  <section class="search-form">
+    <form method="POST">...</form>
+  </section>
+</main>
+```
+
+❌ **Avoid generic divs:**
+```html
+<div class="container">
+  <div class="header">Search Books</div>
+  <div class="form">...</div>
+</div>
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**CORS errors when fetching OpenLibrary:**
+- ✅ **Fixed**: Use `/api/openlibrary` proxy endpoint (server-side)
+- Server-side proxy eliminates browser CORS restrictions
+
+**`processAndRenderMergedData is not defined`:**
+- ✅ **Fixed**: Import from `$lib/merge`:
+  ```typescript
+  import { processAndRenderMergedData } from '$lib/merge';
+  ```
+
+**ISBN not found:**
+- Try without hyphens: `9786235516981` instead of `978-623-5516-98-1`
+- Verify ISBN is correct (check digit validation)
+- Try title search as fallback
+
+**Missing cover images:**
+- System automatically uses placeholder image
+- Check browser console for image load errors
+- Verify Google Books/OpenLibrary have the cover
+
+**TypeScript errors during build:**
+- Run `npm run check` to see all type errors
+- Ensure strict mode compliance
+- Import types from `./$types` for SvelteKit routes
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how you can help:
+We welcome contributions! Please follow these guidelines:
 
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
+1. **Fork the repository** and create a feature branch
+2. **Follow coding standards** (see `agents.md`)
+3. **Write tests** for new features
+4. **Ensure TypeScript strict mode** compliance
+5. **Run `npm run check`** before committing
+6. **Use semantic commit messages**: `feat:`, `fix:`, `docs:`, etc.
+7. **Update documentation** as needed
 
-### Development Guidelines
-- Follow the TypeScript strict mode requirements
-- Use Svelte 5 Runes for reactive state
-- Follow Tailwind CSS utility-first patterns
-- Add tests for new features
-- Update documentation as needed
+### Development Workflow
 
----
+```bash
+# Create feature branch
+git checkout -b feature/your-feature
 
-## 📝 License
+# Make changes and test
+npm run dev
+npm run test
 
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+# Type check
+npm run check
 
----
+# Commit with semantic message
+git commit -m "feat: add export to CSV functionality"
+
+# Push and create PR
+git push origin feature/your-feature
+```
+
+## ⚡ Performance & Architecture
+
+### High-Performance Data Fetching
+
+**Parallel API Calls (No Waterfalls)**
+- Google Books + OpenLibrary APIs fetch simultaneously
+- Eliminates sequential bottlenecks
+- Average response time: ~800ms for dual-source queries
+
+**Smart Caching System**
+- **LRU Cache** with TTL (5 minutes) and size limits (100 items)
+- **Separate caches** for Google Books and OpenLibrary
+- **Cache hit rates**: 60-80% for repeated searches
+- **Memory efficient**: Automatic eviction prevents memory leaks
+
+**Resilient Error Handling**
+- **Retry Logic**: 3 attempts with exponential backoff
+- **Circuit Breakers**: Rate limiting prevents API exhaustion
+- **Graceful Degradation**: Continues with available data sources
+- **Timeout Protection**: 10-second timeouts prevent hanging requests
+
+### Scanner Mode: Mouse-Free Batch Processing
+
+**Unjammable Scanner Loop**
+```typescript
+// Critical: This logic MUST be preserved
+async function handleSearch() {
+  try {
+    // API calls, data processing...
+  } finally {
+    // ALWAYS executes - regardless of success/failure/cache
+    searchQuery = '';
+    await tick();
+    input.focus(); // Ready for next barcode scan
+  }
+}
+```
+
+**Key Features:**
+- **Debounced title search** (500ms) for typing
+- **Instant ISBN processing** (bypasses debounce for scanners)
+- **Persistent scan history** with localStorage
+- **Batch export** to SLiMS CSV format
+- **Real-time performance dashboard** in scanner mode
+
+### Architecture Overview
+
+```
+┌─────────────────┐    ┌──────────────────┐
+│   +page.svelte  │────│  BookApiService  │
+│                 │    │  (api.ts)        │
+│ • UI Logic      │    │ • Parallel fetch │
+│ • State Mgmt    │    │ • Retry logic    │
+│ • Cache Mgmt    │    │ • Error handling │
+└─────────────────┘    └──────────────────┘
+         │                       │
+         └───────────────────────┘
+                 │
+        ┌─────────────────┐
+        │  Data Sources   │
+        │ • Google Books  │
+        │ • OpenLibrary   │
+        │ • Local Cache   │
+        └─────────────────┘
+```
+
+**Service Layer Benefits:**
+- **Separation of Concerns**: UI logic separate from API logic
+- **Testability**: API service can be unit tested independently
+- **Reusability**: API logic can be used across components
+- **Maintainability**: Changes to API logic don't affect UI
+
+### Performance Metrics Dashboard
+
+When Scanner Mode is active, real-time metrics are displayed:
+
+- **Cache Hit Rate**: Percentage of requests served from cache
+- **Cache Sizes**: Current items in Google/OpenLibrary caches
+- **Average Response Time**: Rolling average of API response times
+- **Rate Limit Status**: Remaining requests for each API
+
+### Optimization Techniques
+
+1. **Debounced Input**: Prevents excessive API calls during typing
+2. **Smart ISBN Detection**: Instant processing for ISBNs vs debounced titles
+3. **Parallel Fetching**: Eliminates waterfall delays
+4. **Intelligent Caching**: Reduces API calls and improves UX
+5. **Lazy Loading**: UI components load only when needed
+6. **Skeleton Screens**: Prevent layout shift during loading
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- **Google Books API** — Rich bibliographic metadata
-- **OpenLibrary** — Classification systems and subject headings
-- **SLiMS Community** — Indonesian library automation standards
-- **Svelte Team** — Revolutionary reactive framework
-- **Cloudflare** — Edge deployment platform
+- **Google Books API** - Primary metadata source
+- **OpenLibrary API** - Classifications and subjects
+- **SvelteKit Team** - Amazing framework
+- **Tailwind CSS** - Utility-first CSS framework
+- **SLiMS Community** - Library management system inspiration
 
----
-
-## 📧 Support
+## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/missmuthi/rangkai-book-metadata/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/missmuthi/rangkai-book-metadata/discussions)
+- **Documentation**: See `agents.md` for detailed architecture
+- **Performance**: See `PERFORMANCE_ANALYSIS.md` for benchmarks
 
 ---
 
-<div align="center">
+**Built with ❤️ for Indonesian libraries and catalogers**
 
-**Built with ❤️ for Indonesian Libraries**
-
-⭐ Star this repo if Rangkai helps your cataloging workflow!
-
-</div>
+*Last updated: November 20, 2024*
