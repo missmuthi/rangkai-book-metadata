@@ -28,15 +28,18 @@ describe('processAndRenderMergedData', () => {
 
     const merged = processAndRenderMergedData(google, openlib);
 
-    // Prioritization: OpenLibrary title preferred
-    expect(merged.title).toBe('OL Title');
-    // Author should come from OpenLibrary and be formatted as "Last, First"
-    expect(merged.author).toBe('Author, OL');
+    // === WATERFALL PRIORITIZATION ===
+    // Base Metadata: Google Books preferred
+    expect(merged.title).toBe('Google Title');
+    // Author should come from Google and be formatted as "Last, First"
+    expect(merged.author).toBe('Author, G');
     // Publisher should come from Google
     expect(merged.publisher).toBe('G Publisher');
-    // DDC comes from OpenLibrary
+    // Classification: DDC comes from OpenLibrary (only source)
     expect(merged.ddc).toBe('800');
     // ISBN13 prefers Google
     expect(merged.isbn13).toBe('9780000000000');
+    // Data source tracking
+    expect(merged.dataSource).toBe('google-openlibrary');
   });
 });

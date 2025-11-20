@@ -97,8 +97,8 @@
 		gmd: string;
 		infoLink: string;
 		cover: string;
-		isPartialData?: boolean; // True when OpenLibrary failed but Google Books succeeded
-		dataSource?: 'both' | 'google-only' | 'openlibrary-only';
+		isPartialData?: boolean; // True when one or more sources failed
+		dataSource?: 'all-three' | 'google-loc' | 'google-openlibrary' | 'loc-openlibrary' | 'google-only' | 'loc-only' | 'openlibrary-only';
 	}
 
 	// --- Constants ---
@@ -252,12 +252,12 @@
 					
 					mergedData = processAndRenderMergedData(googleData, openLibraryData);
 					
-					// Mark merged data with partial data flag
+					// Mark merged data with partial data flag (legacy 2-source logic)
 					if (mergedData && isPartialData) {
 						mergedData.isPartialData = true;
 						mergedData.dataSource = 'google-only';
 					} else if (mergedData) {
-						mergedData.dataSource = 'both';
+						mergedData.dataSource = 'google-openlibrary';
 					}
 					
 					currentView = 'result';

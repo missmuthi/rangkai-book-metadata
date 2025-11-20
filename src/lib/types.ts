@@ -43,6 +43,27 @@ export interface OpenLibrarySearchResponse {
   }>;
 }
 
+/**
+ * Library of Congress API Response
+ * Endpoint: https://www.loc.gov/books/?q={isbn}&fo=json&at=results
+ */
+export interface LoCBookData {
+  results?: Array<{
+    title?: string;
+    contributor?: string[];
+    date?: string;
+    subject?: string[];
+    description?: string[];
+    language?: string[];
+    number_lccn?: string;
+    item?: {
+      call_number?: string[];
+      control_number?: string[];
+    };
+    url?: string;
+  }>;
+}
+
 export interface MergedBookData {
   title: string;
   author: string;
@@ -66,6 +87,6 @@ export interface MergedBookData {
   gmd: string;
   infoLink: string;
   cover: string;
-  isPartialData?: boolean; // True when OpenLibrary failed but Google Books succeeded
-  dataSource?: 'both' | 'google-only' | 'openlibrary-only';
+  isPartialData?: boolean; // True when one or more sources failed
+  dataSource?: 'all-three' | 'google-loc' | 'google-openlibrary' | 'loc-openlibrary' | 'google-only' | 'loc-only' | 'openlibrary-only';
 }

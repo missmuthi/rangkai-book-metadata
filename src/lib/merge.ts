@@ -1,4 +1,4 @@
-import type { GoogleBookItem, OpenLibraryBookData, MergedBookData } from './types';
+import type { GoogleBookItem, OpenLibraryBookData, MergedBookData, LoCBookData } from './types';
 import { generateCallNumber as generateCallNumberWithCutter, getCutterNumber, type CallNumberPattern } from './cutter';
 
 // Enhanced language mapping with comprehensive ISO 639-1, 639-2, and 639-3 codes
@@ -260,7 +260,8 @@ function generateCallNumber(
 
 export function processAndRenderMergedData(
   google: GoogleBookItem['volumeInfo'] | null,
-  openlib: OpenLibraryBookData | null
+  openlib: OpenLibraryBookData | null,
+  loc: LoCBookData | null = null
 ): MergedBookData {
   const merged: MergedBookData = {
     title: '-',
@@ -286,62 +287,134 @@ export function processAndRenderMergedData(
     infoLink: '-',
     cover: '',
     isPartialData: false,
-    dataSource: 'both'
+    dataSource: 'all-three'
   };
 
-  merged.title = openlib?.title || google?.title || '-';
+  // Extract LoC data (first result)
+  const locResult = loc?.results?.[0];
+
+  // === WATERFALL PRIORITIZATION STRATEGY ===
   
-  // Format author name properly (Lastname, Firstname)
-  const rawAuthor = openlib?.authors?.[0]?.name || google?.authors?.[0] || '-';
+  // TITLE: Prefer Google Books (most complete), fallback to OpenLibrary, then LoC
+  merged.title = google?.title || openlib?.title || locResult?.title || '-';
+  
+  // AUTHOR: Format name properly (Lastname, Firstname)
+  const rawAuthor = 
+    google?.authors?.[0] || 
+    openlib?.authors?.[0]?.name || 
+    locResult?.contributor?.[0] || 
+    '-';
   merged.author = formatAuthorName(rawAuthor);
   
+  // PUBLISHER: Prefer Google Books
   merged.publisher = google?.publisher || openlib?.publishers?.[0]?.name || '-';
-  merged.date = google?.publishedDate || (openlib?.publish_date ? openlib.publish_date.toString() : '-');
+  
+  // DATE: Prefer Google Books, fallback to OpenLibrary, then LoC
+  merged.date = 
+    google?.publishedDate || 
+    (openlib?.publish_date ? openlib.publish_date.toString() : null) || 
+    locResult?.date || 
+    '-';
+  
+  // PAGES: Prefer Google Books, fallback to OpenLibrary
   merged.pages = google?.pageCount ? google.pageCount.toString() : (openlib?.number_of_pages ? openlib.number_of_pages.toString() : '-');
 
+  // ISBN: Prefer Google Books, fallback to OpenLibrary
   const googleISBN13 = google?.industryIdentifiers?.find((id: { type?: string; identifier?: string } | any) => id?.type === 'ISBN_13')?.identifier;
   merged.isbn13 = googleISBN13 || openlib?.identifiers?.isbn_13?.[0] || '-';
   const googleISBN10 = google?.industryIdentifiers?.find((id: { type?: string; identifier?: string } | any) => id?.type === 'ISBN_10')?.identifier;
   merged.isbn10 = googleISBN10 || openlib?.identifiers?.isbn_10?.[0] || '-';
 
+  // === CLASSIFICATION (HIGH-VALUE DATA) ===
+  // DDC: Prefer OpenLibrary (only source with DDC)
   merged.ddc = openlib?.classifications?.dewey_decimal_class?.[0] || '-';
-  merged.lcc = openlib?.classifications?.lc_classifications?.[0] || '-';
+  
+  // LCC: **PRIORITIZE LoC** (authoritative source), fallback to OpenLibrary
+  const locCallNumber = locResult?.item?.call_number?.[0];
+  merged.lcc = locCallNumber || openlib?.classifications?.lc_classifications?.[0] || '-';
 
+  // DESCRIPTION: Prefer Google Books, fallback to OpenLibrary, then LoC
   const openlibDescription = typeof openlib?.description === 'object' ? openlib.description?.value : openlib?.description;
-  merged.description = google?.description || openlibDescription || '-';
+  const locDescription = locResult?.description?.[0];
+  merged.description = google?.description || openlibDescription || locDescription || '-';
 
+  // LANGUAGE: Map language codes to full names
   const googleLang = google?.language;
   const openlibLangKey = openlib?.languages?.[0]?.key;
   const openlibLang = openlibLangKey ? openlibLangKey.split('/').pop() : null;
-  merged.language = mapLangCode(googleLang || (openlibLang as string) || '-');
+  const locLang = locResult?.language?.[0];
+  merged.language = mapLangCode(googleLang || (openlibLang as string) || locLang || '-');
 
-  const googleSubjects = google?.categories?.join(', ');
-  const openlibSubjects = openlib?.subjects?.slice(0, 5).join(', ');
-  merged.subjects = googleSubjects || openlibSubjects || '-';
+  // SUBJECTS: **COMBINE AND DEDUPLICATE** from all three sources
+  const googleSubjects = google?.categories || [];
+  const openlibSubjects = openlib?.subjects?.slice(0, 5) || [];
+  const locSubjects = locResult?.subject?.slice(0, 5) || [];
+  
+  const allSubjects = [...googleSubjects, ...openlibSubjects, ...locSubjects];
+  const uniqueSubjects = Array.from(new Set(allSubjects)).slice(0, 10); // Limit to 10 unique subjects
+  merged.subjects = uniqueSubjects.length > 0 ? uniqueSubjects.join(', ') : '-';
 
+  // GMD: Based on print type
   if (google?.printType === 'BOOK') merged.gmd = 'Text';
   else if (google?.printType) merged.gmd = google.printType;
 
-  merged.infoLink = google?.infoLink || '-';
+  // INFO LINK: Prefer Google Books, fallback to LoC
+  merged.infoLink = google?.infoLink || locResult?.url || '-';
+  
+  // COVER: Prefer Google Books, fallback to OpenLibrary (LoC doesn't provide covers)
   merged.cover = (google as any)?.imageLinks?.thumbnail || openlib?.cover?.large || '';
 
+  // CALL NUMBER: Generate using Cutter-Sanborn system
   const pubYear = merged.date && typeof merged.date === 'string' ? merged.date.substring(0, 4) : '-';
   merged.callNumber = generateCallNumber(merged.ddc, merged.lcc, merged.subjects, merged.author, merged.title, merged.publisher, pubYear);
+  
+  // SERIES: OpenLibrary only
   merged.series = openlib?.series?.[0] || '-';
   
-  // Format edition properly (empty if not available, formatted if available)
+  // EDITION: Format properly
   const rawEdition = openlib?.edition_name || google?.subtitle?.match(/(\d+(st|nd|rd|th)\s+edition)/i)?.[0];
   merged.edition = formatEdition(rawEdition);
   
+  // COLLATION: Page count formatting
   merged.collation = merged.pages && merged.pages !== '-' ? `${merged.pages} p.` : '-';
   merged.specificDetail = merged.publisher;
 
+  // PUBLISHER STRING: Formatted for SLiMS
   const pubPlace = openlib?.publish_places?.[0] || '-';
   if (pubPlace === '-' && merged.publisher === '-' && pubYear === '-') merged.publisherString = '-';
   else merged.publisherString = `${pubPlace} : ${merged.publisher}, ${pubYear}`;
 
+  // CLASSIFICATION: Prefer DDC, fallback to LCC, then subject mapping
   merged.classification = merged.ddc !== '-' ? merged.ddc : merged.lcc !== '-' ? merged.lcc : mapSubjectToDDC(merged.subjects) || 'NONE';
   if (merged.classification === '-') merged.classification = 'NONE';
+
+  // === DATA SOURCE TRACKING ===
+  const hasGoogle = !!google;
+  const hasOpenLib = !!openlib;
+  const hasLoC = !!locResult;
+  
+  if (hasGoogle && hasOpenLib && hasLoC) {
+    merged.dataSource = 'all-three';
+    merged.isPartialData = false;
+  } else if (hasGoogle && hasLoC) {
+    merged.dataSource = 'google-loc';
+    merged.isPartialData = true; // Missing OpenLibrary (DDC might be incomplete)
+  } else if (hasGoogle && hasOpenLib) {
+    merged.dataSource = 'google-openlibrary';
+    merged.isPartialData = true; // Missing LoC (LCC might be less authoritative)
+  } else if (hasLoC && hasOpenLib) {
+    merged.dataSource = 'loc-openlibrary';
+    merged.isPartialData = true; // Missing Google Books (cover/description incomplete)
+  } else if (hasGoogle) {
+    merged.dataSource = 'google-only';
+    merged.isPartialData = true;
+  } else if (hasLoC) {
+    merged.dataSource = 'loc-only';
+    merged.isPartialData = true;
+  } else if (hasOpenLib) {
+    merged.dataSource = 'openlibrary-only';
+    merged.isPartialData = true;
+  }
 
   return merged;
 }

@@ -1,11 +1,13 @@
-import type { GoogleBookItem, OpenLibraryBookData, GoogleBooksResponse, OpenLibrarySearchResponse } from './types';
+import type { GoogleBookItem, OpenLibraryBookData, GoogleBooksResponse, OpenLibrarySearchResponse, LoCBookData } from './types';
 
 /**
  * API Service Layer - Centralized API calls with enhanced error handling
+ * Now supports 3 sources: Google Books, OpenLibrary, and Library of Congress
  */
 export class BookApiService {
 	private static readonly GOOGLE_BOOKS_BASE = 'https://www.googleapis.com/books/v1/volumes';
 	private static readonly OPENLIBRARY_BASE = '/api/openlibrary';
+	private static readonly LOC_BASE = 'https://www.loc.gov/books/';
 
 	/**
 	 * Fetch book data from Google Books API
@@ -62,36 +64,87 @@ export class BookApiService {
 	}
 
 	/**
-	 * Fetch both APIs in parallel with timeout and error handling
+	 * Fetch book data from Library of Congress API
+	 * Gracefully handles timeouts and service unavailability
+	 * Priority source for LCC (Library of Congress Classification)
 	 */
-	static async fetchBoth(query: string, isIsbn: boolean, googleLimit = 1, openLibraryLimit = 1): Promise<{
+	static async fetchLibraryOfCongress(isbn: string): Promise<LoCBookData | null> {
+		const url = `${this.LOC_BASE}?q=${encodeURIComponent(isbn)}&fo=json&at=results`;
+
+		try {
+			const response = await fetch(url);
+			
+			// Graceful degradation: Don't throw on errors, return null to allow fallback
+			if (!response.ok) {
+				if (response.status === 503 || response.status === 429 || response.status === 404) {
+					console.warn(`⚠️ Library of Congress ${response.status}: Gracefully degrading to other sources`);
+					return null;
+				}
+				throw new Error(`Library of Congress API error: ${response.status} ${response.statusText}`);
+			}
+
+			const data: LoCBookData = await response.json();
+			
+			// Validate that we have actual results
+			if (!data.results || data.results.length === 0) {
+				console.info('ℹ️ Library of Congress: No results found for ISBN');
+				return null;
+			}
+
+			return data;
+		} catch (error) {
+			// Silent failure - LoC can be slow or unavailable
+			console.warn('⚠️ Library of Congress fetch failed:', error instanceof Error ? error.message : 'Unknown error');
+			return null;
+		}
+	}
+
+	/**
+	 * Fetch all three APIs in parallel with timeout and error handling
+	 * "Waterfall of Data" - Prioritizes best sources for each data type
+	 */
+	static async fetchAll(query: string, isIsbn: boolean, googleLimit = 1, openLibraryLimit = 1): Promise<{
 		google: GoogleBooksResponse | null;
 		openlibrary: OpenLibraryBookData | OpenLibrarySearchResponse | null;
-		errors: { google?: Error; openlibrary?: Error };
+		loc: LoCBookData | null;
+		errors: { google?: Error; openlibrary?: Error; loc?: Error };
 	}> {
-		const timeout = 10000; // 10 second timeout
+		const googleTimeout = 10000; // 10 seconds
+		const openLibraryTimeout = 10000; // 10 seconds
+		const locTimeout = 5000; // 5 seconds (LoC can be slow, fail fast)
 
+		// Execute all three API calls in parallel
 		const googlePromise = this.withTimeout(
 			this.fetchGoogleBooks(query, isIsbn, googleLimit),
-			timeout,
+			googleTimeout,
 			'Google Books API timeout'
 		);
 
 		const openLibraryPromise = this.withTimeout(
 			this.fetchOpenLibrary(query, isIsbn, openLibraryLimit),
-			timeout,
+			openLibraryTimeout,
 			'OpenLibrary API timeout'
 		);
 
-		const [googleResult, openLibraryResult] = await Promise.allSettled([
+		const locPromise = isIsbn 
+			? this.withTimeout(
+				this.fetchLibraryOfCongress(query),
+				locTimeout,
+				'Library of Congress API timeout'
+			)
+			: Promise.resolve(null); // LoC only supports ISBN search
+
+		const [googleResult, openLibraryResult, locResult] = await Promise.allSettled([
 			googlePromise,
-			openLibraryPromise
+			openLibraryPromise,
+			locPromise
 		]);
 
 		const result = {
 			google: null as GoogleBooksResponse | null,
 			openlibrary: null as OpenLibraryBookData | OpenLibrarySearchResponse | null,
-			errors: {} as { google?: Error; openlibrary?: Error }
+			loc: null as LoCBookData | null,
+			errors: {} as { google?: Error; openlibrary?: Error; loc?: Error }
 		};
 
 		if (googleResult.status === 'fulfilled') {
@@ -106,7 +159,34 @@ export class BookApiService {
 			result.errors.openlibrary = openLibraryResult.reason;
 		}
 
+		if (locResult.status === 'fulfilled') {
+			result.loc = locResult.value;
+		} else {
+			result.errors.loc = locResult.reason;
+		}
+
 		return result;
+	}
+
+	/**
+	 * Legacy method for backward compatibility - now delegates to fetchAll
+	 * @deprecated Use fetchAll() instead for 3-source support
+	 */
+	static async fetchBoth(query: string, isIsbn: boolean, googleLimit = 1, openLibraryLimit = 1): Promise<{
+		google: GoogleBooksResponse | null;
+		openlibrary: OpenLibraryBookData | OpenLibrarySearchResponse | null;
+		errors: { google?: Error; openlibrary?: Error };
+	}> {
+		const result = await this.fetchAll(query, isIsbn, googleLimit, openLibraryLimit);
+		
+		return {
+			google: result.google,
+			openlibrary: result.openlibrary,
+			errors: {
+				google: result.errors.google,
+				openlibrary: result.errors.openlibrary
+			}
+		};
 	}
 
 	/**
@@ -186,3 +266,4 @@ export class ApiCache {
 // Global cache instances
 export const googleCache = new ApiCache();
 export const openLibraryCache = new ApiCache();
+export const locCache = new ApiCache(5 * 60 * 1000, 100); // 5 minutes TTL, 100 items max
