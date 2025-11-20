@@ -136,3 +136,130 @@ export function simpleHash(str: string): string {
 	}
 	return hash.toString(36);
 }
+
+/**
+ * ISBN Utilities for Smart Prefetching
+ */
+
+/**
+ * Calculate ISBN-10 check digit
+ * Algorithm: (11 - (sum of (digit * weight) mod 11)) mod 11
+ * If result is 10, use 'X'
+ */
+function calculateISBN10CheckDigit(isbn9: string): string {
+	let sum = 0;
+	for (let i = 0; i < 9; i++) {
+		sum += parseInt(isbn9[i]) * (10 - i);
+	}
+	const checkDigit = (11 - (sum % 11)) % 11;
+	return checkDigit === 10 ? 'X' : checkDigit.toString();
+}
+
+/**
+ * Calculate ISBN-13 check digit
+ * Algorithm: (10 - (sum of (digit * weight[1,3,1,3...]) mod 10)) mod 10
+ */
+function calculateISBN13CheckDigit(isbn12: string): string {
+	let sum = 0;
+	for (let i = 0; i < 12; i++) {
+		const weight = i % 2 === 0 ? 1 : 3;
+		sum += parseInt(isbn12[i]) * weight;
+	}
+	const checkDigit = (10 - (sum % 10)) % 10;
+	return checkDigit.toString();
+}
+
+/**
+ * Validate ISBN-10 format and checksum
+ */
+function isValidISBN10(isbn: string): boolean {
+	if (!/^\d{9}[\dX]$/.test(isbn)) return false;
+	
+	const expected = calculateISBN10CheckDigit(isbn.substring(0, 9));
+	return isbn[9] === expected;
+}
+
+/**
+ * Validate ISBN-13 format and checksum
+ */
+function isValidISBN13(isbn: string): boolean {
+	if (!/^\d{13}$/.test(isbn)) return false;
+	
+	const expected = calculateISBN13CheckDigit(isbn.substring(0, 12));
+	return isbn[12] === expected;
+}
+
+/**
+ * Convert ISBN-13 to ISBN-10
+ * Only valid for ISBNs starting with 978 (Bookland)
+ * Returns null if conversion is not possible or ISBN is invalid
+ */
+export function convertISBN13to10(isbn13: string): string | null {
+	// Remove any hyphens or spaces
+	const cleaned = isbn13.replace(/[-\s]/g, '');
+	
+	// Validate format
+	if (cleaned.length !== 13) return null;
+	if (!cleaned.startsWith('978')) return null; // Only 978 prefix can be converted
+	if (!isValidISBN13(cleaned)) {
+		console.warn(`[ISBN] Invalid ISBN-13 checksum: ${isbn13}`);
+		return null;
+	}
+	
+	// Extract the 9 digits after 978 prefix
+	const isbn9 = cleaned.substring(3, 12);
+	
+	// Calculate ISBN-10 check digit
+	const checkDigit = calculateISBN10CheckDigit(isbn9);
+	
+	return isbn9 + checkDigit;
+}
+
+/**
+ * Convert ISBN-10 to ISBN-13
+ * Adds 978 prefix and recalculates check digit
+ * Returns null if ISBN is invalid
+ */
+export function convertISBN10to13(isbn10: string): string | null {
+	// Remove any hyphens or spaces
+	const cleaned = isbn10.replace(/[-\s]/g, '');
+	
+	// Validate format
+	if (cleaned.length !== 10) return null;
+	if (!isValidISBN10(cleaned)) {
+		console.warn(`[ISBN] Invalid ISBN-10 checksum: ${isbn10}`);
+		return null;
+	}
+	
+	// Add 978 prefix and take first 9 digits of ISBN-10
+	const isbn12 = '978' + cleaned.substring(0, 9);
+	
+	// Calculate ISBN-13 check digit
+	const checkDigit = calculateISBN13CheckDigit(isbn12);
+	
+	return isbn12 + checkDigit;
+}
+
+/**
+ * Detect if a string is an ISBN (10 or 13)
+ */
+export function isISBN(str: string): boolean {
+	const cleaned = str.replace(/[-\s]/g, '');
+	return /^\d{10}$|^\d{9}X$|^\d{13}$/.test(cleaned);
+}
+
+/**
+ * Get the sibling ISBN (convert 10↔13)
+ * Returns null if conversion is not possible
+ */
+export function getISBNSibling(isbn: string): string | null {
+	const cleaned = isbn.replace(/[-\s]/g, '');
+	
+	if (/^\d{13}$/.test(cleaned)) {
+		return convertISBN13to10(cleaned);
+	} else if (/^\d{10}$|^\d{9}X$/.test(cleaned)) {
+		return convertISBN10to13(cleaned);
+	}
+	
+	return null;
+}

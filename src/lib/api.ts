@@ -1,4 +1,5 @@
 import type { GoogleBookItem, OpenLibraryBookData, GoogleBooksResponse, OpenLibrarySearchResponse, LoCBookData } from './types';
+import { getISBNSibling, isISBN } from './utils';
 
 /**
  * API Service Layer - Centralized API calls with enhanced error handling
@@ -245,6 +246,17 @@ export class ApiCache {
 		}
 
 		this.cache.set(key, { data, timestamp: now, hits: 0 });
+		
+		// Smart ISBN Prefetching: Cache both ISBN-10 and ISBN-13 variants
+		// This prevents redundant API calls when scanning alternative barcodes
+		if (isISBN(key)) {
+			const sibling = getISBNSibling(key);
+			if (sibling && !this.cache.has(sibling)) {
+				// Store the same data under the sibling ISBN key
+				this.cache.set(sibling, { data, timestamp: now, hits: 0 });
+				console.debug(`[Cache] Smart prefetch: Stored ${key} → ${sibling}`);
+			}
+		}
 	}
 
 	clear(): void {
