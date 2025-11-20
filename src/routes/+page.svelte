@@ -92,6 +92,7 @@
 
 	import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
 	import { processAndRenderMergedData, placeholderImg } from '$lib/merge';
+	import { exportToSLiMSCSV, exportToMARCXML } from '$lib/export';
 
 	// --- Cache System ---
 	interface CacheEntry {
@@ -494,9 +495,37 @@
 			<!-- === SLiMS Result Card === -->
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 				<div class="md:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-lg">
-					<button onclick={handleBackToSearch} class="mb-4 text-sm text-blue-600 hover:text-blue-800 font-medium">
-						&larr; Back to Search Results
-					</button>
+					<div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+						<button onclick={handleBackToSearch} class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+							&larr; Back to Search Results
+						</button>
+						
+						<!-- Export Buttons -->
+						<div class="flex gap-2">
+							<button
+								onclick={() => exportToSLiMSCSV(mergedData!)}
+								class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 transition-colors"
+								title="Download as SLiMS CSV for direct import"
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+								</svg>
+								Download SLiMS CSV
+							</button>
+							
+							<button
+								onclick={() => exportToMARCXML(mergedData!)}
+								class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 transition-colors"
+								title="Download as MARCXML for library catalog systems"
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+								</svg>
+								Download MARCXML
+							</button>
+						</div>
+					</div>
+					
 					<h2 class="text-xl font-bold mb-4 border-b pb-2">SLiMS-Ready Data (Merged)</h2>
 					
 					<div class="space-y-4">
