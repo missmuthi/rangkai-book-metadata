@@ -4,7 +4,7 @@
 	import { exportToSLiMSCSV, exportToMARCXML } from '$lib/export';
 	import { scanHistory } from '$lib/stores/history.svelte';
 	import { processAndRenderMergedData } from '$lib/merge';
-	import { BookApiService, googleCache, openLibraryCache } from '$lib/api';
+	import { BookApiService, googleCache, openLibraryCache, locCache } from '$lib/api';
 	import { debounce, retry, isOnline } from '$lib/utils';
 	import SkeletonCard from '$lib/SkeletonCard.svelte';
 
@@ -116,7 +116,7 @@
 	}
 
 	// --- Enhanced Cache System ---
-	function getCacheKey(query: string, source: 'google' | 'openlibrary', isIsbn: boolean): string {
+	function getCacheKey(query: string, source: 'google' | 'openlibrary' | 'loc', isIsbn: boolean): string {
 		return `${source}:${query}:${isIsbn}`;
 	}
 
@@ -215,60 +215,61 @@
 		try {
 			const isIsbn = /^\d{10}(\d{3})?$/.test(cleanedQuery);
 
-			if (isIsbn) {
-				// ISBN Search - Get single result from both APIs
-				const cacheKey = getCacheKey(cleanedQuery, 'google', true);
-				let cachedResult = googleCache.get(cacheKey);
+		if (isIsbn) {
+			// ISBN Search - Get single result from ALL 3 APIs (Google + OpenLibrary + LoC)
+			const cacheKey = getCacheKey(cleanedQuery, 'google', true);
+			let cachedResult = googleCache.get(cacheKey);
 
-				if (!cachedResult) {
-					const result = await retry(() => BookApiService.fetchBoth(cleanedQuery, true, 1, 1));
+			if (!cachedResult) {
+				// Use fetchAll() for 3-source integration
+				const result = await retry(() => BookApiService.fetchAll(cleanedQuery, true, 1, 1));
 
-					cachedResult = {
-						googleData: (result.google && result.google.totalItems > 0 && result.google.items) ? result.google.items[0].volumeInfo : null,
-						openLibraryData: result.openlibrary as OpenLibraryBookData | null,
-						errors: result.errors
-					};
-					googleCache.set(cacheKey, cachedResult);
-				}
+				cachedResult = {
+					googleData: (result.google && result.google.totalItems > 0 && result.google.items) ? result.google.items[0].volumeInfo : null,
+					openLibraryData: result.openlibrary as OpenLibraryBookData | null,
+					locData: result.loc || null,
+					errors: result.errors
+				};
+				googleCache.set(cacheKey, cachedResult);
+			}
 
-				const { googleData, openLibraryData, errors } = cachedResult;
+			const { googleData, openLibraryData, locData, errors } = cachedResult;
 
-				googleRaw = JSON.stringify(googleData, null, 2) || 'Failed to fetch or no data found.';
-				openLibraryRaw = JSON.stringify(openLibraryData, null, 2) || 'Failed to fetch or no data found.';
+			googleRaw = JSON.stringify(googleData, null, 2) || 'Failed to fetch or no data found.';
+			openLibraryRaw = JSON.stringify(openLibraryData, null, 2) || 'Failed to fetch or no data found.';
 
-				// Show API errors as warnings but continue processing
-				if (errors.google) {
-					console.warn('[ISBN Search] Google API error:', errors.google.message);
-				}
-				if (errors.openlibrary) {
-					console.warn('[ISBN Search] OpenLibrary API error:', errors.openlibrary.message);
-				}
+			// Show API errors as warnings but continue processing
+			if (errors.google) {
+				console.warn('[ISBN Search] Google API error:', errors.google.message);
+			}
+			if (errors.openlibrary) {
+				console.warn('[ISBN Search] OpenLibrary API error:', errors.openlibrary.message);
+			}
+			if (errors.loc) {
+				console.warn('[ISBN Search] Library of Congress API error:', errors.loc.message);
+			}
 
-				if (!googleData && !openLibraryData) {
-					error = 'No data found from any source for this ISBN.';
-				} else {
-					// Track partial data state (Google only, no OpenLibrary)
-					isPartialData = googleData && !openLibraryData;
-					
-					mergedData = processAndRenderMergedData(googleData, openLibraryData);
-					
-					// Mark merged data with partial data flag (legacy 2-source logic)
-					if (mergedData && isPartialData) {
-						mergedData.isPartialData = true;
-						mergedData.dataSource = 'google-only';
-					} else if (mergedData) {
-						mergedData.dataSource = 'google-openlibrary';
-					}
-					
-					currentView = 'result';
-
-					if (scannerModeEnabled && mergedData) {
+			if (!googleData && !openLibraryData && !locData) {
+				error = 'No data found from any source for this ISBN.';
+			} else {
+				// Merge data from all 3 sources ("Waterfall of Data" strategy)
+				mergedData = processAndRenderMergedData(googleData, openLibraryData, locData);
+				
+				// Track partial data state based on which sources succeeded
+				const hasGoogle = !!googleData;
+				const hasOpenLib = !!openLibraryData;
+				const hasLoC = !!(locData?.results?.[0]);
+				
+				isPartialData = !(hasGoogle && hasOpenLib && hasLoC);
+				
+				// Note: dataSource is already set by processAndRenderMergedData
+				currentView = 'result';					if (scannerModeEnabled && mergedData) {
 						scanHistory.add(mergedData);
 					}
 				}
 			} else {
-				// Title Search - Get multiple results from both APIs
-				const result = await retry(() => BookApiService.fetchBoth(trimmedQuery, false, 10, 10));
+				// Title Search - Get multiple results from all 3 APIs (LoC skipped for title search)
+				const result = await retry(() => BookApiService.fetchAll(trimmedQuery, false, 10, 10));
 
 				const googleItems = result.google?.items ?? null;
 				const openLibraryItems = (result.openlibrary as OpenLibrarySearchResponse | null)?.docs ?? null;
@@ -375,27 +376,31 @@
 
 		const isbn = openLibraryData?.identifiers?.isbn_13?.[0];
 		let googleData: GoogleBookItem['volumeInfo'] | null = null;
+		let locData = null;
 		if (isbn) {
 			try {
-				const cacheKey = getCacheKey(isbn, 'google', true);
-				googleData = googleCache.get(cacheKey);
-
-				if (!googleData) {
-					const googleResponse = await retry(() => BookApiService.fetchGoogleBooks(isbn, true, 1));
-					googleData = (googleResponse && googleResponse.totalItems > 0 && googleResponse.items) ? googleResponse.items[0].volumeInfo : null;
-					if (googleData) {
-						googleCache.set(cacheKey, googleData);
-					}
+				// Fetch from all 3 sources
+				const result = await retry(() => BookApiService.fetchAll(isbn, true, 1, 1));
+				googleData = (result.google && result.google.totalItems > 0 && result.google.items) ? result.google.items[0].volumeInfo : null;
+				locData = result.loc || null;
+				
+				if (googleData) {
+					const cacheKey = getCacheKey(isbn, 'google', true);
+					googleCache.set(cacheKey, googleData);
+				}
+				if (locData) {
+					const cacheKey = getCacheKey(isbn, 'loc', true);
+					locCache.set(cacheKey, locData);
 				}
 			} catch (err) {
-				console.warn('[OpenLibrary Selection] Google fetch failed:', err);
+				console.warn('[OpenLibrary Selection] API fetch failed:', err);
 			}
 			googleRaw = JSON.stringify(googleData, null, 2) || 'No data found from Google for this ISBN.';
 		} else {
-			googleRaw = 'No ISBN found in OpenLibrary data to search Google.';
+			googleRaw = 'No ISBN found in OpenLibrary data to search Google/LoC.';
 		}
 
-		mergedData = processAndRenderMergedData(googleData, openLibraryData);
+		mergedData = processAndRenderMergedData(googleData, openLibraryData, locData);
 		currentView = 'result'; // Show the card
 		isLoading = false;
 	}
@@ -641,19 +646,56 @@
 			<!-- === SLiMS Result Card === -->
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 				<div class="md:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-lg">
-					{#if mergedData.isPartialData}
-						<div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-							<svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-							</svg>
-							<div class="flex-1">
-								<p class="text-sm font-medium text-amber-900">Partial Data Retrieved</p>
-								<p class="text-xs text-amber-700 mt-1">
-									OpenLibrary service is temporarily unavailable. Classification data (DDC/LCC) may be incomplete. Displaying Google Books data only.
-								</p>
-							</div>
+				<!-- Data Source Status Banner -->
+				{#if mergedData.dataSource === 'all-three'}
+					<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
+						<svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						<div class="flex-1">
+							<p class="text-sm font-medium text-green-900">Complete Data Retrieved</p>
+							<p class="text-xs text-green-700 mt-1">
+								All 3 sources available: Google Books, OpenLibrary, and Library of Congress. Classification data is authoritative.
+							</p>
 						</div>
-					{/if}
+					</div>
+				{:else if mergedData.dataSource === 'google-loc'}
+					<div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+						<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						<div class="flex-1">
+							<p class="text-sm font-medium text-blue-900">Using Google Books + Library of Congress</p>
+							<p class="text-xs text-blue-700 mt-1">
+								OpenLibrary temporarily unavailable. LCC from authoritative LoC source. DDC may be incomplete.
+							</p>
+						</div>
+					</div>
+				{:else if mergedData.dataSource === 'google-openlibrary'}
+					<div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+						<svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+						</svg>
+						<div class="flex-1">
+							<p class="text-sm font-medium text-amber-900">Using Google Books + OpenLibrary</p>
+							<p class="text-xs text-amber-700 mt-1">
+								Library of Congress temporarily unavailable. LCC data from OpenLibrary (less authoritative).
+							</p>
+						</div>
+					</div>
+				{:else if mergedData.isPartialData}
+					<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+						<svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						<div class="flex-1">
+							<p class="text-sm font-medium text-red-900">Limited Data Available</p>
+							<p class="text-xs text-red-700 mt-1">
+								Only {mergedData.dataSource?.replace('-only', '').replace(/-/g, ' ').toUpperCase()} available. Classification data may be incomplete.
+							</p>
+						</div>
+					</div>
+				{/if}
 					<div class="flex items-center justify-between mb-4 flex-wrap gap-3">
 						<button onclick={handleBackToSearch} class="text-sm text-blue-600 hover:text-blue-800 font-medium">
 							&larr; Back to Search Results
@@ -711,10 +753,19 @@
 						<span class="text-sm font-medium text-gray-500 col-span-1">Call Number</span>
 						<div class="col-span-2 flex items-center gap-2">
 							<p class="font-mono text-blue-700 bg-blue-100 px-2 py-1 rounded-md inline-block">{mergedData.callNumber}</p>
-							{#if mergedData.isPartialData && (mergedData.callNumber === '-' || mergedData.ddc === '-')}
+							
+							<!-- Library of Congress Trust Badge -->
+							{#if mergedData.lcc !== '-' && mergedData.dataSource?.includes('loc')}
+								<span
+									class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-800 bg-blue-50 border border-blue-300 rounded-md"
+									title="LCC classification from authoritative Library of Congress source"
+								>
+									🏛️ Official LoC
+								</span>
+							{:else if mergedData.isPartialData && (mergedData.callNumber === '-' || mergedData.ddc === '-')}
 								<span
 									class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-md"
-									title="OpenLibrary service is temporarily unavailable. Classification data (DDC/LCC) cannot be retrieved. Using Google Books data only."
+									title="Classification sources temporarily unavailable. Data may be incomplete."
 								>
 									⚠️ Classification Unavailable
 								</span>
@@ -736,10 +787,19 @@
 						<span class="text-sm font-medium text-gray-500 col-span-1">Classification</span>
 						<div class="col-span-2 flex items-center gap-2">
 							<p class="text-base text-gray-700">{mergedData.classification}</p>
-							{#if mergedData.isPartialData && (mergedData.classification === 'NONE' || mergedData.classification === '-')}
+							
+							<!-- Library of Congress Trust Badge for LCC -->
+							{#if mergedData.lcc !== '-' && mergedData.classification === mergedData.lcc && mergedData.dataSource?.includes('loc')}
+								<span
+									class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-800 bg-blue-50 border border-blue-300 rounded-md"
+									title="Authoritative LCC from Library of Congress"
+								>
+									🏛️ Authoritative
+								</span>
+							{:else if mergedData.isPartialData && (mergedData.classification === 'NONE' || mergedData.classification === '-')}
 								<span
 									class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-md"
-									title="OpenLibrary service is temporarily unavailable. Using Google Books data only."
+									title="Classification sources temporarily unavailable. Using subject mapping fallback."
 								>
 									⚠️ Data Incomplete
 								</span>

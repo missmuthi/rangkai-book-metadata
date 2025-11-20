@@ -9,20 +9,21 @@
 
 ## 🎯 Overview
 
-Rangkai Book Metadata Harvester intelligently combines data from **Google Books API** and **OpenLibrary API** to generate complete, SLiMS-compatible bibliographic records. Designed for Indonesian libraries and catalogers, it automates the tedious process of metadata entry while maintaining data quality and completeness.
+Rangkai Book Metadata Harvester intelligently combines data from **3 authoritative sources** - Google Books API, OpenLibrary API, and Library of Congress (LoC) API - to generate complete, SLiMS-compatible bibliographic records. Designed for Indonesian libraries and catalogers, it automates the tedious process of metadata entry while maintaining data quality and completeness.
 
 ### Key Features
 
-- 🔍 **Dual-Source Search** - ISBN or title lookup from Google Books + OpenLibrary
-- 🧠 **Intelligent Data Merging** - Smart prioritization of most reliable data sources
-- 📊 **Classification Support** - DDC (Dewey Decimal) and LCC (Library of Congress) codes
-- 🏷️ **Auto Call Number** - Generates call numbers using DDC/LCC + Author + Year
+- 🔍 **Triple-Source Search** - ISBN or title lookup from Google Books + OpenLibrary + Library of Congress
+- 🧠 **Intelligent Data Merging** - "Waterfall of Data" prioritization for optimal accuracy
+- 📊 **Authoritative Classification** - DDC (Dewey Decimal) from OpenLibrary + LCC (Library of Congress Classification) from LoC
+- 🏛️ **Official LoC Integration** - Authoritative call numbers from U.S. Library of Congress
+- 🏷️ **Auto Call Number** - Generates call numbers using DDC/LCC + Cutter-Sanborn + Author + Year
 - 🌐 **CORS-Free API** - Server-side proxy eliminates browser CORS restrictions
 - 📝 **SLiMS Ready** - Fields mapped to Senayan Library Management System
-- 🎨 **Modern UI** - Clean, responsive interface with Tailwind CSS
-- ⚡ **Real-time Preview** - Live metadata display as data is fetched
+- 🎨 **Modern UI** - Clean, responsive interface with real-time data source indicators
+- ⚡ **Real-time Preview** - Live metadata display with trust badges
 - 🖼️ **Cover Image Handling** - Automatic fallback chain for missing covers
-- 🔄 **Progressive Enhancement** - Works with or without JavaScript
+- 🔄 **Graceful Degradation** - Works even when sources fail (partial data handling)
 
 ## 🚀 Quick Start
 
@@ -96,7 +97,7 @@ Title: "The Pragmatic Programmer"
 | **Framework** | SvelteKit | SSR, routing, server functions |
 | **Language** | TypeScript (Strict) | Type safety, IDE support |
 | **Styling** | Tailwind CSS | Utility-first styling |
-| **APIs** | Google Books + OpenLibrary | Metadata sources |
+| **APIs** | Google Books + OpenLibrary + **Library of Congress** | Triple-source metadata |
 | **Deployment** | Cloudflare Pages | Edge computing, CDN |
 | **Testing** | Vitest + Playwright | Unit & E2E tests |
 
@@ -106,9 +107,13 @@ Title: "The Pragmatic Programmer"
 rangkai-book-metadata/
 ├── src/
 │   ├── lib/
+│   │   ├── api.ts                # 3-source API service (Google + OL + LoC)
 │   │   ├── merge.ts              # Data merging & enrichment logic
-│   │   ├── components/           # Reusable Svelte components
-│   │   └── types/                # TypeScript type definitions
+│   │   ├── types.ts              # TypeScript interfaces (incl. LoCBookData)
+│   │   ├── cutter.ts             # Cutter-Sanborn call number generator
+│   │   ├── export.ts             # SLiMS CSV/MARC XML export
+│   │   └── stores/
+│   │       └── history.svelte.ts # Scanner mode history store
 │   ├── routes/
 │   │   ├── +page.svelte          # Main search interface
 │   │   ├── +layout.svelte        # App layout wrapper
@@ -119,6 +124,8 @@ rangkai-book-metadata/
 │   └── app.css                   # Global styles + Tailwind
 ├── static/                       # Static assets
 ├── tests/                        # Test suites
+├── LOC_INTEGRATION_GUIDE.md      # Library of Congress integration docs
+├── USAGE_EXAMPLES.ts             # Code examples for 3-source API
 ├── agents.md                     # AI agents & automation docs
 ├── PERFORMANCE_ANALYSIS.md       # Performance benchmarks
 └── svelte.config.js              # SvelteKit configuration
@@ -128,61 +135,87 @@ rangkai-book-metadata/
 
 ### Automated Agents
 
-The system employs multiple specialized agents for data harvesting and processing:
+The system employs multiple specialized agents for data harvesting and processing from **3 authoritative sources**:
 
 #### 1. **Google Books API Agent**
 - Fetches metadata from Google Books
 - Handles ISBN and title searches
 - Extracts: title, authors, publisher, dates, ISBNs, descriptions, cover images
+- **Priority**: Base metadata (title, cover, description)
 
 #### 2. **OpenLibrary API Agent** 
 - Server-side proxy at `/api/openlibrary` (eliminates CORS)
-- Fetches classifications (DDC, LCC)
+- Fetches classifications (DDC, LCC as fallback)
 - Extracts: subjects, languages, series, alternate titles
+- **Priority**: DDC classifications (exclusive source)
 
-#### 3. **Data Merge Agent** (`processAndRenderMergedData`)
-Smart prioritization logic:
+#### 3. **Library of Congress (LoC) API Agent** 🆕
+- Direct connection to `https://www.loc.gov/books/`
+- No API key required (free, authoritative government source)
+- Fetches authoritative LCC call numbers
+- Extracts: official classifications, subjects, LCCN identifiers
+- **Priority**: LCC classifications (authoritative source)
+- **Timeout**: 5 seconds (fail-fast strategy for performance)
+
+#### 4. **Data Merge Agent** (`processAndRenderMergedData`)
+**"Waterfall of Data" prioritization strategy:**
 ```typescript
-Title       → OpenLibrary preferred (more complete)
-Authors     → First available source
-Publisher   → Google Books preferred
-Date        → Google Books preferred
-DDC/LCC     → OpenLibrary exclusive
-Cover       → Google > OpenLibrary > Fallback
-Description → Combined (Google priority)
+Title       → Google Books > OpenLibrary > LoC (cleanest formatting)
+Authors     → Google Books > OpenLibrary > LoC (most reliable)
+Publisher   → Google Books > OpenLibrary (preferred source)
+Date        → Google Books > OpenLibrary > LoC (most consistent)
+DDC         → OpenLibrary only (exclusive source)
+LCC         → LoC > OpenLibrary (LoC is authoritative!)
+Cover       → Google > OpenLibrary (LoC has no covers)
+Description → Google > OpenLibrary > LoC (best quality)
+Subjects    → Combined & deduplicated from all 3 sources
+Language    → Google > OpenLibrary > LoC (mapped from ISO codes)
 ```
 
-#### 4. **Metadata Enrichment Agent**
+#### 5. **Metadata Enrichment Agent**
 Generates SLiMS-compatible fields:
-- **Call Numbers**: `DDC/LCC + AuthorAbbr + TitleInitial + Year`
+- **Call Numbers**: `DDC/LCC + Cutter-Sanborn + TitleInitial + Year`
 - **GMD**: General Material Designation from print type
 - **Collation**: Page count formatting
 - **Language**: ISO 639 code → Full language name
-- **Subject Mapping**: Categories → DDC classifications
+- **Subject Mapping**: Categories → DDC classifications (fallback)
 
-#### 5. **Error Handling Agent**
+#### 6. **Error Handling & Graceful Degradation Agent**
 - Catches network failures gracefully
+- **Partial Data Support**: Works with 1, 2, or 3 sources
+- **Data Source Tracking**: Shows which sources succeeded
+- **Trust Badges**: UI indicates data quality (🏛️ Official LoC, ⚠️ Partial Data)
 - Provides fallback placeholder images
-- Displays user-friendly error messages
 - Logs detailed errors for debugging
+
+### Data Source Status Indicators
+
+The UI displays real-time badges showing which sources are available:
+
+| Status | Badge Color | Meaning |
+|--------|------------|---------|
+| **All 3 Sources** | 🟢 Green | Google + OpenLibrary + LoC (Complete data) |
+| **Google + LoC** | 🔵 Blue | Authoritative LCC, DDC may be incomplete |
+| **Google + OpenLibrary** | 🟡 Amber | LCC from OpenLibrary (less authoritative) |
+| **Single Source** | 🔴 Red | Limited data, classification incomplete |
 
 ### Field Mapping Reference
 
-| SLiMS Field | Data Source | Priority |
-|-------------|------------|----------|
-| Title | Both | OpenLibrary > Google |
-| Authors | Both | First available |
-| Publisher | Both | Google > OpenLibrary |
-| Publication Date | Both | Google > OpenLibrary |
-| Pages/Collation | Google | - |
-| ISBN-13 | Both | Google > OpenLibrary |
-| ISBN-10 | Both | Google > OpenLibrary |
-| DDC | OpenLibrary | Exclusive |
-| LCC | OpenLibrary | Exclusive |
-| Call Number | **Generated** | Enrichment Agent |
-| Language | Both | Mapped from ISO codes |
-| Subjects | Both | Google categories + OL subjects |
-| Cover Image | Both | Google > OpenLibrary > Placeholder |
+| SLiMS Field | Data Source | Priority (Waterfall) |
+|-------------|------------|---------------------|
+| Title | All 3 | Google > OpenLibrary > LoC |
+| Authors | All 3 | Google > OpenLibrary > LoC |
+| Publisher | Google + OL | Google > OpenLibrary |
+| Publication Date | All 3 | Google > OpenLibrary > LoC |
+| Pages/Collation | Google + OL | Google > OpenLibrary |
+| ISBN-13 | Google + OL | Google > OpenLibrary |
+| ISBN-10 | Google + OL | Google > OpenLibrary |
+| **DDC** | **OpenLibrary** | **Exclusive** |
+| **LCC** | **LoC + OL** | **LoC > OpenLibrary** 🏛️ |
+| Call Number | **Generated** | Cutter-Sanborn system |
+| Language | All 3 | Google > OpenLibrary > LoC (ISO mapped) |
+| Subjects | All 3 | **Combined & deduplicated** |
+| Cover Image | Google + OL | Google > OpenLibrary > Placeholder |
 | GMD | Google | From print type |
 
 ### Subject-to-DDC Auto-Classification
