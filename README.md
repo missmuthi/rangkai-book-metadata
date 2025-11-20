@@ -24,6 +24,28 @@ Rangkai Book Metadata Harvester intelligently combines data from **3 authoritati
 - ⚡ **Real-time Preview** - Live metadata display with trust badges
 - 🖼️ **Cover Image Handling** - Automatic fallback chain for missing covers
 - 🔄 **Graceful Degradation** - Works even when sources fail (partial data handling)
+- 📈 **Analytics & Telemetry** - Comprehensive event tracking for performance monitoring and optimization
+- 💾 **Smart Caching** - LRU cache with analytics tracking for optimal API quota usage
+- 🚀 **Performance Optimized** - Input debouncing, code splitting, and lazy loading
+- 🔒 **Secure Image Loading** - HTTPS enforcement with privacy protection (no referrer tracking)
+
+## 📋 Version History
+
+### v1.1.0 (November 20, 2025)
+- 🔒 **Fixed CORS errors**: Removed `crossorigin="anonymous"` from images (Google Books doesn't support CORS)
+- 🔐 **Image security**: HTTPS enforcement via `getSecureImageUrl()` utility
+- 🛡️ **Privacy protection**: `referrerpolicy="no-referrer"` prevents tracking
+- ⚡ **Performance**: Lazy loading and async decoding for all images
+- 📊 **Analytics**: Comprehensive telemetry system for monitoring
+- 💾 **Smart caching**: LRU cache with analytics tracking
+- 🚀 **Input optimization**: Debouncing for manual typing, instant for ISBN/scanner
+
+### v0.0.1 (Initial Release)
+- 🔍 Triple-source search (Google Books + OpenLibrary + Library of Congress)
+- 🧠 Intelligent data merging with "Waterfall of Data" strategy
+- 📊 Authoritative classifications (DDC + LCC)
+- 🏷️ Auto call number generation
+- 🌐 CORS-free API with server-side proxy
 
 ## 🚀 Quick Start
 
@@ -106,14 +128,17 @@ Title: "The Pragmatic Programmer"
 ```
 rangkai-book-metadata/
 ├── src/
-│   ├── lib/
-│   │   ├── api.ts                # 3-source API service (Google + OL + LoC)
-│   │   ├── merge.ts              # Data merging & enrichment logic
-│   │   ├── types.ts              # TypeScript interfaces (incl. LoCBookData)
-│   │   ├── cutter.ts             # Cutter-Sanborn call number generator
-│   │   ├── export.ts             # SLiMS CSV/MARC XML export
-│   │   └── stores/
-│   │       └── history.svelte.ts # Scanner mode history store
+│   │   ├── lib/
+│   │   │   ├── api.ts                # 3-source API service (Google + OL + LoC)
+│   │   │   ├── merge.ts              # Data merging & enrichment logic
+│   │   │   ├── types.ts              # TypeScript interfaces (incl. LoCBookData)
+│   │   │   ├── cutter.ts             # Cutter-Sanborn call number generator
+│   │   │   ├── export.ts             # SLiMS CSV/MARC XML export
+│   │   │   ├── utils.ts              # Utilities (image security, formatting)
+│   │   │   ├── services/
+│   │   │   │   └── analytics.ts      # Analytics & telemetry service
+│   │   │   └── stores/
+│   │   │       └── history.svelte.ts # Scanner mode history store
 │   ├── routes/
 │   │   ├── +page.svelte          # Main search interface
 │   │   ├── +layout.svelte        # App layout wrapper
@@ -125,6 +150,8 @@ rangkai-book-metadata/
 ├── static/                       # Static assets
 ├── tests/                        # Test suites
 ├── LOC_INTEGRATION_GUIDE.md      # Library of Congress integration docs
+├── ANALYTICS_TELEMETRY.md        # Analytics system documentation
+├── IMAGE_SECURITY.md             # Image security & privacy implementation
 ├── USAGE_EXAMPLES.ts             # Code examples for 3-source API
 ├── agents.md                     # AI agents & automation docs
 ├── PERFORMANCE_ANALYSIS.md       # Performance benchmarks
@@ -187,6 +214,20 @@ Generates SLiMS-compatible fields:
 - **Trust Badges**: UI indicates data quality (🏛️ Official LoC, ⚠️ Partial Data)
 - Provides fallback placeholder images
 - Logs detailed errors for debugging
+- **Analytics Integration**: Tracks all errors for monitoring
+
+#### 7. **Analytics & Telemetry Agent** 🆕
+Comprehensive event tracking system for performance monitoring:
+- **Search Performance**: Tracks timing, result counts, ISBN vs title searches
+- **Cache Analytics**: Monitors hit rates, effectiveness per source
+- **API Reliability**: Measures success rates, response times per source
+- **Error Tracking**: Logs API failures, timeouts, rate limits
+- **User Behavior**: Scanner mode usage, export patterns, navigation flows
+- **Data Source Attribution**: Which API combinations provide best results
+- **Dev/Prod Modes**: Color-coded console logs in dev, structured logging in prod
+- **Future-Ready**: Easy integration with Plausible, GA4, or PostHog
+
+See [`ANALYTICS_TELEMETRY.md`](ANALYTICS_TELEMETRY.md) for complete documentation.
 
 ### Data Source Status Indicators
 
@@ -308,22 +349,25 @@ npm run test:coverage
 
 ## 📊 Performance
 
-See [`PERFORMANCE_ANALYSIS.md`](PERFORMANCE_ANALYSIS.md) for detailed benchmarks.
+See [`PERFORMANCE_ANALYSIS.md`](PERFORMANCE_ANALYSIS.md) for detailed benchmarks and [`ANALYTICS_TELEMETRY.md`](ANALYTICS_TELEMETRY.md) for monitoring capabilities.
 
 ### Key Metrics
 
 - **Initial Load**: < 500ms (with caching)
-- **API Response Time**: 800-1500ms (dual-source fetch)
+- **API Response Time**: 800-1500ms (triple-source fetch with parallel execution)
 - **UI Render**: < 100ms (Svelte reactivity)
 - **Lighthouse Score**: 95+ (Performance, Accessibility, SEO)
+- **Cache Hit Rate**: 60-80% (tracked via analytics)
 
 ### Optimization Strategies
 
 - Server-side rendering (SSR) for initial page load
-- API response caching (5-minute TTL on proxy)
+- API response caching (5-minute TTL with LRU eviction)
 - Progressive image loading for book covers
-- Debounced search input (300ms delay)
-- Lazy loading of non-critical components
+- **Input debouncing** (500ms for manual typing, instant for ISBN/scanner)
+- **Code splitting** (lazy-loaded export modules)
+- **Analytics-driven optimization** (performance metrics tracked in real-time)
+- Parallel API fetching (no waterfall delays)
 
 ## 🎨 Coding Standards
 
@@ -415,6 +459,7 @@ export const actions = {
 
 **Missing cover images:**
 - System automatically uses placeholder image
+- All images loaded via HTTPS with privacy protection
 - Check browser console for image load errors
 - Verify Google Books/OpenLibrary have the cover
 
@@ -460,21 +505,24 @@ git push origin feature/your-feature
 ### High-Performance Data Fetching
 
 **Parallel API Calls (No Waterfalls)**
-- Google Books + OpenLibrary APIs fetch simultaneously
+- Google Books + OpenLibrary + Library of Congress APIs fetch simultaneously
 - Eliminates sequential bottlenecks
-- Average response time: ~800ms for dual-source queries
+- Average response time: ~1200ms for triple-source queries
+- **Analytics Tracking**: Every API call is timed and logged
 
 **Smart Caching System**
 - **LRU Cache** with TTL (5 minutes) and size limits (100 items)
-- **Separate caches** for Google Books and OpenLibrary
-- **Cache hit rates**: 60-80% for repeated searches
+- **Separate caches** for Google Books, OpenLibrary, and Library of Congress
+- **Cache hit rates**: 60-80% for repeated searches (tracked via analytics)
 - **Memory efficient**: Automatic eviction prevents memory leaks
+- **Analytics Integration**: Cache hits/misses logged for optimization insights
 
 **Resilient Error Handling**
 - **Retry Logic**: 3 attempts with exponential backoff
 - **Circuit Breakers**: Rate limiting prevents API exhaustion
 - **Graceful Degradation**: Continues with available data sources
-- **Timeout Protection**: 10-second timeouts prevent hanging requests
+- **Timeout Protection**: 10-second timeouts for Google/OL, 5-second for LoC
+- **Error Analytics**: All failures tracked with error type, source, and timing
 
 ### Scanner Mode: Mouse-Free Batch Processing
 
@@ -494,22 +542,22 @@ async function handleSearch() {
 ```
 
 **Key Features:**
-- **Debounced title search** (500ms) for typing
+- **Debounced title search** (500ms) for typing, instant ISBN processing
 - **Instant ISBN processing** (bypasses debounce for scanners)
 - **Persistent scan history** with localStorage
 - **Batch export** to SLiMS CSV format
-- **Real-time performance dashboard** in scanner mode
+- **Real-time analytics** tracking scanner mode usage and performance
 
 ### Architecture Overview
 
 ```
-┌─────────────────┐    ┌──────────────────┐
-│   +page.svelte  │────│  BookApiService  │
-│                 │    │  (api.ts)        │
-│ • UI Logic      │    │ • Parallel fetch │
-│ • State Mgmt    │    │ • Retry logic    │
-│ • Cache Mgmt    │    │ • Error handling │
-└─────────────────┘    └──────────────────┘
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   +page.svelte  │────│  BookApiService  │────│  Analytics      │
+│                 │    │  (api.ts)        │    │  Service        │
+│ • UI Logic      │    │ • Parallel fetch │    │ • Event tracking│
+│ • State Mgmt    │    │ • Retry logic    │    │ • Performance   │
+│ • Cache Mgmt    │    │ • Error handling │    │ • Monitoring    │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
          │                       │
          └───────────────────────┘
                  │
@@ -517,6 +565,7 @@ async function handleSearch() {
         │  Data Sources   │
         │ • Google Books  │
         │ • OpenLibrary   │
+        │ • Library of C. │
         │ • Local Cache   │
         └─────────────────┘
 ```
@@ -526,24 +575,40 @@ async function handleSearch() {
 - **Testability**: API service can be unit tested independently
 - **Reusability**: API logic can be used across components
 - **Maintainability**: Changes to API logic don't affect UI
+- **Observability**: Analytics service tracks all operations
 
 ### Performance Metrics Dashboard
 
-When Scanner Mode is active, real-time metrics are displayed:
+Real-time analytics tracking provides insights into:
 
-- **Cache Hit Rate**: Percentage of requests served from cache
-- **Cache Sizes**: Current items in Google/OpenLibrary caches
-- **Average Response Time**: Rolling average of API response times
-- **Rate Limit Status**: Remaining requests for each API
+- **Search Performance**: Average duration, success rate, ISBN vs title ratio
+- **Cache Effectiveness**: Hit rate per source (Google, OpenLibrary, LoC)
+- **API Reliability**: Success rate and average response time per source
+- **Error Frequency**: Types of errors and which APIs fail most
+- **User Behavior**: Scanner mode usage, export patterns, navigation flows
+- **Data Completeness**: How often all 3 sources provide data vs partial results
+
+**Dev Mode Console:**
+```
+⚡ [Analytics] cache_hit { cache_type: 'google', is_isbn: true, ... }
+🔍 [Analytics] search_performed { type: 'isbn', duration_ms: 1234, ... }
+📊 [Analytics] data_source_used { source: 'all-three', is_partial: false, ... }
+⏱️ [Analytics] api_timing { source: 'loc', duration_ms: 456, success: true, ... }
+```
+
+See [`ANALYTICS_TELEMETRY.md`](ANALYTICS_TELEMETRY.md) for complete event catalog and integration guides.
 
 ### Optimization Techniques
 
-1. **Debounced Input**: Prevents excessive API calls during typing
+1. **Debounced Input**: Prevents excessive API calls during typing (500ms delay)
 2. **Smart ISBN Detection**: Instant processing for ISBNs vs debounced titles
-3. **Parallel Fetching**: Eliminates waterfall delays
-4. **Intelligent Caching**: Reduces API calls and improves UX
-5. **Lazy Loading**: UI components load only when needed
-6. **Skeleton Screens**: Prevent layout shift during loading
+3. **Parallel Fetching**: Eliminates waterfall delays (all 3 sources simultaneously)
+4. **Intelligent Caching**: LRU cache with analytics tracking reduces API calls
+5. **Code Splitting**: Export modules lazy-loaded only when needed
+6. **Lazy Loading**: UI components load only when needed
+7. **Skeleton Screens**: Prevent layout shift during loading
+8. **Performance Monitoring**: Real-time analytics track all optimizations
+9. **Secure Image Loading**: HTTPS enforcement, lazy loading, privacy protection (no referrers/cookies)
 
 ## 📄 License
 
@@ -560,11 +625,15 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/missmuthi/rangkai-book-metadata/issues)
-- **Documentation**: See `agents.md` for detailed architecture
-- **Performance**: See `PERFORMANCE_ANALYSIS.md` for benchmarks
+- **Documentation**: 
+  - Architecture & AI Agents: `agents.md`
+  - Performance Benchmarks: `PERFORMANCE_ANALYSIS.md`
+  - Analytics & Monitoring: `ANALYTICS_TELEMETRY.md`
+  - Library of Congress Integration: `LOC_INTEGRATION_GUIDE.md`
+  - Image Security & Privacy: `IMAGE_SECURITY.md`
 
 ---
 
 **Built with ❤️ for Indonesian libraries and catalogers**
 
-*Last updated: November 20, 2024*
+*Version 1.1.0 - Last updated: November 20, 2025*

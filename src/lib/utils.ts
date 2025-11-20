@@ -3,6 +3,45 @@
  */
 
 /**
+ * Secure Image URL Helper
+ * Converts HTTP image URLs to HTTPS to prevent mixed content warnings
+ * Ensures privacy and security for Cloudflare Pages deployment
+ * 
+ * @param url - Image URL (potentially HTTP)
+ * @returns Secure HTTPS URL or original if already secure/null
+ */
+export function getSecureImageUrl(url: string | null | undefined): string {
+	if (!url || url === '' || url === '-') {
+		return ''; // Return empty string for invalid URLs
+	}
+
+	// If it's a data URI (Base64 encoded SVG), return as-is
+	if (url.startsWith('data:')) {
+		return url;
+	}
+
+	// Force HTTPS for all HTTP URLs (critical for Cloudflare Pages)
+	let secureUrl = url.replace(/^http:\/\//i, 'https://');
+
+	// Optional: Remove tracking parameters while preserving image ID
+	// This is conservative - only removes known benign params
+	try {
+		const urlObj = new URL(secureUrl);
+		
+		// Remove common tracking parameters (optional privacy enhancement)
+		const trackingParams = ['utm_source', 'utm_medium', 'utm_campaign', 'ref', 'referrer'];
+		trackingParams.forEach(param => urlObj.searchParams.delete(param));
+		
+		secureUrl = urlObj.toString();
+	} catch {
+		// If URL parsing fails, return the HTTPS-forced version
+		// This handles relative URLs or malformed URLs gracefully
+	}
+
+	return secureUrl;
+}
+
+/**
  * Debounce function calls to prevent excessive API calls during typing
  */
 export function debounce<T extends (...args: any[]) => any>(

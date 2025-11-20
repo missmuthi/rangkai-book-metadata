@@ -305,3 +305,80 @@ export function exportToMARCXML(data: MergedBookData): void {
   const filename = `marc_${data.isbn13 || data.isbn10 || 'book'}_${Date.now()}.xml`;
   downloadFile(xml, filename, 'application/xml;charset=utf-8;');
 }
+
+/**
+ * Generate batch CSV export for multiple books (SLiMS format)
+ * 
+ * @param books - Array of MergedBookData objects to export
+ * @returns CSV string with headers and data rows for all books
+ */
+export function generateBatchCSV(books: MergedBookData[]): string {
+  const headers = [
+    'Title',
+    'GMD',
+    'Series Title',
+    'Call Number',
+    'Publisher',
+    'Collation',
+    'Language',
+    'ISBN/ISSN',
+    'Classification',
+    'Subject(s)',
+    'Specific Detail Info',
+    'Statement of Responsibility',
+    'Edition'
+  ];
+
+  // Escape CSV value
+  const escapeCSV = (value: string): string => {
+    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
+  // Generate rows
+  const rows = books.map(book => {
+    return [
+      escapeCSV(book.title),
+      escapeCSV(book.gmd),
+      escapeCSV(book.series),
+      escapeCSV(book.callNumber),
+      escapeCSV(book.publisherString),
+      escapeCSV(book.collation),
+      escapeCSV(book.language),
+      escapeCSV(book.isbn13),
+      escapeCSV(book.classification),
+      escapeCSV(book.subjects),
+      escapeCSV(book.specificDetail),
+      escapeCSV(book.author),
+      escapeCSV(book.edition)
+    ].join(',');
+  });
+
+  // Combine header and rows
+  return [headers.join(','), ...rows].join('\n');
+}
+
+/**
+ * Export multiple books to SLiMS CSV and trigger download
+ * 
+ * @param books - Array of MergedBookData objects to export
+ */
+export function exportBatchToSLiMSCSV(books: MergedBookData[]): void {
+  if (books.length === 0) {
+    throw new Error('No books to export');
+  }
+
+  const csvContent = generateBatchCSV(books);
+  const filename = `rangkai-batch-export-${new Date().toISOString().split('T')[0]}.csv`;
+  
+  // Prepend UTF-8 BOM for Excel/SLiMS compatibility
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}

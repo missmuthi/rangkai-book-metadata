@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
-	import { exportToSLiMSCSV, exportToMARCXML } from '$lib/export';
 	import { scanHistory } from '$lib/stores/history.svelte';
 	import { processAndRenderMergedData } from '$lib/merge';
 	import { BookApiService, googleCache, openLibraryCache, locCache } from '$lib/api';
-	import { debounce, retry, isOnline } from '$lib/utils';
+	import { retry, isOnline, getSecureImageUrl } from '$lib/utils';
 	import SkeletonCard from '$lib/SkeletonCard.svelte';
+	import { Analytics } from '$lib/services/analytics';
 
 	// --- TypeScript Interfaces ---
 	interface GoogleBookItem {
@@ -154,6 +154,10 @@
 
 	// --- Home Navigation Function ---
 	function goHome() {
+		Analytics.track('user_interaction', {
+			action: 'home_navigation'
+		});
+
 		// Reset all state to initial view
 		searchQuery = '';
 		isLoading = false;
@@ -166,18 +170,41 @@
 		openLibraryRaw = '';
 	}
 
-	// --- Debounced Search ---
-	let debouncedSearch: (() => void) | null = null;
+	// --- Input Debouncing (Manual Typing Only) ---
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-	// Initialize debounced search on mount
-	$effect(() => {
-		debouncedSearch = debounce(async () => {
-			await handleSearch();
-		}, 500); // 500ms delay
-	});
+	function handleInputChange() {
+		// Clear any existing timer
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+		}
+
+		const trimmedQuery = searchQuery.trim();
+		if (!trimmedQuery) return;
+
+		const cleanedQuery = cleanISBN(trimmedQuery);
+		
+		// Check if this is likely an ISBN (10 or 13 digits)
+		const isPotentialIsbn = /^\d{10,13}$/.test(cleanedQuery);
+
+		// For ISBN searches, trigger immediately (barcode scanner use case)
+		// For title searches, debounce to save API quota
+		if (isPotentialIsbn) {
+			// Don't debounce ISBNs - they're likely from scanner or complete manual entry
+			return;
+		}
+
+		// Only debounce title searches when user is typing
+		if (trimmedQuery.length > 2) {
+			debounceTimer = setTimeout(() => {
+				handleSearch();
+			}, 500); // 500ms delay for manual typing
+		}
+	}
 
 	// --- Enhanced Main Search Function ---
 	async function handleSearch() {
+		const searchStartTime = performance.now();
 		const trimmedQuery = searchQuery.trim();
 		if (!trimmedQuery) {
 			error = 'Please enter an ISBN or Title.';
@@ -251,6 +278,15 @@
 
 			if (!googleData && !openLibraryData && !locData) {
 				error = 'No data found from any source for this ISBN.';
+				
+				// Track failed search
+				const searchDuration = Math.round(performance.now() - searchStartTime);
+				Analytics.track('search_performed', {
+					type: 'isbn',
+					query_length: cleanedQuery.length,
+					duration_ms: searchDuration,
+					result_count: 0
+				});
 			} else {
 				// Merge data from all 3 sources ("Waterfall of Data" strategy)
 				mergedData = processAndRenderMergedData(googleData, openLibraryData, locData);
@@ -261,6 +297,23 @@
 				const hasLoC = !!(locData?.results?.[0]);
 				
 				isPartialData = !(hasGoogle && hasOpenLib && hasLoC);
+				
+				// Track successful search and data source
+				const searchDuration = Math.round(performance.now() - searchStartTime);
+				Analytics.track('search_performed', {
+					type: 'isbn',
+					query_length: cleanedQuery.length,
+					duration_ms: searchDuration,
+					result_count: 1
+				});
+
+				Analytics.track('data_source_used', {
+					source: mergedData.dataSource || 'unknown',
+					has_google: hasGoogle,
+					has_openlibrary: hasOpenLib,
+					has_loc: hasLoC,
+					is_partial: isPartialData
+				});
 				
 				// Note: dataSource is already set by processAndRenderMergedData
 				currentView = 'result';					if (scannerModeEnabled && mergedData) {
@@ -282,6 +335,8 @@
 					console.warn('[Title Search] OpenLibrary API error:', result.errors.openlibrary.message);
 				}
 
+				const totalResults = (googleItems?.length || 0) + (openLibraryItems?.length || 0);
+
 				if (!googleItems && !openLibraryItems) {
 					error = 'No books found for that title from any source.';
 				}
@@ -293,6 +348,15 @@
 				if (openLibraryItems && openLibraryItems.length > 0) {
 					openLibraryResults = openLibraryItems;
 				}
+
+				// Track title search
+				const searchDuration = Math.round(performance.now() - searchStartTime);
+				Analytics.track('search_performed', {
+					type: 'title',
+					query_length: trimmedQuery.length,
+					duration_ms: searchDuration,
+					result_count: totalResults
+				});
 			}
 		} catch (err) {
 			console.error('[Scanner Mode] Search failed:', err);
@@ -312,6 +376,11 @@
 	// --- Enhanced Book Selection Handlers ---
 
 	async function handleBookSelection(index: number) {
+		Analytics.track('user_interaction', {
+			action: 'book_selected',
+			source: 'google'
+		});
+
 		isLoading = true;
 		error = null;
 		currentView = 'search'; // Hide lists
@@ -348,6 +417,11 @@
 	}
 
 	async function handleOpenLibraryBookSelection(index: number) {
+		Analytics.track('user_interaction', {
+			action: 'book_selected',
+			source: 'openlibrary'
+		});
+
 		isLoading = true;
 		error = null;
 		currentView = 'search'; // Hide lists
@@ -406,6 +480,10 @@
 	}
 	
 	function handleBackToSearch() {
+		Analytics.track('user_interaction', {
+			action: 'back_to_search'
+		});
+
 		currentView = 'search';
 		mergedData = null;
 		error = null;
@@ -419,79 +497,82 @@
 	
 	function toggleScannerMode() {
 		scannerModeEnabled = !scannerModeEnabled;
+
+		Analytics.track('scanner_mode_toggled', {
+			enabled: scannerModeEnabled
+		});
+
 		if (scannerModeEnabled && searchInputRef) {
 			searchInputRef.focus();
 			searchInputRef.select();
 		}
 	}
+
+	// --- Lazy-Loaded Export Functions (Code Splitting) ---
+	
+	/**
+	 * Export single merged book to SLiMS CSV format
+	 * Uses dynamic import to reduce main bundle size
+	 */
+	async function handleExportSLiMSCSV(book: MergedBookData) {
+		try {
+			const { exportToSLiMSCSV } = await import('$lib/export');
+			exportToSLiMSCSV(book);
+
+			Analytics.track('single_export', {
+				format: 'csv',
+				isbn: book.isbn13 || book.isbn10
+			});
+		} catch (err) {
+			console.error('Failed to load export module:', err);
+			alert('Failed to export CSV. Please try again.');
+		}
+	}
+
+	/**
+	 * Export single merged book to MARCXML format
+	 * Uses dynamic import to reduce main bundle size
+	 */
+	async function handleExportMARCXML(book: MergedBookData) {
+		try {
+			const { exportToMARCXML } = await import('$lib/export');
+			exportToMARCXML(book);
+
+			Analytics.track('single_export', {
+				format: 'marcxml',
+				isbn: book.isbn13 || book.isbn10
+			});
+		} catch (err) {
+			console.error('Failed to load export module:', err);
+			alert('Failed to export MARCXML. Please try again.');
+		}
+	}
 	
 	/**
 	 * Batch export all scanned books to SLiMS CSV
+	 * Uses dynamic import to reduce main bundle size
 	 */
-	function exportBatchToCSV() {
+	async function exportBatchToCSV() {
 		const allBooks = scanHistory.getAll();
 		if (allBooks.length === 0) {
 			alert('No scanned books to export.');
 			return;
 		}
-		
-		// Generate CSV header
-		const headers = [
-			'Title',
-			'GMD',
-			'Series Title',
-			'Call Number',
-			'Publisher',
-			'Collation',
-			'Language',
-			'ISBN/ISSN',
-			'Classification',
-			'Subject(s)',
-			'Specific Detail Info',
-			'Statement of Responsibility',
-			'Edition'
-		];
-		
-		// Escape CSV value
-		const escapeCSV = (value: string): string => {
-			if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-				return `"${value.replace(/"/g, '""')}"`;
-			}
-			return value;
-		};
-		
-		// Generate rows
-		const rows = allBooks.map(book => {
-			return [
-				escapeCSV(book.title),
-				escapeCSV(book.gmd),
-				escapeCSV(book.series),
-				escapeCSV(book.callNumber),
-				escapeCSV(book.publisherString),
-				escapeCSV(book.collation),
-				escapeCSV(book.language),
-				escapeCSV(book.isbn13),
-				escapeCSV(book.classification),
-				escapeCSV(book.subjects),
-				escapeCSV(book.specificDetail),
-				escapeCSV(book.author),
-				escapeCSV(book.edition)
-			].join(',');
-		});
-		
-		// Combine header and rows
-		const csvContent = [headers.join(','), ...rows].join('\n');
 
-		// Download (prepend UTF-8 BOM for Excel/SLiMS compatibility)
-		const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = `rangkai-batch-export-${new Date().toISOString().split('T')[0]}.csv`;
-		link.click();
-		URL.revokeObjectURL(url);
-		
-		console.log(`[Batch Export] Exported ${allBooks.length} books`);
+		try {
+			const { exportBatchToSLiMSCSV } = await import('$lib/export');
+			exportBatchToSLiMSCSV(allBooks);
+
+			Analytics.track('batch_export', {
+				count: allBooks.length,
+				format: 'csv'
+			});
+
+			console.log(`[Batch Export] Exported ${allBooks.length} books`);
+		} catch (err) {
+			console.error('Failed to load export module:', err);
+			alert('Failed to export batch CSV. Please try again.');
+		}
 	}
 	
 	// Helper for cover image error
@@ -544,20 +625,17 @@
 					type="text" 
 					bind:this={searchInputRef}
 					bind:value={searchQuery}
-					oninput={(e) => {
-						// For title searches, use debounced search
-						const value = (e.target as HTMLInputElement).value;
-						const isPotentialIsbn = /^\d{10}(\d{3})?$/.test(value.replace(/[^0-9]/g, ''));
-						
-						if (!isPotentialIsbn && value.length > 2 && debouncedSearch) {
-							debouncedSearch();
-						}
-					}}
+					oninput={handleInputChange}
 					onfocus={(e) => {
 						e.currentTarget.select();
 					}}
 					onkeydown={(e) => {
 						if (e.key === 'Enter') {
+							// Clear debounce timer for instant search on Enter
+							if (debounceTimer) {
+								clearTimeout(debounceTimer);
+								debounceTimer = null;
+							}
 							handleSearch();
 						}
 					}}
@@ -697,48 +775,44 @@
 					</div>
 				{/if}
 					<div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-						<button onclick={handleBackToSearch} class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-							&larr; Back to Search Results
+					<button onclick={handleBackToSearch} class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+						&larr; Back to Search Results
+					</button>
+					
+					<!-- Export Buttons -->
+					<div class="flex gap-2">
+						<button
+							onclick={() => handleExportSLiMSCSV(mergedData!)}
+							class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 transition-colors"
+							title="Download as SLiMS CSV for direct import"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+							</svg>
+							Download SLiMS CSV
 						</button>
 						
-						<!-- Export Buttons -->
-						<div class="flex gap-2">
-							<button
-								onclick={() => exportToSLiMSCSV(mergedData!)}
-								class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 transition-colors"
-								title="Download as SLiMS CSV for direct import"
-							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-								</svg>
-								Download SLiMS CSV
-							</button>
-							
-							<button
-								onclick={() => exportToMARCXML(mergedData!)}
-								class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 transition-colors"
-								title="Download as MARCXML for library catalog systems"
-							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-								</svg>
-								Download MARCXML
-							</button>
-						</div>
+						<button
+							onclick={() => handleExportMARCXML(mergedData!)}
+							class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 transition-colors"
+							title="Download as MARCXML for library catalog systems"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+							</svg>
+							Download MARCXML
+						</button>
 					</div>
-					
-					<h2 class="text-xl font-bold mb-4 border-b pb-2">SLiMS-Ready Data (Merged)</h2>
+				</div>					<h2 class="text-xl font-bold mb-4 border-b pb-2">SLiMS-Ready Data (Merged)</h2>
 					
 					<div class="space-y-4">
-						<div class="w-1/3 float-right ml-4 mb-4">
-							<div class="aspect-[2/3] w-full bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 shadow-md overflow-hidden bg-cover bg-center" style="background-image: url({mergedData.cover !== FALLBACK_COVER ? mergedData.cover : 'none'});">
-    {#if mergedData.cover === FALLBACK_COVER}
-        <span class="text-sm px-4 text-center">No Cover Available</span>
-    {/if}
+					<div class="w-1/3 float-right ml-4 mb-4">
+						<div class="aspect-[2/3] w-full bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 shadow-md overflow-hidden bg-cover bg-center" style="background-image: url({mergedData.cover !== FALLBACK_COVER ? getSecureImageUrl(mergedData.cover) : 'none'});">
+ {#if mergedData.cover === FALLBACK_COVER}
+ <span class="text-sm px-4 text-center">No Cover Available</span>
+ {/if}
 </div>
-						</div>
-					
-					<div>
+					</div>					<div>
 						<span class="text-sm font-medium text-gray-500">Title</span>
 						<p class="text-xl font-semibold text-gray-900">{mergedData.title}</p>
 					</div>
@@ -879,7 +953,7 @@
 								{@const cover = info.imageLinks?.smallThumbnail || FALLBACK_COVER}
 								
 							<button type="button" onclick={() => handleBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
-								<img src={cover} alt="Cover" class="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0" onerror={handleCoverError} />
+								<img src={getSecureImageUrl(cover)} alt="Book cover" class="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0" onerror={handleCoverError} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
 								<div>
 									<div class="font-semibold text-base text-blue-700">{title}</div>
 									<div class="text-sm text-gray-600">{author}</div>
@@ -902,7 +976,7 @@
 								{@const cover = coverID ? `https://covers.openlibrary.org/b/id/${coverID}-S.jpg` : FALLBACK_COVER}
 
 							<button type="button" onclick={() => handleOpenLibraryBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
-								<img src={cover} alt="Cover" class="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0" onerror={handleCoverError} />
+								<img src={getSecureImageUrl(cover)} alt="Book cover" class="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0" onerror={handleCoverError} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
 								<div>
 									<div class="font-semibold text-base text-green-700">{title}</div>
 									<div class="text-sm text-gray-600">{author}</div>

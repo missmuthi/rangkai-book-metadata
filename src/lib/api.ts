@@ -1,5 +1,6 @@
 import type { GoogleBookItem, OpenLibraryBookData, GoogleBooksResponse, OpenLibrarySearchResponse, LoCBookData } from './types';
 import { getISBNSibling, isISBN } from './utils';
+import { Analytics } from './services/analytics';
 
 /**
  * API Service Layer - Centralized API calls with enhanced error handling
@@ -14,16 +15,45 @@ export class BookApiService {
 	 * Fetch book data from Google Books API
 	 */
 	static async fetchGoogleBooks(query: string, isIsbn: boolean, maxResults = 1): Promise<GoogleBooksResponse | null> {
+		const startTime = performance.now();
 		const q = isIsbn ? `isbn:${query}` : `intitle:${query}`;
 		const url = `${this.GOOGLE_BOOKS_BASE}?q=${encodeURIComponent(q)}&maxResults=${maxResults}`;
 
-		const response = await fetch(url);
-		if (!response.ok) {
-			throw new Error(`Google Books API error: ${response.status} ${response.statusText}`);
-		}
+		try {
+			const response = await fetch(url);
+			const duration = Math.round(performance.now() - startTime);
 
-		const data: GoogleBooksResponse = await response.json();
-		return data;
+			if (!response.ok) {
+				const errorType = response.status === 503 ? 'api_503' : response.status === 429 ? 'rate_limit' : 'unknown';
+				Analytics.track('error_occurred', {
+					error_type: errorType,
+					source: 'google',
+					message: `${response.status} ${response.statusText}`
+				});
+				throw new Error(`Google Books API error: ${response.status} ${response.statusText}`);
+			}
+
+			const data: GoogleBooksResponse = await response.json();
+			
+			// Track API timing
+			Analytics.track('api_timing', {
+				source: 'google',
+				endpoint: isIsbn ? 'isbn_search' : 'title_search',
+				duration_ms: duration,
+				success: true
+			});
+
+			return data;
+		} catch (error) {
+			const duration = Math.round(performance.now() - startTime);
+			Analytics.track('api_timing', {
+				source: 'google',
+				endpoint: isIsbn ? 'isbn_search' : 'title_search',
+				duration_ms: duration,
+				success: false
+			});
+			throw error;
+		}
 	}
 
 	/**
@@ -31,37 +61,70 @@ export class BookApiService {
 	 * Gracefully handles rate limiting and service unavailability
 	 */
 	static async fetchOpenLibrary(query: string, isIsbn: boolean, limit = 1): Promise<OpenLibraryBookData | OpenLibrarySearchResponse | null> {
+		const startTime = performance.now();
 		const url = `${this.OPENLIBRARY_BASE}?q=${encodeURIComponent(query)}&isbn=${isIsbn}&limit=${limit}`;
 
-		const response = await fetch(url);
-		
-		// Graceful degradation: Don't throw on 503/429, return null to allow Google Books fallback
-		if (!response.ok) {
-			if (response.status === 503 || response.status === 429) {
-				console.warn(`⚠️ OpenLibrary ${response.status}: Gracefully degrading to Google Books only`);
-				return null; // Allow the app to continue with Google Books data
+		try {
+			const response = await fetch(url);
+			const duration = Math.round(performance.now() - startTime);
+			
+			// Graceful degradation: Don't throw on 503/429, return null to allow Google Books fallback
+			if (!response.ok) {
+				const errorType = response.status === 503 ? 'api_503' : response.status === 429 ? 'rate_limit' : 'unknown';
+				Analytics.track('error_occurred', {
+					error_type: errorType,
+					source: 'openlibrary',
+					message: `${response.status} ${response.statusText}`
+				});
+
+				if (response.status === 503 || response.status === 429) {
+					console.warn(`⚠️ OpenLibrary ${response.status}: Gracefully degrading to Google Books only`);
+					return null; // Allow the app to continue with Google Books data
+				}
+				throw new Error(`OpenLibrary API error: ${response.status} ${response.statusText}`);
 			}
-			throw new Error(`OpenLibrary API error: ${response.status} ${response.statusText}`);
-		}
 
-		const data = await response.json();
+			const data = await response.json();
 
-		// Check for API-level errors
-		if (data.error) {
-			// Graceful degradation for temporary unavailability
-			if (data.error.includes('temporarily unavailable') || data.error.includes('rate limit')) {
-				console.warn('⚠️ OpenLibrary temporarily unavailable:', data.error);
-				return null;
+			// Check for API-level errors
+			if (data.error) {
+				// Graceful degradation for temporary unavailability
+				if (data.error.includes('temporarily unavailable') || data.error.includes('rate limit')) {
+					Analytics.track('error_occurred', {
+						error_type: 'rate_limit',
+						source: 'openlibrary',
+						message: data.error
+					});
+					console.warn('⚠️ OpenLibrary temporarily unavailable:', data.error);
+					return null;
+				}
+				throw new Error(data.error);
 			}
-			throw new Error(data.error);
-		}
 
-		if (isIsbn) {
-			const key = `ISBN:${query}`;
-			return data[key] || null;
-		}
+			// Track API timing
+			Analytics.track('api_timing', {
+				source: 'openlibrary',
+				endpoint: isIsbn ? 'isbn_search' : 'title_search',
+				duration_ms: duration,
+				success: true
+			});
 
-		return data;
+			if (isIsbn) {
+				const key = `ISBN:${query}`;
+				return data[key] || null;
+			}
+
+			return data;
+		} catch (error) {
+			const duration = Math.round(performance.now() - startTime);
+			Analytics.track('api_timing', {
+				source: 'openlibrary',
+				endpoint: isIsbn ? 'isbn_search' : 'title_search',
+				duration_ms: duration,
+				success: false
+			});
+			throw error;
+		}
 	}
 
 	/**
@@ -70,13 +133,22 @@ export class BookApiService {
 	 * Priority source for LCC (Library of Congress Classification)
 	 */
 	static async fetchLibraryOfCongress(isbn: string): Promise<LoCBookData | null> {
+		const startTime = performance.now();
 		const url = `${this.LOC_BASE}?q=${encodeURIComponent(isbn)}&fo=json&at=results`;
 
 		try {
 			const response = await fetch(url);
+			const duration = Math.round(performance.now() - startTime);
 			
 			// Graceful degradation: Don't throw on errors, return null to allow fallback
 			if (!response.ok) {
+				const errorType = response.status === 503 ? 'api_503' : response.status === 429 ? 'rate_limit' : 'unknown';
+				Analytics.track('error_occurred', {
+					error_type: errorType,
+					source: 'loc',
+					message: `${response.status} ${response.statusText}`
+				});
+
 				if (response.status === 503 || response.status === 429 || response.status === 404) {
 					console.warn(`⚠️ Library of Congress ${response.status}: Gracefully degrading to other sources`);
 					return null;
@@ -92,8 +164,34 @@ export class BookApiService {
 				return null;
 			}
 
+			// Track API timing
+			Analytics.track('api_timing', {
+				source: 'loc',
+				endpoint: 'isbn_search',
+				duration_ms: duration,
+				success: true
+			});
+
 			return data;
 		} catch (error) {
+			const duration = Math.round(performance.now() - startTime);
+			
+			// Track timing even for failures
+			Analytics.track('api_timing', {
+				source: 'loc',
+				endpoint: 'isbn_search',
+				duration_ms: duration,
+				success: false
+			});
+
+			if (error instanceof Error && !error.message.includes('timeout')) {
+				Analytics.track('error_occurred', {
+					error_type: 'network_error',
+					source: 'loc',
+					message: error.message
+				});
+			}
+
 			// Silent failure - LoC can be slow or unavailable
 			console.warn('⚠️ Library of Congress fetch failed:', error instanceof Error ? error.message : 'Unknown error');
 			return null;
@@ -222,7 +320,16 @@ export class ApiCache {
 
 	get(key: string): any | null {
 		const entry = this.cache.get(key);
-		if (!entry) return null;
+		if (!entry) {
+			// Track cache miss
+			const cacheType = this === googleCache ? 'google' : this === openLibraryCache ? 'openlibrary' : 'loc';
+			Analytics.track('cache_hit', {
+				cache_type: cacheType,
+				key: key.substring(0, 50), // Truncate for privacy
+				is_isbn: isISBN(key.split(':')[0])
+			});
+			return null;
+		}
 
 		const now = Date.now();
 		if (now - entry.timestamp > this.ttl) {
@@ -230,8 +337,14 @@ export class ApiCache {
 			return null;
 		}
 
-		// Update hit count for analytics
+		// Update hit count and track cache hit
 		entry.hits++;
+		const cacheType = this === googleCache ? 'google' : this === openLibraryCache ? 'openlibrary' : 'loc';
+		Analytics.track('cache_hit', {
+			cache_type: cacheType,
+			key: key.substring(0, 50), // Truncate for privacy
+			is_isbn: isISBN(key.split(':')[0])
+		});
 		return entry.data;
 	}
 
