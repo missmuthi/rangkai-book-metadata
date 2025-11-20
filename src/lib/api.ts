@@ -209,7 +209,7 @@ export class BookApiService {
 		errors: { google?: Error; openlibrary?: Error; loc?: Error };
 	}> {
 		const googleTimeout = 10000; // 10 seconds
-		const openLibraryTimeout = 10000; // 10 seconds
+		const openLibraryTimeout = 3000; // 3 seconds (fail fast, secondary source)
 		const locTimeout = 5000; // 5 seconds (LoC can be slow, fail fast)
 
 		// Execute all three API calls in parallel
