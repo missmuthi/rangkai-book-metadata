@@ -64,10 +64,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		// Only attempt to get session if we have platform context and DB
 		if (event.platform?.env?.DB) {
 			const { getAuthWithPlatform } = await import('$lib/auth');
-			const authInstance = getAuthWithPlatform(
-				event.platform.env.DB,
-				event.url.origin
-			);
+			const authInstance = getAuthWithPlatform(event.platform.env);
 			
 			// Fetch session from Better Auth
 			const sessionData = await authInstance.api.getSession({

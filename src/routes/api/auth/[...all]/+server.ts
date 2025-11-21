@@ -22,7 +22,7 @@ export const GET: RequestHandler = async (event) => {
 		return new Response('Database not configured', { status: 500 });
 	}
 	
-	const auth = getAuthWithPlatform(event.platform.env.DB, event.url.origin);
+	const auth = getAuthWithPlatform(event.platform.env);
 	return auth.handler(event.request);
 };
 
@@ -31,7 +31,7 @@ export const POST: RequestHandler = async (event) => {
 		return new Response('Database not configured', { status: 500 });
 	}
 	
-	const auth = getAuthWithPlatform(event.platform.env.DB, event.url.origin);
+	const auth = getAuthWithPlatform(event.platform.env);
 	return auth.handler(event.request);
 };
 
@@ -40,7 +40,7 @@ export const PUT: RequestHandler = async (event) => {
 		return new Response('Database not configured', { status: 500 });
 	}
 	
-	const auth = getAuthWithPlatform(event.platform.env.DB, event.url.origin);
+	const auth = getAuthWithPlatform(event.platform.env);
 	return auth.handler(event.request);
 };
 
@@ -49,7 +49,7 @@ export const DELETE: RequestHandler = async (event) => {
 		return new Response('Database not configured', { status: 500 });
 	}
 	
-	const auth = getAuthWithPlatform(event.platform.env.DB, event.url.origin);
+	const auth = getAuthWithPlatform(event.platform.env);
 	return auth.handler(event.request);
 };
 
@@ -58,6 +58,6 @@ export const PATCH: RequestHandler = async (event) => {
 		return new Response('Database not configured', { status: 500 });
 	}
 	
-	const auth = getAuthWithPlatform(event.platform.env.DB, event.url.origin);
+	const auth = getAuthWithPlatform(event.platform.env);
 	return auth.handler(event.request);
 };
