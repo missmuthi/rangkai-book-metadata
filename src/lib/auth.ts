@@ -2,11 +2,12 @@
  * Better Auth Server Configuration
  * Handles authentication with Cloudflare D1 and Google OAuth
  * 
- * Note: Better Auth with D1 requires manual adapter setup
- * We use Kysely adapter which is compatible with D1's SQLite
+ * Uses Kysely as database adapter (compatible with D1)
  */
 
 import { betterAuth } from 'better-auth';
+import { Kysely } from 'kysely';
+import { D1Dialect } from 'kysely-d1';
 
 /**
  * Helper function to get auth instance with platform context
@@ -18,6 +19,11 @@ import { betterAuth } from 'better-auth';
  * @param env - Full environment object from platform.env (includes DB, secrets, etc.)
  */
 export function getAuthWithPlatform(env: App.Platform['env']) {
+	// Create Kysely instance with D1 dialect
+	const kysely = new Kysely({
+		dialect: new D1Dialect({ database: env.DB })
+	});
+	
 	return betterAuth({
 		// Explicitly pass the secret (Better Auth needs this)
 		secret: env.BETTER_AUTH_SECRET,
@@ -25,14 +31,8 @@ export function getAuthWithPlatform(env: App.Platform['env']) {
 		// Base URL for callbacks (MUST be production URL, not localhost)
 		baseURL: env.BETTER_AUTH_URL,
 		
-		database: {
-			// D1 uses SQLite syntax, so we provide a custom adapter
-			// that wraps D1's methods to match Better Auth's expectations
-			type: 'sqlite' as const,
-			
-			// Provide the D1 instance
-			provider: env.DB,
-		},
+		// Use Kysely directly (Better Auth supports Kysely natively)
+		database: kysely as any,
 		
 		// Email and password authentication (optional)
 		emailAndPassword: {
