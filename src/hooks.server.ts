@@ -51,8 +51,8 @@ export const handleError: HandleServerError = ({ error, event, status, message }
 };
 
 /**
- * Global request handler with Better Auth session injection
- * Fetches the current session and makes it available in event.locals
+ * Global request handler with lightweight session injection
+ * Fetches the current session from cookies and makes it available in event.locals
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	// Log incoming requests in development
@@ -63,35 +63,27 @@ export const handle: Handle = async ({ event, resolve }) => {
 	try {
 		// Only attempt to get session if we have platform context and DB
 		if (event.platform?.env?.DB) {
-			const { getAuthWithPlatform } = await import('$lib/auth');
-			const authInstance = getAuthWithPlatform(event.platform.env);
+			const { getSession } = await import('$lib/auth-simple');
+			const sessionToken = event.cookies.get('session');
 			
-			// Fetch session from Better Auth
-			const sessionData = await authInstance.api.getSession({
-				headers: event.request.headers
-			});
-			
-			// Inject session and user into event.locals for use in routes and layouts
-			if (sessionData?.session && sessionData?.user) {
-				event.locals.session = {
-					user: {
-						id: sessionData.user.id,
-						name: sessionData.user.name,
-						email: sessionData.user.email,
-						image: sessionData.user.image || null
-					},
-					session: {
-						token: sessionData.session.token,
-						expiresAt: sessionData.session.expiresAt,
-						userId: sessionData.session.userId
-					}
-				};
-				event.locals.user = {
-					id: sessionData.user.id,
-					name: sessionData.user.name,
-					email: sessionData.user.email,
-					image: sessionData.user.image || null
-				};
+			if (sessionToken) {
+				const sessionData = await getSession(event.platform.env.DB, sessionToken);
+				
+				// Inject session and user into event.locals for use in routes and layouts
+				if (sessionData) {
+					event.locals.session = {
+						user: sessionData.user,
+						session: {
+							token: sessionData.session.token,
+							expiresAt: sessionData.session.expiresAt,
+							userId: sessionData.session.userId
+						}
+					};
+					event.locals.user = sessionData.user;
+				} else {
+					event.locals.session = null;
+					event.locals.user = null;
+				}
 			} else {
 				event.locals.session = null;
 				event.locals.user = null;

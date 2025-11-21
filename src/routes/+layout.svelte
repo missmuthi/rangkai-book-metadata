@@ -2,7 +2,6 @@
 import "../app.css";
 import favicon from '$lib/assets/favicon.svg';
 import ErrorBoundary from '$lib/ErrorBoundary.svelte';
-import { handleSignOut } from '$lib/auth-client';
 
 let { children, data } = $props();
 
@@ -19,7 +18,9 @@ function closeUserMenu() {
 
 async function onSignOut() {
 	closeUserMenu();
-	await handleSignOut();
+	// Call server-side sign-out endpoint
+	await fetch('/api/auth/sign-out', { method: 'POST' });
+	window.location.href = '/';
 }
 </script>
 

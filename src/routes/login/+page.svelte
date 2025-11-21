@@ -1,22 +1,13 @@
 <script lang="ts">
-	import { signInWithGoogle } from '$lib/auth-client';
-	import { goto } from '$app/navigation';
-	
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 	
-	async function handleGoogleSignIn() {
+	function handleGoogleSignIn() {
 		isLoading = true;
 		error = null;
 		
-		try {
-			await signInWithGoogle();
-			// Redirect will happen automatically after OAuth flow
-		} catch (err) {
-			console.error('Sign in error:', err);
-			error = err instanceof Error ? err.message : 'Failed to sign in with Google';
-			isLoading = false;
-		}
+		// Redirect to Google OAuth endpoint
+		window.location.href = '/api/auth/google';
 	}
 </script>
 
