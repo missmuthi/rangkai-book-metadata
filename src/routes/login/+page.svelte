@@ -6,11 +6,11 @@
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 	
-	// Auto-redirect logged-in users to dashboard
+	// Auto-redirect logged-in users to root
 	$effect(() => {
-		if (data.session) {
-			console.log('[Login] User already logged in, redirecting to /dashboard');
-			goto('/dashboard', { replaceState: true });
+		if (data?.session) {
+			console.log('[Login] User already logged in, redirecting to /');
+			goto('/', { replaceState: true });
 		}
 	});
 	

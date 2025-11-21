@@ -110,8 +110,8 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 			cookies.delete('google_oauth_state', { path: '/' });
 			cookies.delete('google_code_verifier', { path: '/' });
 			
-			// Redirect to dashboard
-			throw redirect(303, '/dashboard');
+			// Redirect to root (stable route)
+			throw redirect(303, '/');
 		} catch (error) {
 			// CRITICAL: Serialize error object for readable Cloudflare logs
 			console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

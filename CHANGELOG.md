@@ -5,6 +5,50 @@ All notable changes to the Rangkai Book Metadata Harvester project will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-11-21 - **Identity Layer & Multi-User Support** 🔐
+
+### 🔐 Authentication System
+- **Arctic OAuth Integration**: Lightweight Google OAuth with manual D1 session management
+  - Replaced Better Auth with simpler Arctic-based authentication
+  - No complex ORM dependencies, pure D1 SQL queries
+  - Session-based authentication with 7-day expiry
+- **Fixed OAuth Redirect**: Changed callback destination from unstable `/dashboard` to stable root `/`
+  - Eliminates 404 errors after Google login
+  - Consistent user experience across all auth flows
+- **Robust Logout Flow**: Fully functional sign-out with proper cookie clearing
+  - Hard redirect to `/login` after logout
+  - Database session cleanup with error fallback
+  - Cache control headers prevent stale sessions
+
+### 👥 Multi-User Database Schema
+- **User Table**: Stores OAuth user data (email, name, image, email verification)
+- **Session Table**: Secure session tokens with expiration tracking
+- **Foreign Key Relationships**: Scans table now links to users via `user_id`
+- **Data Isolation**: User A cannot access User B's scan history
+
+### 🛡️ Security Enhancements
+- **Server-Side Session Validation**: All protected routes check `event.locals.session`
+- **User-Scoped Queries**: Database operations filtered by `user_id`
+- **Graceful Error Handling**: Comprehensive error logging without exposing sensitive data
+- **HTTPS-Only Cookies**: Secure, HttpOnly, SameSite=Lax cookie attributes
+
+### 🎨 UI/UX Improvements
+- **User Menu Dropdown**: Avatar, name, email display with Dashboard/History links
+- **Login Button**: Prominent CTA for unauthenticated users
+- **Auto-Redirect**: Logged-in users visiting `/login` redirect to home
+- **Responsive Header**: Mobile-friendly user menu with proper z-indexing
+
+### 📚 Documentation Updates
+- **agents.md**: Updated with v2.0 authentication patterns and security checklist
+- **Migration Guide**: v2.0 schema migration SQL included
+- **Type Safety**: Full TypeScript support for Cloudflare Platform bindings
+
+### ⚠️ Breaking Changes
+- **Authentication Required**: Previously public routes now require login
+- **Database Schema**: Migration required for existing deployments (see migrations/v2.0-auth-migration.sql)
+- **API Changes**: Protected endpoints now return 401 for unauthenticated requests
+- **Session Cookie**: New `session` cookie replaces any previous auth mechanisms
+
 ## [1.3.0] - 2025-11-21 - **Serverless Architecture** 🚀
 
 ### ⚡ Architecture Overhaul

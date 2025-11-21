@@ -659,4 +659,4 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 **Built with ❤️ for Indonesian libraries and catalogers**
 
-*Version 1.1.0 - Last updated: November 20, 2025*
+*Version 2.0.0 - Last updated: November 21, 2025*
