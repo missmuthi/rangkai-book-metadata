@@ -1,59 +1,206 @@
-node_modules
+# ============================================
+# Rangkai Book Metadata - .gitignore
+# ============================================
+# Optimized for SvelteKit + Cloudflare + D1 + Better Auth
+# Last Updated: 2025-11-21 (v1.3.0)
 
-# Output
-.output
-.vercel
-.netlify
-.wrangler
-/.svelte-kit
-/build
+# ============================================
+# Dependencies
+# ============================================
+node_modules/
+.pnp
+.pnp.js
 
-# OS
-.DS_Store
-Thumbs.db
+# ============================================
+# SvelteKit
+# ============================================
+.svelte-kit/
+build/
+.output/
 
-# Env
-.env
-.env.*
-!.env.example
-!.env.test
-
+# ============================================
 # Vite
+# ============================================
+.vite/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Vite / Dev
-.vite/
-
-# Build outputs
+# ============================================
+# Build Outputs
+# ============================================
 dist/
 public/build/
 
+# ============================================
+# Cloudflare (CRITICAL - Local D1 State)
+# ============================================
+.wrangler/
+wrangler.toml.backup
+
+# Local D1 databases (fallback/development)
+*.sqlite
+*.sqlite3
+*.db
+.mf/
+
+# Cloudflare Workers local state
+worker-configuration.d.ts
+
+# ============================================
+# Environment Variables (SECURITY CRITICAL)
+# ============================================
+.env
+.env.local
+.env.production
+.env.development
+.env.*.local
+
+# Allow templates (safe to commit)
+!.env.example
+!.env.template
+
+# ============================================
+# Testing & Coverage
+# ============================================
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+*.test-results.json
+
+# Vitest cache
+.vitest/
+
+# ============================================
 # Logs
+# ============================================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Editor directories and files
-.idea/
+# Runtime logs
+*.log
+
+# ============================================
+# Operating System
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================
+# IDEs & Editors
+# ============================================
+# VSCode
 .vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# JetBrains (WebStorm, IntelliJ)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
 *.sublime-workspace
 
-# Mac
-.DS_Store
+# Vim
+*.swp
+*.swo
+*~
 
-# Temporary
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+
+# ============================================
+# Authentication (Better Auth)
+# ============================================
+# Session storage (if using file-based sessions)
+.sessions/
+sessions/
+
+# OAuth credentials cache (local dev only)
+.oauth-cache/
+
+# Better Auth migration temp files
+.better-auth-migrations/
+
+# ============================================
+# Temporary Files
+# ============================================
 *.tmp
 *.temp
+*.bak
+*.cache
+*.pid
+*.seed
+*.pid.lock
 
-# Lockfiles (if you intentionally commit lockfile, skip)
+# ============================================
+# Deployment Platforms
+# ============================================
+.vercel/
+.netlify/
+
+# ============================================
+# Package Managers (Optional Lock Files)
+# ============================================
+# Uncomment if you want to ignore lock files
 # package-lock.json
+# pnpm-lock.yaml
+# yarn.lock
 
-node_modules/
-.svelte-kit/
-dist/
-build/
-.vite/
-.env
-.env.local
-.DS_Store
+# ============================================
+# Miscellaneous
+# ============================================
+# Debugging artifacts
+.trace
+.trace-*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Sentry
+.sentryclirc
+
+# Lighthouse reports
+lighthouse-*.html
+lighthouse-*.json
+
+# Performance analysis
+stats.html
+bundle-analyzer-*.html
+
+# Screenshot tests
+screenshots/
+__screenshots__/
+
+# ============================================
+# Security Notes
+# ============================================
+# NEVER commit:
+# - .env files with real credentials
+# - .wrangler/ (contains local D1 state)
+# - *.sqlite files (local database snapshots)
+# - API keys, tokens, secrets
+# - Private keys (.pem, .key files)
+# ============================================
