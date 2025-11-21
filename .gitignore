@@ -132,7 +132,7 @@ Desktop.ini
 /.emacs.desktop.lock
 
 # ============================================
-# Authentication (Better Auth)
+# Authentication (Better Auth v2.0+)
 # ============================================
 # Session storage (if using file-based sessions)
 .sessions/
@@ -143,6 +143,15 @@ sessions/
 
 # Better Auth migration temp files
 .better-auth-migrations/
+
+# Better Auth secrets (CRITICAL - NEVER COMMIT)
+better-auth-secret.txt
+.better-auth-secret
+auth-secret.key
+
+# OAuth state files (local dev)
+.oauth-state/
+oauth-tokens.json
 
 # ============================================
 # Temporary Files
@@ -195,12 +204,21 @@ screenshots/
 __screenshots__/
 
 # ============================================
-# Security Notes
+# Security Notes (v2.0 - Zero Trust Policy)
 # ============================================
 # NEVER commit:
 # - .env files with real credentials
 # - .wrangler/ (contains local D1 state)
 # - *.sqlite files (local database snapshots)
-# - API keys, tokens, secrets
+# - API keys, tokens, secrets (GOOGLE_CLIENT_SECRET, BETTER_AUTH_SECRET)
 # - Private keys (.pem, .key files)
+# - better-auth-secret.txt (if generated)
+# - OAuth tokens or session data
+# 
+# Production Secrets Checklist:
+# ✅ Set in Cloudflare Pages Environment Variables (NOT in code)
+# ✅ Rotate BETTER_AUTH_SECRET quarterly
+# ✅ Use different GOOGLE_CLIENT_ID for dev/staging/production
+# ✅ Enable 2FA on Google Cloud Console
+# ✅ Review authorized redirect URIs regularly
 # ============================================

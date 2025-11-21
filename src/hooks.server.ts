@@ -51,8 +51,8 @@ export const handleError: HandleServerError = ({ error, event, status, message }
 };
 
 /**
- * Optional: Global request handler
- * Useful for logging all requests or adding custom headers
+ * Global request handler with Better Auth session injection
+ * Fetches the current session and makes it available in event.locals
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	// Log incoming requests in development
@@ -61,12 +61,59 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 	
 	try {
+		// Only attempt to get session if we have platform context and DB
+		if (event.platform?.env?.DB) {
+			const { getAuthWithPlatform } = await import('$lib/auth');
+			const authInstance = getAuthWithPlatform(
+				event.platform.env.DB,
+				event.url.origin
+			);
+			
+			// Fetch session from Better Auth
+			const sessionData = await authInstance.api.getSession({
+				headers: event.request.headers
+			});
+			
+			// Inject session and user into event.locals for use in routes and layouts
+			if (sessionData?.session && sessionData?.user) {
+				event.locals.session = {
+					user: {
+						id: sessionData.user.id,
+						name: sessionData.user.name,
+						email: sessionData.user.email,
+						image: sessionData.user.image || null
+					},
+					session: {
+						token: sessionData.session.token,
+						expiresAt: sessionData.session.expiresAt,
+						userId: sessionData.session.userId
+					}
+				};
+				event.locals.user = {
+					id: sessionData.user.id,
+					name: sessionData.user.name,
+					email: sessionData.user.email,
+					image: sessionData.user.image || null
+				};
+			} else {
+				event.locals.session = null;
+				event.locals.user = null;
+			}
+		} else {
+			// No platform context (local dev without D1)
+			event.locals.session = null;
+			event.locals.user = null;
+		}
+		
 		const response = await resolve(event);
 		return response;
 	} catch (error) {
-		// This shouldn't normally be needed (handleError catches it)
-		// but provides an extra safety net
-		console.error('⚠️ Uncaught error in handle hook:', error);
-		throw error;
+		// Session fetch failed - continue without session
+		console.error('⚠️ Failed to fetch session:', error);
+		event.locals.session = null;
+		event.locals.user = null;
+		
+		const response = await resolve(event);
+		return response;
 	}
 };
