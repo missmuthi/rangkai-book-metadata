@@ -5,6 +5,55 @@ All notable changes to the Rangkai Book Metadata Harvester project will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2025-11-21 - **OAuth Redirect Fix & Production Deployment** 🚀
+
+### 🐛 Critical Fixes
+- **OAuth Callback Redirect Handling**: Fixed SvelteKit redirect being caught as error
+  - Added `isRedirect()` check to re-throw redirects instead of logging as errors
+  - Eliminates false "Non-Error Object" logs in production
+  - Login flow now completes successfully without 500 errors
+- **Session Creation Enhancement**: Added user agent tracking to sessions
+  - Stores browser/device information for security auditing
+  - Helps identify suspicious login patterns
+- **OAuth State Timestamp Validation**: Added 10-minute expiry window
+  - Prevents replay attacks on OAuth state tokens
+  - Improves security posture of authentication flow
+
+### 🔒 Security Improvements
+- **Better Auth Secret Rotation**: Generated new cryptographically secure secret
+  - 256-bit base64-encoded random key
+  - Updated in both local `.env` and Cloudflare Pages production
+- **Production Environment Configuration**: 
+  - `BETTER_AUTH_URL` → `https://rangkai-book-metadata.pages.dev`
+  - Google OAuth redirect URIs configured for both localhost and production
+  - All secrets properly set in Cloudflare Pages environment
+
+### 📚 Documentation
+- **OAuth Fix Summary**: Created comprehensive `OAUTH_FIX_SUMMARY.md`
+  - Root cause analysis and solution explanation
+  - Testing checklist and success criteria
+  - Database reset commands and debugging steps
+- **Quick Commands Reference**: Added `QUICK_COMMANDS.md` for developers
+  - Common development tasks (build, test, deploy)
+  - Database management commands
+  - Monitoring and debugging workflows
+- **Database Reset Script**: Added `reset-database.sql` for testing
+  - Clean slate for OAuth flow testing
+  - Proper foreign key cascade deletion order
+
+### 🔧 Development Workflow
+- **Local Development Note**: Documented Vite dev limitation
+  - `vite dev` doesn't provide D1/KV bindings (platform.env.DB undefined)
+  - Production deployment uses full Cloudflare runtime
+  - Added `dev:wrangler` script for local testing with D1 access
+
+### ✅ Deployment Ready
+- All TypeScript checks pass (0 errors, 0 warnings)
+- Production build succeeds
+- OAuth flow tested and verified
+- Database schema synchronized
+- Environment variables configured
+
 ## [2.0.1] - 2025-11-21 - **Security Audit Hotfix** 🔒
 
 ### 🔒 Security & Performance Fixes

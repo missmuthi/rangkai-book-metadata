@@ -5,7 +5,7 @@
 
 import { createGoogleAuth, generateSessionToken, createSession, upsertUser, deleteSession } from '$lib/auth-simple';
 import type { RequestHandler } from './$types';
-import { redirect } from '@sveltejs/kit';
+import { redirect, isRedirect } from '@sveltejs/kit';
 
 /**
  * Generate PKCE code verifier (base64url, 43-128 chars)
@@ -19,7 +19,7 @@ function generateCodeVerifier(): string {
 /**
  * GET /api/auth/google - Initiate Google OAuth flow
  */
-export const GET: RequestHandler = async ({ url, platform, cookies }) => {
+export const GET: RequestHandler = async ({ url, platform, cookies, request }) => {
 	if (!platform?.env) {
 		return new Response('Platform not configured', { status: 500 });
 	}
@@ -56,6 +56,15 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 			maxAge: 60 * 10 // 10 minutes
 		});
 		
+		// Store timestamp to prevent replay attacks
+		cookies.set('google_oauth_timestamp', Date.now().toString(), {
+			path: '/',
+			httpOnly: true,
+			secure: true,
+			sameSite: 'lax',
+			maxAge: 60 * 10 // 10 minutes
+		});
+		
 		throw redirect(302, authUrl.toString());
 	}
 	
@@ -65,6 +74,16 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 		const state = url.searchParams.get('state');
 		const storedState = cookies.get('google_oauth_state');
 		const codeVerifier = cookies.get('google_code_verifier');
+		const timestamp = cookies.get('google_oauth_timestamp');
+		
+		// Validate state freshness (prevent replay attacks)
+		if (timestamp) {
+			const elapsed = Date.now() - parseInt(timestamp);
+			if (elapsed > 600000) { // 10 minutes
+				console.warn('[OAuth] State expired, elapsed:', elapsed, 'ms');
+				return new Response('OAuth state expired', { status: 400 });
+			}
+		}
 		
 		if (!code || !state || state !== storedState || !codeVerifier) {
 			return new Response('Invalid OAuth callback', { status: 400 });
@@ -93,9 +112,10 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 				googleUser.picture
 			);
 			
-			// Create session
+			// Create session with user agent tracking
 			const sessionToken = generateSessionToken();
-			await createSession(platform.env.DB, userId, sessionToken);
+			const userAgent = request.headers.get('user-agent') || 'Unknown';
+			await createSession(platform.env.DB, userId, sessionToken, userAgent);
 			
 			// Set session cookie
 			cookies.set('session', sessionToken, {
@@ -106,14 +126,22 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 				maxAge: 60 * 60 * 24 * 7 // 7 days
 			});
 			
-			// Clear OAuth state and code verifier
+			// Clear OAuth state, code verifier, and timestamp
 			cookies.delete('google_oauth_state', { path: '/' });
 			cookies.delete('google_code_verifier', { path: '/' });
+			cookies.delete('google_oauth_timestamp', { path: '/' });
 			
-			// Redirect to root (stable route)
+			console.log('[OAuth] ✅ Login successful for user:', googleUser.email);
+			
+			// Redirect to home page (stable route)
 			throw redirect(303, '/');
 		} catch (error) {
-			// CRITICAL: Serialize error object for readable Cloudflare logs
+			// ⚠️ CRITICAL: SvelteKit throws redirects as errors - we must re-throw them!
+			if (isRedirect(error)) {
+				throw error; // Allow the redirect to propagate
+			}
+			
+			// Log actual errors
 			console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 			console.error('🔴 OAUTH CALLBACK ERROR');
 			console.error('Timestamp:', new Date().toISOString());
@@ -123,11 +151,8 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 				console.error('Error Type:', error.constructor.name);
 				console.error('Error Message:', error.message);
 				console.error('Stack Trace:', error.stack);
-				// Log any additional error properties
-				console.error('Full Error Object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
 			} else {
-				// Non-Error object - serialize completely
-				console.error('Non-Error Object:', JSON.stringify(error, null, 2));
+				console.error('Unknown Error:', error);
 			}
 			
 			console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

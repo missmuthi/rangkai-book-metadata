@@ -39,17 +39,27 @@ export function generateSessionToken(): string {
 export async function createSession(
 	db: D1Database,
 	userId: string,
-	token: string
+	token: string,
+	userAgent?: string
 ): Promise<void> {
 	const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+	const now = Date.now();
 	
 	try {
 		await db
 			.prepare(
-				`INSERT INTO session (token, userId, expiresAt, createdAt, updatedAt)
-				 VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+				`INSERT INTO session (id, token, userId, expiresAt, userAgent, createdAt, updatedAt)
+				 VALUES (?, ?, ?, ?, ?, ?, ?)`
 			)
-			.bind(token, userId, expiresAt.getTime())
+			.bind(
+				crypto.randomUUID(), // Generate session id
+				token,
+				userId,
+				expiresAt.getTime(),
+				userAgent || null,
+				now,
+				now
+			)
 			.run();
 		
 		console.log(`[AUTH] Session created for user ${userId}, expires: ${expiresAt.toISOString()}`);
