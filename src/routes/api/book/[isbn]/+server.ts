@@ -164,7 +164,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
 	return json(responseData, {
 		headers: {
-			'Cache-Control': 'public, max-age=86400',
+			'Cache-Control': 'public, max-age=3600', // 1 hour cache (audit requirement)
 			'X-Cache': 'MISS',
 			'X-Response-Time': `${totalDuration}ms`,
 			'X-Sources': JSON.stringify({

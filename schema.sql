@@ -84,9 +84,9 @@ CREATE INDEX IF NOT EXISTS idx_session_token ON session(token);
 CREATE INDEX IF NOT EXISTS idx_account_userId ON account(userId);
 CREATE INDEX IF NOT EXISTS idx_verification_identifier ON verification(identifier);
 
--- Application indexes
+-- Application indexes (B-Tree for efficient lookups)
 CREATE INDEX IF NOT EXISTS idx_scans_user_id ON scans(user_id);
-CREATE INDEX IF NOT EXISTS idx_scans_isbn ON scans(isbn);
+CREATE INDEX IF NOT EXISTS idx_scans_isbn ON scans(isbn); -- B-Tree index prevents full-table scans
 CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scans_status ON scans(status);
 

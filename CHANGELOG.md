@@ -5,6 +5,35 @@ All notable changes to the Rangkai Book Metadata Harvester project will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-11-21 - **Security Audit Hotfix** 🔒
+
+### 🔒 Security & Performance Fixes
+- **Cache-Control Optimization**: Reduced book metadata cache from 24h to 1h (max-age=3600)
+  - Balances freshness with performance for frequently updated metadata
+  - Prevents stale data in high-traffic scenarios
+- **SSRF Protection Documentation**: Enhanced domain whitelist security comments
+  - Explicit documentation of allowed domains (books.google.com, covers.openlibrary.org)
+  - Clear fallback behavior for untrusted image sources
+- **TypeScript Type Safety**: Complete Cloudflare Platform interface with JSDoc
+  - Full type definitions for env (D1, KV, auth secrets)
+  - waitUntil context typing for background task safety
+  - CfProperties interface for request metadata
+
+### 🗄️ Database Optimization
+- **B-Tree Index Documentation**: Added inline comment for `idx_scans_isbn`
+  - Clarifies index purpose (prevents full-table scans on ISBN lookups)
+  - Improves maintainability for future schema changes
+
+### 🔧 Local Development
+- **D1 State Reset**: Fixed local database corruption issues
+  - Manual cleanup of `.wrangler/state/v3/d1` for schema synchronization
+  - Re-applied full schema with correct multi-user structure
+
+### 📝 Technical Debt
+- Verified waitUntil pattern for background D1/KV writes (already correct)
+- Confirmed B-Tree index exists in schema (documentation-only fix)
+- Validated SSRF whitelist implementation (no code changes needed)
+
 ## [2.0.0] - 2025-11-21 - **Identity Layer & Multi-User Support** 🔐
 
 ### 🔐 Authentication System

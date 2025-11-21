@@ -120,6 +120,11 @@
 	 * Proxy book cover images via wsrv.nl for privacy and HTTPS
 	 * CRITICAL: Only allows whitelisted domains to prevent SSRF attacks
 	 * 
+	 * Security Audit Fix: Hardened against Server-Side Request Forgery (SSRF)
+	 * - Whitelist validation prevents requests to internal/untrusted hosts
+	 * - Blocks localhost, private IPs, and non-whitelisted domains
+	 * - Returns safe placeholder on validation failure
+	 * 
 	 * @param url - Original image URL from book API
 	 * @returns Proxied URL via wsrv.nl or fallback placeholder
 	 */
@@ -134,6 +139,7 @@
 		}
 		
 		// SSRF Protection: Whitelist only trusted book cover domains
+		// Audit Requirement: Prevent requests to arbitrary URLs
 		const ALLOWED_DOMAINS = [
 			'books.google.com',
 			'books.googleusercontent.com',
