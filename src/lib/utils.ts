@@ -232,7 +232,7 @@ function calculateISBN13CheckDigit(isbn12: string): string {
 /**
  * Validate ISBN-10 format and checksum
  */
-function isValidISBN10(isbn: string): boolean {
+export function isValidISBN10(isbn: string): boolean {
 	if (!/^\d{9}[\dX]$/.test(isbn)) return false;
 	
 	const expected = calculateISBN10CheckDigit(isbn.substring(0, 9));
@@ -242,7 +242,7 @@ function isValidISBN10(isbn: string): boolean {
 /**
  * Validate ISBN-13 format and checksum
  */
-function isValidISBN13(isbn: string): boolean {
+export function isValidISBN13(isbn: string): boolean {
 	if (!/^\d{13}$/.test(isbn)) return false;
 	
 	const expected = calculateISBN13CheckDigit(isbn.substring(0, 12));

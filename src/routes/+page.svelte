@@ -115,6 +115,57 @@
 		return input.replace(/[^a-zA-Z0-9]/g, '');
 	}
 
+	// --- Secure Image Proxy Utility (SSRF Protection) ---
+	/**
+	 * Proxy book cover images via wsrv.nl for privacy and HTTPS
+	 * CRITICAL: Only allows whitelisted domains to prevent SSRF attacks
+	 * 
+	 * @param url - Original image URL from book API
+	 * @returns Proxied URL via wsrv.nl or fallback placeholder
+	 */
+	function getSecureProxyUrl(url: string | null | undefined): string {
+		if (!url || url === '' || url === '-') {
+			return FALLBACK_COVER;
+		}
+		
+		// Allow data URIs (SVG fallback covers)
+		if (url.startsWith('data:')) {
+			return url;
+		}
+		
+		// SSRF Protection: Whitelist only trusted book cover domains
+		const ALLOWED_DOMAINS = [
+			'books.google.com',
+			'books.googleusercontent.com',
+			'covers.openlibrary.org'
+		];
+		
+		try {
+			const urlObj = new URL(url);
+			
+			// Check if domain is whitelisted
+			const isAllowed = ALLOWED_DOMAINS.some(domain => 
+				urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
+			);
+			
+			if (!isAllowed) {
+				console.warn(`[SSRF Protection] Blocked untrusted domain: ${urlObj.hostname}`);
+				return FALLBACK_COVER;
+			}
+			
+			// Proxy via wsrv.nl with optimization parameters
+			// w=300: max width 300px (responsive)
+			// q=80: quality 80% (balance between size and quality)
+			// output=webp: modern format for better compression
+			const encodedUrl = encodeURIComponent(url);
+			return `https://wsrv.nl/?url=${encodedUrl}&w=300&q=80&output=webp`;
+			
+		} catch (error) {
+			console.warn('[Secure Proxy] Invalid URL format:', url);
+			return FALLBACK_COVER;
+		}
+	}
+
 	// --- Enhanced Cache System ---
 	function getCacheKey(query: string, source: 'google' | 'openlibrary' | 'loc', isIsbn: boolean): string {
 		return `${source}:${query}:${isIsbn}`;
@@ -952,13 +1003,25 @@
 				</div>					<h2 class="text-xl font-bold mb-4 border-b pb-2">SLiMS-Ready Data (Merged)</h2>
 					
 					<div class="space-y-4">
-					<div class="w-1/3 float-right ml-4 mb-4">
-						<div class="aspect-[2/3] w-full bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 shadow-md overflow-hidden bg-cover bg-center" style="background-image: url({mergedData.cover !== FALLBACK_COVER ? getSecureImageUrl(mergedData.cover) : 'none'});">
- {#if mergedData.cover === FALLBACK_COVER}
- <span class="text-sm px-4 text-center">No Cover Available</span>
- {/if}
-</div>
-					</div>					<div>
+					{#if mergedData}
+						{@const secureProxiedCover = getSecureProxyUrl(mergedData.cover)}
+						<div class="w-1/3 float-right ml-4 mb-4">
+							<div class="aspect-[2/3] w-full bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden shadow-md">
+								{#if secureProxiedCover === FALLBACK_COVER}
+									<span class="text-sm px-4 text-center text-gray-500">No Cover Available</span>
+								{:else}
+									<img 
+										src={secureProxiedCover}
+										alt="{mergedData.title} book cover"
+										class="w-full h-full object-cover"
+										loading="lazy"
+										decoding="async"
+										onerror={handleCoverError}
+									/>
+								{/if}
+							</div>
+						</div>
+					{/if}					<div>
 						<span class="text-sm font-medium text-gray-500">Title</span>
 						<p class="text-xl font-semibold text-gray-900">{mergedData.title}</p>
 					</div>
@@ -1097,9 +1160,10 @@
 								{@const title = info.title || 'No Title'}
 								{@const author = info.authors ? info.authors[0] : 'Unknown Author'}
 								{@const cover = info.imageLinks?.smallThumbnail || FALLBACK_COVER}
+                                                                {@const secureProxiedCover = getSecureProxyUrl(cover)}
 								
 							<button type="button" onclick={() => handleBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
-								<img src={getSecureImageUrl(cover)} alt="Book cover" class="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0" onerror={handleCoverError} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+								<img src={secureProxiedCover} alt="{title} book cover" class="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0" onerror={handleCoverError} loading="lazy" decoding="async"  />
 								<div>
 									<div class="font-semibold text-base text-blue-700">{title}</div>
 									<div class="text-sm text-gray-600">{author}</div>
@@ -1115,14 +1179,13 @@
 					<div>
 						<h2 class="text-xl font-bold mb-4">Results from OpenLibrary</h2>
 						<div class="space-y-3 max-h-[60vh] overflow-y-auto">
-							{#each openLibraryResults as doc, index}
-								{@const title = doc.title || 'No Title'}
-								{@const author = doc.author_name ? doc.author_name[0] : 'Unknown Author'}
-								{@const coverID = doc.cover_i}
-								{@const cover = coverID ? `https://covers.openlibrary.org/b/id/${coverID}-S.jpg` : FALLBACK_COVER}
-
-							<button type="button" onclick={() => handleOpenLibraryBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
-								<img src={getSecureImageUrl(cover)} alt="Book cover" class="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0" onerror={handleCoverError} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+						{#each openLibraryResults as doc, index}
+							{@const title = doc.title || 'No Title'}
+							{@const author = doc.author_name ? doc.author_name[0] : 'Unknown Author'}
+							{@const coverID = doc.cover_i}
+							{@const cover = coverID ? `https://covers.openlibrary.org/b/id/${coverID}-S.jpg` : FALLBACK_COVER}
+							{@const secureProxiedCover = getSecureProxyUrl(cover)}							
+						<button type="button" onclick={() => handleOpenLibraryBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
 								<div>
 									<div class="font-semibold text-base text-green-700">{title}</div>
 									<div class="text-sm text-gray-600">{author}</div>

@@ -6,7 +6,16 @@ declare global {
 		// interface Locals {}
 		// interface PageData {}
 		// interface PageState {}
-		// interface Platform {}
+		interface Platform {
+			env: {
+				DB: D1Database;
+				BOOK_CACHE: KVNamespace;
+			};
+			context: {
+				waitUntil(promise: Promise<any>): void;
+			};
+			cf: CfProperties;
+		}
 	}
 }
 
