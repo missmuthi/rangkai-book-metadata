@@ -20,17 +20,28 @@ async function onSignOut() {
 	closeUserMenu();
 	
 	try {
+		console.log('[Logout] Initiating sign out...');
+		
 		// Call server-side sign-out endpoint
-		const response = await fetch('/api/auth/sign-out', { method: 'POST' });
+		const response = await fetch('/api/auth/sign-out', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			cache: 'no-store' // Prevent caching
+		});
+		
+		console.log('[Logout] Sign out response status:', response.status);
 		
 		if (!response.ok) {
-			console.error('Sign out failed:', response.status);
+			console.error('[Logout] Sign out failed:', response.status);
 		}
 		
+		console.log('[Logout] ✅ Redirecting to /login');
 		// Force hard reload to clear all client-side state
 		window.location.href = '/login';
 	} catch (error) {
-		console.error('Sign out error:', error);
+		console.error('[Logout] ❌ Sign out error:', error);
 		// Still redirect even if API call fails
 		window.location.href = '/login';
 	}

@@ -110,7 +110,8 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 			cookies.delete('google_oauth_state', { path: '/' });
 			cookies.delete('google_code_verifier', { path: '/' });
 			
-			throw redirect(302, '/');
+			// Redirect to dashboard
+			throw redirect(303, '/dashboard');
 		} catch (error) {
 			// CRITICAL: Serialize error object for readable Cloudflare logs
 			console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -147,11 +148,30 @@ export const POST: RequestHandler = async ({ platform, cookies }) => {
 	
 	const sessionToken = cookies.get('session');
 	if (sessionToken) {
-		await deleteSession(platform.env.DB, sessionToken);
-		cookies.delete('session', { path: '/' });
+		try {
+			await deleteSession(platform.env.DB, sessionToken);
+			console.log('[Sign Out] ✅ Session deleted from database:', sessionToken.substring(0, 8) + '...');
+		} catch (error) {
+			console.error('[Sign Out] ❌ Failed to delete session from database:', error);
+		}
 	}
 	
+	// Delete session cookie (match exact attributes from creation)
+	cookies.delete('session', {
+		path: '/',
+		httpOnly: true,
+		secure: true,
+		sameSite: 'lax'
+	});
+	
+	console.log('[Sign Out] ✅ Session cookie deleted');
+	
 	return new Response(JSON.stringify({ success: true }), {
-		headers: { 'Content-Type': 'application/json' }
+		headers: {
+			'Content-Type': 'application/json',
+			'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+			'Pragma': 'no-cache',
+			'Expires': '0'
+		}
 	});
 };
