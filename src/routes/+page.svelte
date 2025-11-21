@@ -355,40 +355,23 @@
 			const isIsbn = /^\d{10}(\d{3})?$/.test(cleanedQuery);
 
 		if (isIsbn) {
-			// ISBN Search - Get single result from ALL 3 APIs (Google + OpenLibrary + LoC)
-			const cacheKey = getCacheKey(cleanedQuery, 'google', true);
-			let cachedResult = googleCache.get(cacheKey);
+			// ISBN Search - Use serverless API endpoint (Cloudflare Workers + D1 + KV)
+			const apiResult = await retry(() => BookApiService.fetchFromServerless(cleanedQuery));
 
-			if (!cachedResult) {
-				// Use fetchAll() for 3-source integration
-				const result = await retry(() => BookApiService.fetchAll(cleanedQuery, true, 1, 1));
+			// The serverless API returns already-merged data
+			mergedData = apiResult as MergedBookData;
+			
+			// Extract metadata for analytics and debugging
+			const meta = apiResult.meta || {};
+			const hasGoogle = meta.sources?.google || false;
+			const hasOpenLib = meta.sources?.openlibrary || false;
+			const hasLoC = meta.sources?.loc || false;
+			
+			// Set raw data for debugging (show merged result)
+			googleRaw = JSON.stringify(mergedData, null, 2);
+			openLibraryRaw = `Serverless API Response\n\nCache: ${meta.cacheHit ? 'HIT' : 'MISS'}\nFetch: ${meta.fetchDuration}ms\nTotal: ${meta.totalDuration}ms\nSources: ${JSON.stringify(meta.sources, null, 2)}`;
 
-				cachedResult = {
-					googleData: (result.google && result.google.totalItems > 0 && result.google.items) ? result.google.items[0].volumeInfo : null,
-					openLibraryData: result.openlibrary as OpenLibraryBookData | null,
-					locData: result.loc || null,
-					errors: result.errors
-				};
-				googleCache.set(cacheKey, cachedResult);
-			}
-
-			const { googleData, openLibraryData, locData, errors } = cachedResult;
-
-			googleRaw = JSON.stringify(googleData, null, 2) || 'Failed to fetch or no data found.';
-			openLibraryRaw = JSON.stringify(openLibraryData, null, 2) || 'Failed to fetch or no data found.';
-
-			// Show API errors as warnings but continue processing
-			if (errors.google) {
-				console.warn('[ISBN Search] Google API error:', errors.google.message);
-			}
-			if (errors.openlibrary) {
-				console.warn('[ISBN Search] OpenLibrary API error:', errors.openlibrary.message);
-			}
-			if (errors.loc) {
-				console.warn('[ISBN Search] Library of Congress API error:', errors.loc.message);
-			}
-
-			if (!googleData && !openLibraryData && !locData) {
+			if (!mergedData || mergedData.title === '-') {
 				error = 'No data found from any source for this ISBN.';
 				
 				// Track failed search
@@ -400,14 +383,7 @@
 					result_count: 0
 				});
 			} else {
-				// Merge data from all 3 sources ("Waterfall of Data" strategy)
-				mergedData = processAndRenderMergedData(googleData, openLibraryData, locData);
-				
 				// Track partial data state based on which sources succeeded
-				const hasGoogle = !!googleData;
-				const hasOpenLib = !!openLibraryData;
-				const hasLoC = !!(locData?.results?.[0]);
-				
 				isPartialData = !(hasGoogle && hasOpenLib && hasLoC);
 				
 				// Track successful search and data source
@@ -416,7 +392,8 @@
 					type: 'isbn',
 					query_length: cleanedQuery.length,
 					duration_ms: searchDuration,
-					result_count: 1
+					result_count: 1,
+					cache_hit: meta.cacheHit || false
 				});
 
 				Analytics.track('data_source_used', {

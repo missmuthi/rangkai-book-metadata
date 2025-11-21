@@ -268,6 +268,55 @@ export class BookApiService {
 	}
 
 	/**
+	 * Fetch book data from serverless API endpoint
+	 * Uses Cloudflare Workers + D1 + KV caching for optimal performance
+	 * 
+	 * @param isbn - ISBN-10 or ISBN-13 identifier
+	 * @returns Merged book data with metadata from 3 sources
+	 */
+	static async fetchFromServerless(isbn: string): Promise<any> {
+		const startTime = performance.now();
+		const url = `/api/book/${encodeURIComponent(isbn)}`;
+
+		try {
+			const response = await fetch(url);
+			const duration = Math.round(performance.now() - startTime);
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({ message: response.statusText }));
+				Analytics.track('error_occurred', {
+					error_type: 'serverless_api_error',
+					source: 'serverless',
+					message: errorData.message || `HTTP ${response.status}`
+				});
+				throw new Error(errorData.message || `API error: ${response.status}`);
+			}
+
+			const data = await response.json();
+
+			// Track successful API call
+			Analytics.track('api_timing', {
+				source: 'serverless',
+				endpoint: 'isbn_search',
+				duration_ms: duration,
+				success: true,
+				cache_hit: response.headers.get('X-Cache') === 'HIT'
+			});
+
+			return data;
+		} catch (error) {
+			const duration = Math.round(performance.now() - startTime);
+			Analytics.track('api_timing', {
+				source: 'serverless',
+				endpoint: 'isbn_search',
+				duration_ms: duration,
+				success: false
+			});
+			throw error;
+		}
+	}
+
+	/**
 	 * Legacy method for backward compatibility - now delegates to fetchAll
 	 * @deprecated Use fetchAll() instead for 3-source support
 	 */
