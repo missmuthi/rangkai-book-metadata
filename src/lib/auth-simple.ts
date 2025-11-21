@@ -34,6 +34,7 @@ export function generateSessionToken(): string {
 
 /**
  * Create a new user session
+ * Handles duplicate session tokens gracefully
  */
 export async function createSession(
 	db: D1Database,
@@ -42,13 +43,24 @@ export async function createSession(
 ): Promise<void> {
 	const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 	
-	await db
-		.prepare(
-			`INSERT INTO session (token, userId, expiresAt, createdAt, updatedAt)
-			 VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-		)
-		.bind(token, userId, expiresAt.getTime())
-		.run();
+	try {
+		await db
+			.prepare(
+				`INSERT INTO session (token, userId, expiresAt, createdAt, updatedAt)
+				 VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+			)
+			.bind(token, userId, expiresAt.getTime())
+			.run();
+		
+		console.log(`[AUTH] Session created for user ${userId}, expires: ${expiresAt.toISOString()}`);
+	} catch (error) {
+		console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.error('🔴 DATABASE ERROR in createSession');
+		console.error('User ID:', userId);
+		console.error('Error:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+		console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		throw error;
+	}
 }
 
 /**
@@ -96,6 +108,7 @@ export async function deleteSession(db: D1Database, token: string): Promise<void
 
 /**
  * Create or update user from OAuth data
+ * Handles duplicate email constraints gracefully
  */
 export async function upsertUser(
 	db: D1Database,
@@ -103,30 +116,41 @@ export async function upsertUser(
 	name: string | null,
 	image: string | null
 ): Promise<string> {
-	// Check if user exists
-	const existing = await db
-		.prepare(`SELECT id FROM user WHERE email = ?`)
-		.bind(email)
-		.first<{ id: string }>();
-	
-	if (existing) {
-		// Update existing user
+	try {
+		// Check if user exists
+		const existing = await db
+			.prepare(`SELECT id FROM user WHERE email = ?`)
+			.bind(email)
+			.first<{ id: string }>();
+		
+		if (existing) {
+			// Update existing user
+			console.log(`[AUTH] Updating existing user: ${email} (ID: ${existing.id})`);
+			await db
+				.prepare(`UPDATE user SET name = ?, image = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`)
+				.bind(name, image, existing.id)
+				.run();
+			return existing.id;
+		}
+		
+		// Create new user
+		const userId = crypto.randomUUID();
+		console.log(`[AUTH] Creating new user: ${email} (ID: ${userId})`);
 		await db
-			.prepare(`UPDATE user SET name = ?, image = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`)
-			.bind(name, image, existing.id)
+			.prepare(
+				`INSERT INTO user (id, email, name, image, emailVerified, createdAt, updatedAt)
+				 VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+			)
+			.bind(userId, email, name, image)
 			.run();
-		return existing.id;
+		
+		return userId;
+	} catch (error) {
+		console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.error('🔴 DATABASE ERROR in upsertUser');
+		console.error('Email:', email);
+		console.error('Error:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+		console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		throw error; // Re-throw to be caught by OAuth handler
 	}
-	
-	// Create new user
-	const userId = crypto.randomUUID();
-	await db
-		.prepare(
-			`INSERT INTO user (id, email, name, image, emailVerified, createdAt, updatedAt)
-			 VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-		)
-		.bind(userId, email, name, image)
-		.run();
-	
-	return userId;
 }

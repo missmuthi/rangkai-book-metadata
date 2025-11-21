@@ -1,6 +1,17 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import type { PageData } from './$types';
+	
+	let { data } = $props<{ data: PageData }>();
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
+	
+	// Auto-redirect logged-in users to home page
+	$effect(() => {
+		if (data.session) {
+			goto('/', { replaceState: true });
+		}
+	});
 	
 	function handleGoogleSignIn() {
 		isLoading = true;

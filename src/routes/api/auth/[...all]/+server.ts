@@ -112,7 +112,24 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 			
 			throw redirect(302, '/');
 		} catch (error) {
-			console.error('OAuth error:', error);
+			// CRITICAL: Serialize error object for readable Cloudflare logs
+			console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+			console.error('🔴 OAUTH CALLBACK ERROR');
+			console.error('Timestamp:', new Date().toISOString());
+			console.error('Route: /api/auth/callback/google');
+			
+			if (error instanceof Error) {
+				console.error('Error Type:', error.constructor.name);
+				console.error('Error Message:', error.message);
+				console.error('Stack Trace:', error.stack);
+				// Log any additional error properties
+				console.error('Full Error Object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+			} else {
+				// Non-Error object - serialize completely
+				console.error('Non-Error Object:', JSON.stringify(error, null, 2));
+			}
+			
+			console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 			return new Response('Authentication failed', { status: 500 });
 		}
 	}

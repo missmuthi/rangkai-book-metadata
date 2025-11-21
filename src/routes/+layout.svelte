@@ -18,9 +18,22 @@ function closeUserMenu() {
 
 async function onSignOut() {
 	closeUserMenu();
-	// Call server-side sign-out endpoint
-	await fetch('/api/auth/sign-out', { method: 'POST' });
-	window.location.href = '/';
+	
+	try {
+		// Call server-side sign-out endpoint
+		const response = await fetch('/api/auth/sign-out', { method: 'POST' });
+		
+		if (!response.ok) {
+			console.error('Sign out failed:', response.status);
+		}
+		
+		// Force hard reload to clear all client-side state
+		window.location.href = '/login';
+	} catch (error) {
+		console.error('Sign out error:', error);
+		// Still redirect even if API call fails
+		window.location.href = '/login';
+	}
 }
 </script>
 
