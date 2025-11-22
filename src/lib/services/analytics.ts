@@ -54,7 +54,7 @@ interface CacheHitEvent {
 /**
  * Cache miss tracking
  */
-interface CacheMissEvent {
+interface _CacheMissEvent {
 	name: 'cache_miss';
 	properties: {
 		cache_type: 'google' | 'openlibrary' | 'loc';

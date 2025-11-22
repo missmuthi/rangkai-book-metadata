@@ -51,8 +51,8 @@ function createHistoryStore() {
 	// Initialize state from localStorage
 	let items = $state<MergedBookData[]>(loadHistoryFromStorage());
 	
-	// Helper to save and update items
-	function updateItems(newItems: MergedBookData[]) {
+	// Helper to save and update items (currently unused but kept for future use)
+	function _updateItems(newItems: MergedBookData[]) {
 		items = newItems;
 		saveHistoryToStorage(items);
 	}

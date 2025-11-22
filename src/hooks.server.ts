@@ -57,7 +57,7 @@ export const handleError: HandleServerError = ({ error, event, status, message }
 export const handle: Handle = async ({ event, resolve }) => {
 	// Log incoming requests in development
 	if (import.meta.env.DEV) {
-		console.log(`[${event.request.method}] ${event.url.pathname}`);
+		console.warn(`[${event.request.method}] ${event.url.pathname}`);
 	}
 	
 	try {

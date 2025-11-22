@@ -138,7 +138,7 @@ export function formatEdition(edition: string | undefined | null): string {
   if (!edition) return ''; // Return empty string instead of '-'
   
   // Clean the edition string
-  let cleanEdition = edition.trim();
+  const cleanEdition = edition.trim();
   
   // If it's already formatted nicely, return it
   if (cleanEdition.match(/^\d+(st|nd|rd|th)\s+(ed\.|edition)/i)) {

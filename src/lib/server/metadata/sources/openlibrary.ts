@@ -7,6 +7,7 @@
 
 import type { OpenLibraryBookData, OpenLibrarySearchResponse } from '$lib/types';
 import { Analytics } from '$lib/services/analytics';
+import { logger, LogEvents } from '$lib/server/log';
 
 const OPENLIBRARY_PROXY = '/api/openlibrary';
 const DEFAULT_TIMEOUT = 3000; // 3 seconds (fail fast, secondary source)
@@ -42,7 +43,11 @@ export async function fetchOpenLibrary(
 			});
 
 			if (response.status === 503 || response.status === 429) {
-				console.warn(`⚠️ OpenLibrary ${response.status}: Gracefully degrading to Google Books only`);
+				logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
+					provider: 'openlibrary',
+					status: response.status,
+					fallback: 'google_books'
+				});
 				return null; // Allow the app to continue with Google Books data
 			}
 			throw new Error(`OpenLibrary API error: ${response.status} ${response.statusText}`);
@@ -59,7 +64,11 @@ export async function fetchOpenLibrary(
 					source: 'openlibrary',
 					message: data.error
 				});
-				console.warn('⚠️ OpenLibrary temporarily unavailable:', data.error);
+				logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
+					provider: 'openlibrary',
+					reason: 'temporarily_unavailable',
+					fallback: 'google_books'
+				});
 				return null;
 			}
 			throw new Error(data.error);
@@ -87,7 +96,12 @@ export async function fetchOpenLibrary(
 			duration_ms: duration,
 			success: false
 		});
-		console.error('[OpenLibrary] Fetch failed:', error);
+		logger.error(LogEvents.METADATA_FETCH_FAILED, {
+			provider: 'openlibrary',
+			query,
+			isIsbn,
+			error: error instanceof Error ? error.message : 'Unknown error'
+		});
 		throw error;
 	}
 }

@@ -9,6 +9,7 @@
 
 import type { RequestEvent } from '@sveltejs/kit';
 import { getDB, getUserScans, getUserStats } from '$lib/server';
+import { logger, LogEvents } from '$lib/server/log';
 import type { Scan } from '$lib/server/types';
 
 /**
@@ -77,7 +78,12 @@ export async function getDashboardData(event: RequestEvent): Promise<DashboardSt
 			periodStats
 		};
 	} catch (error) {
-		console.error('[Dashboard Service] Failed to fetch dashboard data:', error);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		logger.error(LogEvents.DB_QUERY_FAILED, {
+			context: 'getDashboardData',
+			userId,
+			error: errorMessage
+		});
 		return null;
 	}
 }
@@ -131,7 +137,12 @@ export async function getActivitySummary(
 			mostScannedISBNs
 		};
 	} catch (error) {
-		console.error('[Dashboard Service] Failed to fetch activity summary:', error);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		logger.error(LogEvents.DB_QUERY_FAILED, {
+			context: 'getActivitySummary',
+			userId,
+			error: errorMessage
+		});
 		return null;
 	}
 }
@@ -178,7 +189,12 @@ export async function getScanTrends(
 
 		return trends;
 	} catch (error) {
-		console.error('[Dashboard Service] Failed to fetch scan trends:', error);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		logger.error(LogEvents.DB_QUERY_FAILED, {
+			context: 'getScanTrends',
+			userId,
+			error: errorMessage
+		});
 		return [];
 	}
 }

@@ -71,6 +71,7 @@ import { redirect } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { SessionData, User } from './types';
 import { getSession as getSessionPrimitive } from '$lib/auth-simple';
+import { logger, LogEvents } from './log';
 
 /**
  * Get the current session from the request event
@@ -108,7 +109,10 @@ export async function getSession(event: RequestEvent): Promise<SessionData | nul
 		const sessionData = await getSessionPrimitive(event.platform.env.DB, sessionToken);
 		return sessionData;
 	} catch (error) {
-		console.error('[Auth] Failed to fetch session:', error);
+		logger.error(LogEvents.AUTH_SESSION_FETCH_FAILED, {
+			error: error instanceof Error ? error.message : 'Unknown error',
+			hasToken: !!sessionToken
+		});
 		return null;
 	}
 }

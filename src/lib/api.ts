@@ -1,4 +1,4 @@
-import type { GoogleBookItem, OpenLibraryBookData, GoogleBooksResponse, OpenLibrarySearchResponse, LoCBookData } from './types';
+import type { OpenLibraryBookData, GoogleBooksResponse, OpenLibrarySearchResponse, LoCBookData } from './types';
 import { getISBNSibling, isISBN } from './utils';
 import { Analytics } from './services/analytics';
 
@@ -160,7 +160,7 @@ export class BookApiService {
 			
 			// Validate that we have actual results
 			if (!data.results || data.results.length === 0) {
-				console.info('ℹ️ Library of Congress: No results found for ISBN');
+				console.warn('ℹ️ Library of Congress: No results found for ISBN');
 				return null;
 			}
 
@@ -416,7 +416,7 @@ export class ApiCache {
 			if (sibling && !this.cache.has(sibling)) {
 				// Store the same data under the sibling ISBN key
 				this.cache.set(sibling, { data, timestamp: now, hits: 0 });
-				console.debug(`[Cache] Smart prefetch: Stored ${key} → ${sibling}`);
+				console.warn(`[Cache] Smart prefetch: Stored ${key} → ${sibling}`);
 			}
 		}
 	}

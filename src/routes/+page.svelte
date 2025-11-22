@@ -719,7 +719,7 @@
 				format: 'csv'
 			});
 
-			console.log(`[Batch Export] Exported ${allBooks.length} books`);
+			console.warn(`[Batch Export] Exported ${allBooks.length} books`);
 		} catch (err) {
 			console.error('Failed to load export module:', err);
 			alert('Failed to export batch CSV. Please try again.');

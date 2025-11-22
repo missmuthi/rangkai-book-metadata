@@ -207,7 +207,7 @@ export async function invalidateAllBookCaches(kv: KVNamespace | null): Promise<v
 /**
  * Get cache statistics (approximate)
  */
-export async function getCacheStats(kv: KVNamespace | null) {
+export async function getCacheStats(_kv: KVNamespace | null) {
 	// KV doesn't provide built-in stats
 	// This is a placeholder for custom tracking
 	return {

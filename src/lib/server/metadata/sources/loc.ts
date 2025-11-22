@@ -8,6 +8,7 @@
 
 import type { LoCBookData } from '$lib/types';
 import { Analytics } from '$lib/services/analytics';
+import { logger, LogEvents } from '$lib/server/log';
 
 const LOC_BASE = 'https://www.loc.gov/books/';
 const DEFAULT_TIMEOUT = 5000; // 5 seconds (LoC can be slow, fail fast)
@@ -38,7 +39,11 @@ export async function fetchLibraryOfCongress(isbn: string): Promise<LoCBookData 
 			});
 
 			if (response.status === 503 || response.status === 429 || response.status === 404) {
-				console.warn(`⚠️ Library of Congress ${response.status}: Gracefully degrading to other sources`);
+				logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
+					provider: 'loc',
+					status: response.status,
+					fallback: 'other_sources'
+				});
 				return null;
 			}
 			throw new Error(`Library of Congress API error: ${response.status} ${response.statusText}`);
@@ -48,7 +53,7 @@ export async function fetchLibraryOfCongress(isbn: string): Promise<LoCBookData 
 		
 		// Validate that we have actual results
 		if (!data.results || data.results.length === 0) {
-			console.info('ℹ️ Library of Congress: No results found for ISBN');
+			logger.debug('loc_no_results', { isbn });
 			return null;
 		}
 
@@ -81,7 +86,11 @@ export async function fetchLibraryOfCongress(isbn: string): Promise<LoCBookData 
 		}
 
 		// Silent failure - LoC can be slow or unavailable
-		console.warn('⚠️ Library of Congress fetch failed:', error instanceof Error ? error.message : 'Unknown error');
+		logger.warn(LogEvents.METADATA_FETCH_FAILED, {
+			provider: 'loc',
+			isbn,
+			error: error instanceof Error ? error.message : 'Unknown error'
+		});
 		return null;
 	}
 }

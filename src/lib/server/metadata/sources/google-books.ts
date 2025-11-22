@@ -7,6 +7,7 @@
 
 import type { GoogleBooksResponse } from '$lib/types';
 import { Analytics } from '$lib/services/analytics';
+import { logger, LogEvents } from '$lib/server/log';
 
 const GOOGLE_BOOKS_BASE = 'https://www.googleapis.com/books/v1/volumes';
 const DEFAULT_TIMEOUT = 10000; // 10 seconds
@@ -61,7 +62,12 @@ export async function fetchGoogleBooks(
 			duration_ms: duration,
 			success: false
 		});
-		console.error('[Google Books] Fetch failed:', error);
+		logger.error(LogEvents.METADATA_FETCH_FAILED, {
+			provider: 'google_books',
+			query,
+			isIsbn,
+			error: error instanceof Error ? error.message : 'Unknown error'
+		});
 		throw error;
 	}
 }

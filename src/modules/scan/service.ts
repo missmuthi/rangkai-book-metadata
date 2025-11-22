@@ -22,6 +22,7 @@ import {
 	cacheSet,
 	CacheTTL
 } from '$lib/server';
+import { logger, LogEvents } from '$lib/server/log';
 import type { Scan } from '$lib/server/types';
 import type { MergedBookData } from '$lib/types';
 
@@ -124,7 +125,12 @@ export async function createBookScan(
 		};
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-		console.error('[Scan Service] Failed to create scan:', errorMessage);
+		logger.error(LogEvents.SCAN_FETCH_FAILED, {
+			context: 'createBookScan',
+			userId,
+			isbn,
+			error: errorMessage
+		});
 		return { success: false, error: errorMessage };
 	}
 }
@@ -163,7 +169,12 @@ export async function getScanHistory(
 			hasMore: total > (offset + scans.length)
 		};
 	} catch (error) {
-		console.error('[Scan Service] Failed to fetch scan history:', error);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		logger.error(LogEvents.SCAN_FETCH_FAILED, {
+			context: 'getScanHistory',
+			userId,
+			error: errorMessage
+		});
 		return { scans: [], total: 0, limit, hasMore: false };
 	}
 }
