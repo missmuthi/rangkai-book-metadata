@@ -1,181 +1,219 @@
 <script lang="ts">
-	// Features showcase page
+	// Features page - focused on librarian workflow
 </script>
 
 <svelte:head>
 	<title>Features - Rangkai Book Metadata Harvester</title>
-	<meta name="description" content="Discover the powerful features of Rangkai: Triple-source search, scanner mode, privacy-first design, and more." />
+	<meta name="description" content="Professional metadata harvesting tool for library cataloging workflows." />
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+<div class="min-h-screen bg-gray-50">
 	<!-- Hero Section -->
-	<section class="max-w-7xl mx-auto px-4 py-16 text-center">
-		<h1 class="text-5xl font-bold text-gray-900 mb-4">Why use Rangkai?</h1>
-		<p class="text-xl text-gray-600 max-w-2xl mx-auto">
-			A modern, intelligent metadata harvesting tool designed for Indonesian libraries and catalogers. 
-			Automate the tedious process of metadata entry while maintaining data quality and completeness.
-		</p>
+	<section class="max-w-5xl mx-auto px-4 py-12">
+		<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 md:p-12">
+			<h1 class="text-4xl font-bold text-gray-900 mb-4">Rangkai Book Metadata Harvester</h1>
+			<p class="text-xl text-gray-600 mb-6">
+				A focused tool for librarians to scan ISBNs, fetch authoritative metadata from multiple sources, 
+				and prepare catalog-ready records for SLiMS and other library systems.
+			</p>
+			<div class="flex items-center gap-4 text-sm text-gray-500">
+				<span class="flex items-center gap-2">
+					<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+					App-only, no marketing fluff
+				</span>
+				<span class="flex items-center gap-2">
+					<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+					</svg>
+					Fast Cloudflare-native deployment
+				</span>
+			</div>
+		</div>
 	</section>
 
-	<!-- Features Grid -->
-	<section class="max-w-7xl mx-auto px-4 pb-16">
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+	<!-- Core Capabilities -->
+	<section class="max-w-5xl mx-auto px-4 py-8">
+		<h2 class="text-2xl font-bold text-gray-900 mb-6">Core Capabilities</h2>
+		
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			
-			<!-- Feature 1: Triple-Source Search -->
-			<div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow border border-gray-100">
-				<div class="text-5xl mb-4">🏛️</div>
-				<h3 class="text-2xl font-bold text-gray-900 mb-3">Triple-Source Search</h3>
-				<p class="text-gray-600 leading-relaxed">
-					Simultaneously fetch metadata from <strong>Google Books</strong>, <strong>OpenLibrary</strong>, and <strong>Library of Congress</strong>. 
-					Get the most complete and authoritative data available.
-				</p>
-				<div class="mt-4 pt-4 border-t border-gray-100">
-					<span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">Authoritative LCC</span>
-					<span class="inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full ml-2">DDC Mapping</span>
+			<!-- ISBN Scan & Fetch -->
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+				<div class="flex items-start gap-4">
+					<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+						<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+						</svg>
+					</div>
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 mb-2">ISBN Scan & Fetch</h3>
+						<p class="text-gray-600 text-sm mb-3">
+							Scan or input ISBN-10/13. Automatically fetches from Google Books, OpenLibrary, and Library of Congress.
+						</p>
+						<div class="flex flex-wrap gap-2">
+							<span class="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded">Multi-source</span>
+							<span class="text-xs px-2 py-1 bg-green-50 text-green-700 rounded">Barcode scanner ready</span>
+						</div>
+					</div>
 				</div>
 			</div>
 
-			<!-- Feature 2: Unjammable Scanner Mode -->
-			<div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow border border-gray-100">
-				<div class="text-5xl mb-4">⚡</div>
-				<h3 class="text-2xl font-bold text-gray-900 mb-3">Unjammable Scanner Mode</h3>
-				<p class="text-gray-600 leading-relaxed">
-					Optimized for USB barcode scanners. Scan <strong>50+ books in minutes</strong> without touching the mouse. 
-					Automatic input clearing and focus management ensure you never jam the workflow.
-				</p>
-				<div class="mt-4 pt-4 border-t border-gray-100">
-					<span class="inline-block px-3 py-1 bg-purple-100 text-purple-800 text-xs font-semibold rounded-full">Auto-Submit</span>
-					<span class="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-semibold rounded-full ml-2">Batch Processing</span>
+			<!-- Merged Metadata -->
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+				<div class="flex items-start gap-4">
+					<div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+						<svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+						</svg>
+					</div>
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 mb-2">Normalized & Merged Metadata</h3>
+						<p class="text-gray-600 text-sm mb-3">
+							Combines data from all sources into a clean, SLiMS-compatible record with DDC/LCC classification.
+						</p>
+						<div class="flex flex-wrap gap-2">
+							<span class="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded">Auto call numbers</span>
+							<span class="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded">Cataloger-first fields</span>
+						</div>
+					</div>
 				</div>
 			</div>
 
-			<!-- Feature 3: Privacy First -->
-			<div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow border border-gray-100">
-				<div class="text-5xl mb-4">🛡️</div>
-				<h3 class="text-2xl font-bold text-gray-900 mb-3">Privacy First</h3>
-				<p class="text-gray-600 leading-relaxed">
-					<strong>No tracking. No cookies. HTTPS enforced.</strong> Your searches remain private. 
-					Safe for school networks and institutional deployments with strict privacy policies.
-				</p>
-				<div class="mt-4 pt-4 border-t border-gray-100">
-					<span class="inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">No Referrers</span>
-					<span class="inline-block px-3 py-1 bg-teal-100 text-teal-800 text-xs font-semibold rounded-full ml-2">HTTPS Only</span>
+			<!-- Scan History -->
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+				<div class="flex items-start gap-4">
+					<div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+						<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+						</svg>
+					</div>
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 mb-2">Personal Scan History</h3>
+						<p class="text-gray-600 text-sm mb-3">
+							Track all scanned books per user. Review, edit, or export batches as CSV or MARCXML for catalog import.
+						</p>
+						<div class="flex flex-wrap gap-2">
+							<span class="text-xs px-2 py-1 bg-green-50 text-green-700 rounded">User-specific</span>
+							<span class="text-xs px-2 py-1 bg-teal-50 text-teal-700 rounded">Batch export</span>
+						</div>
+					</div>
 				</div>
 			</div>
 
-			<!-- Feature 4: Batch Export -->
-			<div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow border border-gray-100">
-				<div class="text-5xl mb-4">📦</div>
-				<h3 class="text-2xl font-bold text-gray-900 mb-3">Batch Export</h3>
-				<p class="text-gray-600 leading-relaxed">
-					Download your entire scan history as a <strong>SLiMS-compatible CSV</strong> or <strong>MARCXML</strong>. 
-					Import directly into your library management system with zero manual entry.
-				</p>
-				<div class="mt-4 pt-4 border-t border-gray-100">
-					<span class="inline-block px-3 py-1 bg-orange-100 text-orange-800 text-xs font-semibold rounded-full">SLiMS Ready</span>
-					<span class="inline-block px-3 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full ml-2">MARC21 XML</span>
-				</div>
-			</div>
-
-			<!-- Feature 5: Smart Caching -->
-			<div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow border border-gray-100">
-				<div class="text-5xl mb-4">🧠</div>
-				<h3 class="text-2xl font-bold text-gray-900 mb-3">Smart Caching</h3>
-				<p class="text-gray-600 leading-relaxed">
-					Intelligent pre-fetching of <strong>ISBN-10/13 variants</strong> for instant results. 
-					LRU cache with 5-minute TTL ensures you never wait twice for the same book.
-				</p>
-				<div class="mt-4 pt-4 border-t border-gray-100">
-					<span class="inline-block px-3 py-1 bg-cyan-100 text-cyan-800 text-xs font-semibold rounded-full">60-80% Hit Rate</span>
-					<span class="inline-block px-3 py-1 bg-sky-100 text-sky-800 text-xs font-semibold rounded-full ml-2">Instant Replay</span>
-				</div>
-			</div>
-
-			<!-- Feature 6: Trust Badges -->
-			<div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow border border-gray-100">
-				<div class="text-5xl mb-4">✅</div>
-				<h3 class="text-2xl font-bold text-gray-900 mb-3">Trust Badges</h3>
-				<p class="text-gray-600 leading-relaxed">
-					Know exactly where your data comes from with <strong>authoritative source indicators</strong>. 
-					🏛️ Official LoC, ✅ Complete, ⚠️ Partial - transparency at every step.
-				</p>
-				<div class="mt-4 pt-4 border-t border-gray-100">
-					<span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">Data Provenance</span>
-					<span class="inline-block px-3 py-1 bg-violet-100 text-violet-800 text-xs font-semibold rounded-full ml-2">Quality Assured</span>
+			<!-- Dashboard Analytics -->
+			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+				<div class="flex items-start gap-4">
+					<div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+						<svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+						</svg>
+					</div>
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 mb-2">Dashboard & Analytics</h3>
+						<p class="text-gray-600 text-sm mb-3">
+							Basic stats on scans per user, most-scanned books, and workflow metrics for librarian teams.
+						</p>
+						<div class="flex flex-wrap gap-2">
+							<span class="text-xs px-2 py-1 bg-orange-50 text-orange-700 rounded">Usage insights</span>
+							<span class="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded">Team metrics</span>
+						</div>
+					</div>
 				</div>
 			</div>
 
 		</div>
 	</section>
 
-	<!-- Additional Features Section -->
-	<section class="max-w-7xl mx-auto px-4 pb-16">
-		<div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-2xl p-12 text-white">
-			<h2 class="text-3xl font-bold mb-6 text-center">More Powerful Features</h2>
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+	<!-- Librarian Workflow -->
+	<section class="max-w-5xl mx-auto px-4 py-8">
+		<div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg p-8 text-white">
+			<h2 class="text-2xl font-bold mb-6">Built for Librarian Workflows</h2>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+				<div>
+					<h3 class="font-semibold mb-2 flex items-center gap-2">
+						<span>1.</span> Scan or Type ISBN
+					</h3>
+					<p class="text-blue-100 text-sm">Use a USB barcode scanner or manually enter ISBN-10/13.</p>
+				</div>
+				<div>
+					<h3 class="font-semibold mb-2 flex items-center gap-2">
+						<span>2.</span> Review Merged Data
+					</h3>
+					<p class="text-blue-100 text-sm">See title, author, DDC/LCC, publisher, and catalog-ready fields instantly.</p>
+				</div>
+				<div>
+					<h3 class="font-semibold mb-2 flex items-center gap-2">
+						<span>3.</span> Export to SLiMS
+					</h3>
+					<p class="text-blue-100 text-sm">Download CSV or MARCXML for direct import into your library system.</p>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Technical Highlights -->
+	<section class="max-w-5xl mx-auto px-4 py-8">
+		<h2 class="text-2xl font-bold text-gray-900 mb-6">Technical Highlights</h2>
+		<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
 				<div class="flex items-start gap-3">
-					<span class="text-2xl">🔄</span>
+					<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+					</svg>
 					<div>
-						<h4 class="font-bold text-lg mb-1">Graceful Degradation</h4>
-						<p class="text-blue-100">Works with 1, 2, or 3 data sources. System adapts to API availability.</p>
+						<p class="font-medium text-gray-900">Cloudflare-native Architecture</p>
+						<p class="text-gray-600">Deployed on Cloudflare Pages with D1 (SQLite) and KV cache for fast global access.</p>
 					</div>
 				</div>
 				<div class="flex items-start gap-3">
-					<span class="text-2xl">🏷️</span>
+					<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+					</svg>
 					<div>
-						<h4 class="font-bold text-lg mb-1">Auto Call Numbers</h4>
-						<p class="text-blue-100">Generates call numbers using DDC/LCC + Cutter-Sanborn system.</p>
+						<p class="font-medium text-gray-900">Multi-source Metadata Aggregation</p>
+						<p class="text-gray-600">Fetches from Google Books, OpenLibrary, and Library of Congress for authoritative LCC.</p>
 					</div>
 				</div>
 				<div class="flex items-start gap-3">
-					<span class="text-2xl">📊</span>
+					<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+					</svg>
 					<div>
-						<h4 class="font-bold text-lg mb-1">Real-time Analytics</h4>
-						<p class="text-blue-100">Track cache hit rates, API performance, and search patterns.</p>
+						<p class="font-medium text-gray-900">Google OAuth Authentication</p>
+						<p class="text-gray-600">Secure user sessions with Google login. Personal history and dashboard per user.</p>
 					</div>
 				</div>
 				<div class="flex items-start gap-3">
-					<span class="text-2xl">⚙️</span>
+					<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+					</svg>
 					<div>
-						<h4 class="font-bold text-lg mb-1">CORS-Free Proxy</h4>
-						<p class="text-blue-100">Server-side proxy eliminates browser CORS restrictions.</p>
-					</div>
-				</div>
-				<div class="flex items-start gap-3">
-					<span class="text-2xl">🎨</span>
-					<div>
-						<h4 class="font-bold text-lg mb-1">Modern UI</h4>
-						<p class="text-blue-100">Clean, responsive interface built with SvelteKit + Tailwind CSS.</p>
-					</div>
-				</div>
-				<div class="flex items-start gap-3">
-					<span class="text-2xl">🚀</span>
-					<div>
-						<h4 class="font-bold text-lg mb-1">Edge Deployment</h4>
-						<p class="text-blue-100">Hosted on Cloudflare Pages for global low-latency access.</p>
+						<p class="font-medium text-gray-900">SvelteKit 2 + Svelte 5</p>
+						<p class="text-gray-600">Modern reactive UI with excellent performance and developer experience.</p>
 					</div>
 				</div>
 			</div>
 		</div>
 	</section>
 
-	<!-- Call to Action -->
-	<section class="max-w-7xl mx-auto px-4 pb-20 text-center">
-		<h2 class="text-4xl font-bold text-gray-900 mb-6">Ready to streamline your cataloging?</h2>
-		<p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-			Join librarians and catalogers who are saving hours of manual work every day.
-		</p>
-		<a 
-			href="/" 
-			class="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-		>
-			<span>Start Cataloging Now</span>
-			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-			</svg>
-		</a>
-		<p class="mt-6 text-sm text-gray-500">
-			Free and open source. No registration required.
-		</p>
+	<!-- CTA -->
+	<section class="max-w-5xl mx-auto px-4 py-12 text-center">
+		<div class="bg-gray-100 rounded-xl p-8">
+			<h2 class="text-3xl font-bold text-gray-900 mb-4">Ready to streamline your cataloging workflow?</h2>
+			<p class="text-gray-600 mb-6 max-w-2xl mx-auto">
+				Sign in with your Google account and start scanning ISBNs. No complex setup required.
+			</p>
+			<a 
+				href="/login" 
+				class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors"
+			>
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+				</svg>
+				Sign In and Start
+			</a>
+		</div>
 	</section>
 </div>

@@ -13,13 +13,48 @@ import { Google } from 'arctic';
 type D1Database = App.Platform['env']['DB'];
 
 /**
- * Create Google OAuth client
+ * Normalize base URL by removing trailing slashes
+ * Prevents double-slash issues in OAuth redirect URIs
+ * 
+ * @param baseUrl - Raw base URL from environment variable
+ * @returns Normalized URL without trailing slash
+ */
+function normalizeBaseUrl(baseUrl: string): string {
+	if (!baseUrl) {
+		throw new Error('BETTER_AUTH_URL environment variable is not set');
+	}
+	
+	// Remove all trailing slashes
+	const normalized = baseUrl.replace(/\/+$/, '');
+	
+	// Validate it's a proper URL
+	try {
+		new URL(normalized);
+	} catch (error) {
+		throw new Error(`Invalid BETTER_AUTH_URL: ${baseUrl}. Must be a valid URL.`);
+	}
+	
+	return normalized;
+}
+
+/**
+ * Create Google OAuth client with normalized redirect URI
+ * 
+ * Redirect URI format: {BETTER_AUTH_URL}/api/auth/callback/google
+ * Example: https://rangkai-book-metadata.pages.dev/api/auth/callback/google
  */
 export function createGoogleAuth(env: App.Platform['env']) {
+	const baseUrl = normalizeBaseUrl(env.BETTER_AUTH_URL);
+	const redirectUri = `${baseUrl}/api/auth/callback/google`;
+	
+	// Debug logging for OAuth configuration
+	console.log('[OAuth Config] Base URL:', baseUrl);
+	console.log('[OAuth Config] Redirect URI:', redirectUri);
+	
 	return new Google(
 		env.GOOGLE_CLIENT_ID,
 		env.GOOGLE_CLIENT_SECRET,
-		`${env.BETTER_AUTH_URL}/api/auth/callback/google`
+		redirectUri
 	);
 }
 

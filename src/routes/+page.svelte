@@ -738,28 +738,8 @@
 	}
 </script>
 
-<!-- Header (from your design) -->
+<!-- Main Content Area (No header - using layout header) -->
 <div class="min-h-screen bg-gray-50 text-gray-900 font-sans">
-	<header class="bg-white border-b border-gray-200 sticky top-0 z-10">
-		<div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-			<button type="button" onclick={goHome} class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0">
-				<div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-					R
-				</div>
-				<h1 class="text-xl font-bold tracking-tight text-slate-800">Rangkai</h1>
-			</button>
-			<div class="text-sm text-gray-500 flex items-center gap-4">
-				<span>Metadata Harvester</span>
-				{#if rateLimitStatus.google.remaining < 10 || rateLimitStatus.openlibrary.remaining < 10}
-					<span class="text-orange-600 text-xs">
-						⚠️ API Limits: G:{rateLimitStatus.google.remaining} OL:{rateLimitStatus.openlibrary.remaining}
-					</span>
-				{/if}
-			</div>
-		</div>
-	</header>
-
-	<!-- Main Content Area -->
 	<main class="max-w-7xl mx-auto px-4 py-12">
 		
 		<div class="grid grid-cols-1 lg:grid-cols-4 gap-8">

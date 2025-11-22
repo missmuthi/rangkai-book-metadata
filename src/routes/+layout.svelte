@@ -120,9 +120,6 @@ async function onSignOut() {
 									<a
 										href="/dashboard"
 										class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-										onclick={(e) => {
-											closeUserMenu();
-										}}
 									>
 										<svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
@@ -133,9 +130,6 @@ async function onSignOut() {
 									<a
 										href="/history"
 										class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-										onclick={(e) => {
-											closeUserMenu();
-										}}
 									>
 										<svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -189,9 +183,10 @@ async function onSignOut() {
 	<footer class="bg-white border-t border-gray-200 mt-auto">
 		<div class="max-w-7xl mx-auto px-4 py-6">
 			<div class="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-600">
-				<!-- Left: Version -->
-				<div class="font-medium text-gray-700">
-					Rangkai v1.1.0
+				<!-- Left: Branding -->
+				<div class="text-center md:text-left">
+					<p class="font-semibold text-gray-900">Rangkai Book Metadata Harvester</p>
+					<p class="text-xs text-gray-500 mt-1">v2.0.2 • Built for SLiMS workflows</p>
 				</div>
 
 				<!-- Center: Navigation -->
@@ -202,8 +197,8 @@ async function onSignOut() {
 				</nav>
 
 				<!-- Right: Creator -->
-				<div>
-					Created by <a href="https://www.linkedin.com/in/mikhail-adi-negoro-pasaribu/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 font-medium transition-colors">MikhailRyu</a>
+				<div class="text-center md:text-right">
+					<p class="text-xs">Created by <a href="https://www.linkedin.com/in/mikhail-adi-negoro-pasaribu/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 font-medium transition-colors">MikhailRyu</a></p>
 				</div>
 			</div>
 		</div>
