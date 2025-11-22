@@ -52,18 +52,20 @@ async function onSignOut() {
 	<link rel="icon" href="{favicon}" />
 </svelte:head>
 
-<!-- Close menu when clicking outside -->
+<!-- Close menu when clicking outside - positioned BEHIND dropdown -->
 {#if showUserMenu}
-	<button
-		class="fixed inset-0 z-40"
+	<div
+		class="fixed inset-0 z-20"
 		onclick={closeUserMenu}
+		role="button"
+		tabindex="-1"
 		aria-label="Close menu"
-	></button>
+	></div>
 {/if}
 
 <div class="flex flex-col min-h-screen">
 	<!-- Header with Authentication -->
-	<header class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+	<header class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
 		<div class="max-w-7xl mx-auto px-4 py-3">
 			<div class="flex items-center justify-between">
 				<!-- Logo/Brand -->
@@ -109,7 +111,7 @@ async function onSignOut() {
 
 							<!-- Dropdown Menu -->
 							{#if showUserMenu}
-								<div class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+								<div class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[100]">
 									<!-- User Info -->
 									<div class="px-4 py-3 border-b border-gray-100">
 										<p class="text-sm font-semibold text-gray-900">{data.user?.name || 'User'}</p>
