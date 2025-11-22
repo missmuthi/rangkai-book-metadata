@@ -1,6 +1,6 @@
 #!/bin/bash
 # Unified validation script for all tiers
-# Runs TypeScript check, linting (if available), and tier-specific validations
+# Runs TypeScript check, linting (if available), tier-specific validations, and tests
 
 set -e  # Exit on first error
 
@@ -19,6 +19,19 @@ else
   exit 1
 fi
 echo ""
+
+# Unit tests (fast, always run unless skipped)
+if [ "$1" != "--skip-tests" ]; then
+  echo "🧪 Running unit tests..."
+  if npm test -- --run --silent 2>&1 | grep -q "Test Files.*passed"; then
+    echo "   ✓ All tests passed"
+  else
+    echo "   ✗ Test failures detected"
+    npm test -- --run
+    exit 1
+  fi
+  echo ""
+fi
 
 # Tier 1 validation
 echo "🏗️  Running Tier 1 validation..."
