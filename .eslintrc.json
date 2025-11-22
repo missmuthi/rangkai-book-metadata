@@ -1,0 +1,74 @@
+{
+	"root": true,
+	"extends": [
+		"eslint:recommended",
+		"plugin:@typescript-eslint/recommended"
+	],
+	"parser": "@typescript-eslint/parser",
+	"plugins": ["@typescript-eslint", "svelte"],
+	"parserOptions": {
+		"sourceType": "module",
+		"ecmaVersion": 2022,
+		"extraFileExtensions": [".svelte"]
+	},
+	"env": {
+		"browser": true,
+		"es2022": true,
+		"node": true
+	},
+	"rules": {
+		"@typescript-eslint/no-unused-vars": [
+			"warn",
+			{
+				"argsIgnorePattern": "^_",
+				"varsIgnorePattern": "^_"
+			}
+		],
+		"@typescript-eslint/no-explicit-any": "warn",
+		"no-console": [
+			"warn",
+			{
+				"allow": ["warn", "error"]
+			}
+		],
+		"no-inner-declarations": "off"
+	},
+	"overrides": [
+		{
+			"files": ["*.svelte"],
+			"parser": "svelte-eslint-parser",
+			"parserOptions": {
+				"parser": "@typescript-eslint/parser"
+			},
+			"rules": {
+				"no-inner-declarations": "off"
+			}
+		},
+		{
+			"files": ["API_TESTS.ts", "SMART_PREFETCH_DEMO.ts", "USAGE_EXAMPLES.ts", "diagnostic.js"],
+			"rules": {
+				"no-console": "off",
+				"@typescript-eslint/no-unused-vars": "off",
+				"@typescript-eslint/no-explicit-any": "off"
+			}
+		},
+		{
+			"files": ["src/lib/__tests__/**/*.ts"],
+			"rules": {
+				"@typescript-eslint/no-explicit-any": "off"
+			}
+		}
+	],
+	"ignorePatterns": [
+		"node_modules",
+		".svelte-kit",
+		"build",
+		"dist",
+		"*.cjs",
+		"vite.config.ts",
+		"vitest.config.ts",
+		"svelte.config.js",
+		"tailwind.config.ts",
+		"postcss.config.js"
+	]
+}

@@ -1,0 +1,240 @@
+
+> rangkai-book-metadata@2.0.2 lint
+> eslint . --ext .ts,.svelte --ignore-path .gitignore
+
+
+/home/mikhailryu/projects/rangkai-book-metadata/API_TESTS.ts
+   21:3  warning  Unexpected console statement                                                      no-console
+   22:3  warning  Unexpected console statement                                                      no-console
+   23:3  warning  Unexpected console statement                                                      no-console
+   29:7  warning  'book' is assigned a value but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+   44:3  warning  Unexpected console statement                                                      no-console
+   55:3  warning  Unexpected console statement                                                      no-console
+   95:3  warning  Unexpected console statement                                                      no-console
+   97:5  warning  Unexpected console statement                                                      no-console
+  104:7  warning  'books' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  148:3  warning  Unexpected console statement                                                      no-console
+  149:3  warning  Unexpected console statement                                                      no-console
+  150:3  warning  Unexpected console statement                                                      no-console
+  151:3  warning  Unexpected console statement                                                      no-console
+  222:3  warning  Unexpected console statement                                                      no-console
+  225:3  warning  Unexpected console statement                                                      no-console
+  228:5  warning  Unexpected console statement                                                      no-console
+  229:5  warning  Unexpected console statement                                                      no-console
+  231:5  warning  Unexpected console statement                                                      no-console
+  235:3  warning  Unexpected console statement                                                      no-console
+  238:5  warning  Unexpected console statement                                                      no-console
+  240:5  warning  Unexpected console statement                                                      no-console
+  244:3  warning  Unexpected console statement                                                      no-console
+  246:3  warning  Unexpected console statement                                                      no-console
+  249:3  warning  Unexpected console statement                                                      no-console
+  254:3  warning  Unexpected console statement                                                      no-console
+  255:3  warning  Unexpected console statement                                                      no-console
+  257:3  warning  Unexpected console statement                                                      no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/SMART_PREFETCH_DEMO.ts
+  21:1  warning  Unexpected console statement  no-console
+  24:1  warning  Unexpected console statement  no-console
+  25:1  warning  Unexpected console statement  no-console
+  27:1  warning  Unexpected console statement  no-console
+  28:1  warning  Unexpected console statement  no-console
+  31:1  warning  Unexpected console statement  no-console
+  32:1  warning  Unexpected console statement  no-console
+  36:2  warning  Unexpected console statement  no-console
+  37:2  warning  Unexpected console statement  no-console
+  38:2  warning  Unexpected console statement  no-console
+  40:2  warning  Unexpected console statement  no-console
+  43:1  warning  Unexpected console statement  no-console
+  44:1  warning  Unexpected console statement  no-console
+  45:1  warning  Unexpected console statement  no-console
+  46:1  warning  Unexpected console statement  no-console
+  47:1  warning  Unexpected console statement  no-console
+  48:1  warning  Unexpected console statement  no-console
+  49:1  warning  Unexpected console statement  no-console
+  50:1  warning  Unexpected console statement  no-console
+  51:1  warning  Unexpected console statement  no-console
+  52:1  warning  Unexpected console statement  no-console
+  53:1  warning  Unexpected console statement  no-console
+  55:1  warning  Unexpected console statement  no-console
+  56:1  warning  Unexpected console statement  no-console
+  57:1  warning  Unexpected console statement  no-console
+  58:1  warning  Unexpected console statement  no-console
+  59:1  warning  Unexpected console statement  no-console
+  60:1  warning  Unexpected console statement  no-console
+  61:1  warning  Unexpected console statement  no-console
+  63:1  warning  Unexpected console statement  no-console
+  64:1  warning  Unexpected console statement  no-console
+  65:1  warning  Unexpected console statement  no-console
+  66:1  warning  Unexpected console statement  no-console
+  67:1  warning  Unexpected console statement  no-console
+  68:1  warning  Unexpected console statement  no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/USAGE_EXAMPLES.ts
+   47:5   warning  Unexpected console statement                                                       no-console
+   48:5   warning  Unexpected console statement                                                       no-console
+   49:5   warning  Unexpected console statement                                                       no-console
+   64:34  warning  'errors' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  100:34  warning  'errors' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  267:3   warning  Unexpected console statement                                                       no-console
+  284:7   warning  Unexpected console statement                                                       no-console
+  306:9   warning  Unexpected console statement                                                       no-console
+  315:9   warning  Unexpected console statement                                                       no-console
+  384:7   warning  Unexpected console statement                                                       no-console
+  388:5   warning  Unexpected console statement                                                       no-console
+  389:5   warning  Unexpected console statement                                                       no-console
+  390:5   warning  Unexpected console statement                                                       no-console
+  391:5   warning  Unexpected console statement                                                       no-console
+  392:5   warning  Unexpected console statement                                                       no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/app.d.ts
+  57:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/hooks.server.ts
+  35:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  60:3   warning  Unexpected console statement              no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/ErrorBoundary.svelte
+  13:2  error  Move function declaration to program root  no-inner-declarations
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/__tests__/merge.test.ts
+  17:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/api.ts
+    1:15  warning  'GoogleBookItem' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  163:5   warning  Unexpected console statement                                                      no-console
+  277:58  warning  Unexpected any. Specify a different type                                          @typescript-eslint/no-explicit-any
+  361:42  warning  Unexpected any. Specify a different type                                          @typescript-eslint/no-explicit-any
+  370:20  warning  Unexpected any. Specify a different type                                          @typescript-eslint/no-explicit-any
+  400:25  warning  Unexpected any. Specify a different type                                          @typescript-eslint/no-explicit-any
+  419:5   warning  Unexpected console statement                                                      no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/auth-simple.ts
+   65:3   warning  Unexpected console statement              no-console
+   83:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  142:4   warning  Unexpected console statement              no-console
+  152:3   warning  Unexpected console statement              no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/components/ui/Alert.svelte
+  13:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/components/ui/Badge.svelte
+  11:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/components/ui/Button.svelte
+  14:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/components/ui/Card.svelte
+  12:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/merge.ts
+  141:7    error    'cleanEdition' is never reassigned. Use 'const' instead  prefer-const
+  323:104  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  325:104  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  365:29   warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/server/cache.ts
+  210:37  warning  'kv' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/server/log.ts
+  22:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  71:4   warning  Unexpected console statement              no-console
+  79:3   warning  Unexpected console statement              no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/server/metadata/index.ts
+  69:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/server/metadata/merge.ts
+  141:7    error    'cleanEdition' is never reassigned. Use 'const' instead  prefer-const
+  323:104  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  325:104  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  365:29   warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/services/analytics.ts
+   57:11  warning  'CacheMissEvent' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  242:56  warning  Unexpected any. Specify a different type                                          @typescript-eslint/no-explicit-any
+  246:3   warning  Unexpected console statement                                                      no-console
+  257:57  warning  Unexpected any. Specify a different type                                          @typescript-eslint/no-explicit-any
+  258:3   warning  Unexpected console statement                                                      no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/stores/history.svelte.ts
+   55:11  warning  'updateItems' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   88:4   warning  Unexpected console statement                                                   no-console
+   96:4   warning  Unexpected console statement                                                   no-console
+  104:4   warning  Unexpected console statement                                                   no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/types.ts
+   3:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/lib/utils.ts
+   68:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   68:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  131:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  132:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  152:5   warning  Unexpected console statement              no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/routes/+layout.svelte
+   11:1   error    Move function declaration to program root                            no-inner-declarations
+   15:1   error    Move function declaration to program root                            no-inner-declarations
+   19:1   error    Move function declaration to program root                            no-inner-declarations
+   23:3   warning  Unexpected console statement                                         no-console
+   34:3   warning  Unexpected console statement                                         no-console
+   40:3   warning  Unexpected console statement                                         no-console
+  123:21  warning  'e' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  136:21  warning  'e' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/routes/+page.svelte
+     3:11  warning  'checkGoogleBooksLimit' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+     3:34  warning  'checkOpenLibraryLimit' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+     7:28  warning  'getSecureImageUrl' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+    35:12  warning  'GoogleBooksResponse' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+    73:19  warning  Unexpected any. Specify a different type                                                       @typescript-eslint/no-explicit-any
+   114:2   error    Move function declaration to program root                                                      no-inner-declarations
+   131:2   error    Move function declaration to program root                                                      no-inner-declarations
+   176:2   error    Move function declaration to program root                                                      no-inner-declarations
+   217:2   error    Move function declaration to program root                                                      no-inner-declarations
+   231:2   error    Move function declaration to program root                                                      no-inner-declarations
+   235:64  warning  Unexpected any. Specify a different type                                                       @typescript-eslint/no-explicit-any
+   267:2   error    Move function declaration to program root                                                      no-inner-declarations
+   287:2   error    Move function declaration to program root                                                      no-inner-declarations
+   324:2   error    Move function declaration to program root                                                      no-inner-declarations
+   529:2   error    Move function declaration to program root                                                      no-inner-declarations
+   570:2   error    Move function declaration to program root                                                      no-inner-declarations
+   633:2   error    Move function declaration to program root                                                      no-inner-declarations
+   649:2   error    Move function declaration to program root                                                      no-inner-declarations
+   668:2   error    Move function declaration to program root                                                      no-inner-declarations
+   687:2   error    Move function declaration to program root                                                      no-inner-declarations
+   706:2   error    Move function declaration to program root                                                      no-inner-declarations
+   722:4   warning  Unexpected console statement                                                                   no-console
+   730:2   error    Move function declaration to program root                                                      no-inner-declarations
+  1170:16  warning  'secureProxiedCover' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/routes/api/auth/[...all]/+server.ts
+  134:4  warning  Unexpected console statement  no-console
+  178:4  warning  Unexpected console statement  no-console
+  192:2  warning  Unexpected console statement  no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/routes/api/book/[isbn]/+server.ts
+   22:2  warning  'getSourceStatus' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   51:5  warning  Unexpected console statement                                                       no-console
+   91:2  warning  Unexpected console statement                                                       no-console
+  110:5  warning  Unexpected console statement                                                       no-console
+  127:2  warning  Unexpected console statement                                                       no-console
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/routes/history/+page.svelte
+  10:28  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  21:2   error    Move function declaration to program root  no-inner-declarations
+  27:17  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  34:20  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+
+/home/mikhailryu/projects/rangkai-book-metadata/src/routes/login/+page.svelte
+  12:4  warning  Unexpected console statement               no-console
+  17:2  error    Move function declaration to program root  no-inner-declarations
+
+✖ 176 problems (24 errors, 152 warnings)
+  2 errors and 0 warnings potentially fixable with the `--fix` option.
+
