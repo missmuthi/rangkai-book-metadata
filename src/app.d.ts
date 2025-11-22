@@ -1,28 +1,26 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
+
+/**
+ * Import server types for type consistency
+ * This ensures App.Locals types match lib/server/types.ts
+ */
+import type { User, SessionData } from '$lib/server/types';
+
 declare global {
 	namespace App {
 		// interface Error {}
 		interface Locals {
-			session: {
-				user: {
-					id: string;
-					name: string | null;
-					email: string;
-					image: string | null;
-				};
-				session: {
-					token: string;
-					expiresAt: Date;
-					userId: string;
-				};
-			} | null;
-			user: {
-				id: string;
-				name: string | null;
-				email: string;
-				image: string | null;
-			} | null;
+			/**
+			 * Full session data with user and session info
+			 * Populated by hooks.server.ts on each request
+			 */
+			session: SessionData | null;
+			/**
+			 * Convenience accessor for current user
+			 * Populated by hooks.server.ts on each request
+			 */
+			user: User | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

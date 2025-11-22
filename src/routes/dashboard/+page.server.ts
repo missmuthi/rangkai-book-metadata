@@ -1,58 +1,42 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { requireSession } from '$lib/server';
+import { getDashboardData } from '$modules/dashboard';
 
-export const load: PageServerLoad = async ({ locals, platform }) => {
-	// Protect this route - require authentication
-	if (!locals.session || !locals.user) {
-		throw redirect(303, '/login');
-	}
-
-	// At this point, locals.user is guaranteed to exist
-	const userId = locals.user.id;
-
-	// Fetch user's scan history from D1
-	const db = platform?.env?.DB;
-	if (!db) {
-		console.error('[Dashboard] D1 database not available');
-		return {
-			user: locals.user,
-			scans: [],
-			totalScans: 0,
-			error: 'Database unavailable'
-		};
-	}
+export const load: PageServerLoad = async (event) => {
+	// Protect this route - require authentication (throws redirect if not logged in)
+	const session = await requireSession(event);
 
 	try {
-		// Query scans for this user (most recent first)
-		const result = await db
-			.prepare(
-				`SELECT isbn, title, json_data, status, created_at 
-				FROM scans 
-				WHERE user_id = ? 
-				ORDER BY created_at DESC 
-				LIMIT 50`
-			)
-			.bind(userId)
-			.all();
+		// Fetch dashboard data using dashboard module
+		const dashboardData = await getDashboardData(event);
 
-		// Count total scans
-		const countResult = await db
-			.prepare(`SELECT COUNT(*) as total FROM scans WHERE user_id = ?`)
-			.bind(userId)
-			.first() as { total: number } | null;
+		if (!dashboardData) {
+			return {
+				user: session.user,
+				scans: [],
+				totalScans: 0,
+				error: 'Failed to load dashboard data'
+			};
+		}
 
 		return {
-			user: locals.user,
-			scans: result.results || [],
-			totalScans: countResult?.total || 0
+			user: session.user,
+			scans: dashboardData.recentScans,
+			totalScans: dashboardData.totalScans,
+			stats: {
+				total: dashboardData.totalScans,
+				published: dashboardData.publishedScans,
+				draft: dashboardData.draftScans,
+				...dashboardData.periodStats
+			}
 		};
 	} catch (error) {
-		console.error('[Dashboard] Failed to fetch scans:', error);
+		console.error('[Dashboard] Failed to load dashboard:', error);
 		return {
-			user: locals.user,
+			user: session.user,
 			scans: [],
 			totalScans: 0,
-			error: 'Failed to load scan history'
+			error: 'Failed to load dashboard'
 		};
 	}
 };

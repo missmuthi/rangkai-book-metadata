@@ -9,7 +9,12 @@ const config = {
 
 	kit: {
 		// Configure Cloudflare Pages adapter
-		adapter: adapter()
+		adapter: adapter(),
+		// Path aliases for imports
+		alias: {
+			$lib: './src/lib',
+			$modules: './src/modules'
+		}
 	}
 };
 

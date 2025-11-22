@@ -1,53 +1,28 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { requireSession } from '$lib/server';
+import { getScanHistory } from '$modules/scan';
 
-export const load: PageServerLoad = async ({ locals, platform }) => {
-	// Protect this route - require authentication
-	if (!locals.session || !locals.user) {
-		throw redirect(303, '/login');
-	}
-
-	// At this point, locals.user is guaranteed to exist
-	const userId = locals.user.id;
-
-	// Fetch ALL user's scan history from D1
-	const db = platform?.env?.DB;
-	if (!db) {
-		console.error('[History] D1 database not available');
-		return {
-			user: locals.user,
-			scans: [],
-			totalScans: 0,
-			error: 'Database unavailable'
-		};
-	}
+export const load: PageServerLoad = async (event) => {
+	// Protect this route - require authentication (throws redirect if not logged in)
+	const session = await requireSession(event);
 
 	try {
-		// Query all scans for this user (most recent first)
-		const result = await db
-			.prepare(
-				`SELECT isbn, title, json_data, status, created_at 
-				FROM scans 
-				WHERE user_id = ? 
-				ORDER BY created_at DESC`
-			)
-			.bind(userId)
-			.all();
-
-		// Count total scans
-		const totalScans = result.results?.length || 0;
+		// Fetch scan history using scan module
+		const history = await getScanHistory(event, 100); // Get up to 100 scans
 
 		return {
-			user: locals.user,
-			scans: result.results || [],
-			totalScans
+			user: session.user,
+			scans: history.scans,
+			totalScans: history.total,
+			hasMore: history.hasMore
 		};
 	} catch (error) {
 		console.error('[History] Failed to fetch scans:', error);
 		return {
-			user: locals.user,
+			user: session.user,
 			scans: [],
 			totalScans: 0,
+			hasMore: false,
 			error: 'Failed to load scan history'
 		};
 	}

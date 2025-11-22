@@ -1,31 +1,35 @@
 /**
- * High-Performance Book API Route with waitUntil Pattern
- * Cloudflare Workers + D1 + KV + AI Integration
+ * High-Performance Book API Route
  * 
  * Features:
  * - KV Cache with 24-hour TTL (instant responses)
- * - 3-Source Data Fetching (Google Books + OpenLibrary + LoC)
- * - AI Enhancement with Gemini (graceful degradation)
- * - Background Writes (waitUntil pattern prevents data loss)
- * - Type-safe Cloudflare Platform bindings
+ * - 3-Source Data Fetching via metadata engine
+ * - Background Writes (waitUntil pattern)
+ * - Type-safe operations
  */
 
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { BookApiService } from '$lib/api';
-import { processAndRenderMergedData } from '$lib/merge';
 import { isValidISBN13, isValidISBN10 } from '$lib/utils';
 import type { MergedBookData } from '$lib/types';
+import {
+	getKV,
+	CacheKeys,
+	CacheTTL,
+	cacheGet,
+	cacheSet,
+	fetchBookByIsbn,
+	getSourceStatus
+} from '$lib/server';
 
 /**
  * GET /api/book/[isbn]
  * 
  * Performance Flow:
  * 1. Check KV cache (< 100ms if hit)
- * 2. Fetch from 3 APIs in parallel (< 2.5s)
- * 3. Merge data with waterfall prioritization
- * 4. Return response IMMEDIATELY
- * 5. Background: Write to D1 + KV (non-blocking)
+ * 2. Fetch from metadata engine (< 2.5s)
+ * 3. Return response IMMEDIATELY
+ * 4. Background: Write to KV (non-blocking)
  */
 export const GET: RequestHandler = async ({ params, platform }) => {
 	const { isbn } = params;
@@ -39,9 +43,10 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 	}
 
 	// === STEP 1: Cache Check (KV) ===
-	if (platform?.env?.BOOK_CACHE) {
+	const kv = getKV(platform);
+	if (kv) {
 		try {
-			const cached = await platform.env.BOOK_CACHE.get(`book:${isbn}`, 'json');
+			const cached = await cacheGet<MergedBookData>(kv, CacheKeys.book(isbn));
 			if (cached) {
 				console.info(`✅ [Cache HIT] ${isbn} - ${Math.round(performance.now() - startTime)}ms`);
 				return json(cached, {
@@ -58,93 +63,50 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 		}
 	}
 
-	// === STEP 2: Fetch from 3 Sources ===
+	// === STEP 2: Fetch via Metadata Engine ===
 	const fetchStartTime = performance.now();
-	const { google, openlibrary, loc, errors } = await BookApiService.fetchAll(isbn, true);
-	const fetchDuration = Math.round(performance.now() - fetchStartTime);
-
-	console.info(`📚 [Fetch] ${isbn} - ${fetchDuration}ms`);
-
-	// Check if we have at least one data source
-	if (!google && !openlibrary && !loc) {
-		const errorDetails = [
-			errors.google?.message && `Google: ${errors.google.message}`,
-			errors.openlibrary?.message && `OpenLibrary: ${errors.openlibrary.message}`,
-			errors.loc?.message && `LoC: ${errors.loc.message}`
-		].filter(Boolean).join('; ');
+	
+	let mergedData: MergedBookData;
+	let sources: { google: boolean; openlibrary: boolean; loc: boolean };
+	
+	try {
+		mergedData = await fetchBookByIsbn(isbn);
 		
-		throw error(404, `Book not found. ${errorDetails || 'All data sources unavailable.'}`);
+		// Get source status from the metadata (with fallback)
+		const dataSource = mergedData.dataSource || '';
+		sources = {
+			google: dataSource.includes('google'),
+			openlibrary: dataSource.includes('openlibrary'),
+			loc: dataSource.includes('loc')
+		};
+	} catch (err) {
+		const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+		console.error(`❌ [Fetch Error] ${isbn}:`, errorMessage);
+		throw error(404, {
+			message: `Book not found: ${errorMessage}`
+		});
 	}
 
-	// === STEP 3: Merge Data (Waterfall Prioritization) ===
-	const googleVolumeInfo = google?.items?.[0]?.volumeInfo || null;
-	const mergedData: MergedBookData = processAndRenderMergedData(
-		googleVolumeInfo,
-		openlibrary as any,
-		loc
-	);
+	const fetchDuration = Math.round(performance.now() - fetchStartTime);
+	console.info(`📚 [Fetch] ${isbn} - ${fetchDuration}ms`);
 
 	// Add metadata
 	const responseData = {
 		...mergedData,
 		meta: {
 			isbn,
-			sources: {
-				google: !!google,
-				openlibrary: !!openlibrary,
-				loc: !!loc
-			},
+			sources,
 			fetchDuration,
 			totalDuration: Math.round(performance.now() - startTime),
 			timestamp: new Date().toISOString()
 		}
 	};
 
-	// === STEP 4: Background Writes (waitUntil Pattern) ===
-	// CRITICAL: Do NOT await these - use waitUntil to prevent data loss
-	if (platform?.context?.waitUntil) {
-		// Background Task 1: Insert into D1 database
-		const dbWritePromise = (async () => {
+	// === STEP 3: Background Cache Write (waitUntil Pattern) ===
+	if (platform?.context?.waitUntil && kv) {
+		const cacheWritePromise = (async () => {
 			try {
-				if (!platform.env?.DB) {
-					console.warn('⚠️ D1 database not available');
-					return;
-				}
-
-				await platform.env.DB.prepare(
-					`INSERT INTO scans (isbn, title, json_data, created_at) 
-					 VALUES (?, ?, ?, datetime('now'))`
-				)
-					.bind(
-						isbn,
-						mergedData.title,
-						JSON.stringify(responseData)
-					)
-					.run();
-
-				console.info(`✅ [DB Write] ${isbn} saved to D1`);
-			} catch (dbError) {
-				console.error('❌ [DB Write Error]:', dbError);
-				// Don't throw - this is a background task
-			}
-		})();
-
-		// Background Task 2: Write to KV cache
-		const kvWritePromise = (async () => {
-			try {
-				if (!platform.env?.BOOK_CACHE) {
-					console.warn('⚠️ KV namespace not available');
-					return;
-				}
-
-				await platform.env.BOOK_CACHE.put(
-					`book:${isbn}`,
-					JSON.stringify(responseData),
-					{
-						expirationTtl: 86400 // 24 hours
-					}
-				);
-
+				await cacheSet(kv, CacheKeys.book(isbn), responseData, CacheTTL.book);
 				console.info(`✅ [KV Write] ${isbn} cached`);
 			} catch (kvError) {
 				console.error('❌ [KV Write Error]:', kvError);
@@ -152,26 +114,24 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 			}
 		})();
 
-		// Schedule background writes to complete after response is sent
-		platform.context.waitUntil(Promise.allSettled([dbWritePromise, kvWritePromise]));
+		// Schedule background write to complete after response is sent
+		platform.context.waitUntil(cacheWritePromise);
+	} else if (!kv) {
+		console.warn('⚠️ KV not available - caching skipped');
 	} else {
-		console.warn('⚠️ waitUntil not available - background writes will be skipped');
+		console.warn('⚠️ waitUntil not available - background cache write skipped');
 	}
 
-	// === STEP 5: Return Response Immediately ===
+	// === STEP 4: Return Response Immediately ===
 	const totalDuration = Math.round(performance.now() - startTime);
 	console.info(`🚀 [Response] ${isbn} - ${totalDuration}ms (cache miss)`);
 
 	return json(responseData, {
 		headers: {
-			'Cache-Control': 'public, max-age=3600', // 1 hour cache (audit requirement)
+			'Cache-Control': 'public, max-age=3600', // 1 hour
 			'X-Cache': 'MISS',
 			'X-Response-Time': `${totalDuration}ms`,
-			'X-Sources': JSON.stringify({
-				google: !!google,
-				openlibrary: !!openlibrary,
-				loc: !!loc
-			})
+			'X-Sources': JSON.stringify(sources)
 		}
 	});
 };

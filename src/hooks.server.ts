@@ -71,14 +71,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 				
 				// Inject session and user into event.locals for use in routes and layouts
 				if (sessionData) {
-					event.locals.session = {
-						user: sessionData.user,
-						session: {
-							token: sessionData.session.token,
-							expiresAt: sessionData.session.expiresAt,
-							userId: sessionData.session.userId
-						}
-					};
+					// sessionData already matches SessionData type from lib/server/types.ts
+					event.locals.session = sessionData;
 					event.locals.user = sessionData.user;
 				} else {
 					event.locals.session = null;

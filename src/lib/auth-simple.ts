@@ -75,6 +75,7 @@ export async function createSession(
 
 /**
  * Get session by token
+ * Returns full SessionData with complete User entity
  */
 export async function getSession(
 	db: D1Database,
@@ -84,7 +85,7 @@ export async function getSession(
 		.prepare(
 			`SELECT 
 				s.token, s.userId, s.expiresAt,
-				u.id, u.email, u.name, u.image, u.createdAt
+				u.id, u.email, u.name, u.image, u.emailVerified, u.createdAt, u.updatedAt
 			FROM session s
 			JOIN user u ON s.userId = u.id
 			WHERE s.token = ? AND s.expiresAt > ?`
@@ -104,7 +105,10 @@ export async function getSession(
 			id: result.id as string,
 			email: result.email as string,
 			name: result.name as string | null,
-			image: result.image as string | null
+			image: result.image as string | null,
+			emailVerified: result.emailVerified as number,
+			createdAt: result.createdAt as string,
+			updatedAt: result.updatedAt as string
 		}
 	};
 }
