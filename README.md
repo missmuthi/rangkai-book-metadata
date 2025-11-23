@@ -108,6 +108,41 @@ npm run preview
 npm run deploy
 ```
 
+## 📚 Documentation
+
+**New developers start here:**
+
+### Core Documentation (`/docs`)
+
+| Document | Purpose | Read When |
+|----------|---------|-----------|
+| **[System Overview](docs/SYSTEM_OVERVIEW.md)** | High-level architecture, tech stack, core concepts | First time reading the codebase |
+| **[Getting Started](docs/GETTING_STARTED.md)** | Quick setup guide (0 to running in 10 minutes) | Setting up local environment |
+| **[Architecture](docs/ARCHITECTURE.md)** | Detailed technical architecture, data flow, component boundaries | Planning major changes |
+| **[API Integration Guide](docs/API_INTEGRATION_GUIDE.md)** | External APIs (Google Books, OpenLibrary, LoC), caching, merging logic | Working with API layer |
+| **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** | Production deployment, environment setup, CI/CD | Deploying to Cloudflare Pages |
+
+### Legacy Documentation (Root Directory)
+
+These documents are being migrated to `/docs` but still contain valuable information:
+
+- `ANALYTICS_TELEMETRY.md` - Analytics & monitoring system
+- `LOC_INTEGRATION_GUIDE.md` - Library of Congress API integration
+- `SERVERLESS_ARCHITECTURE.md` - Cloudflare Workers architecture details
+- `AUTHENTICATION_SETUP.md` - Better Auth configuration
+- `IMAGE_SECURITY.md` - Image proxy & SSRF protection
+- `PERFORMANCE_ANALYSIS.md` - Performance benchmarks
+- `MOBILE_SCANNER_IMPROVEMENTS.md` - Mobile barcode scanner features
+- `agents.md` - AI agents & automation documentation
+
+**Quick Reference:**
+- Need to add a feature? → Read [Architecture](docs/ARCHITECTURE.md) + [System Overview](docs/SYSTEM_OVERVIEW.md)
+- API not working? → Read [API Integration Guide](docs/API_INTEGRATION_GUIDE.md)
+- Deployment failing? → Read [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
+- Can't run locally? → Read [Getting Started](docs/GETTING_STARTED.md)
+
+---
+
 ## 📖 Usage
 
 ### Search by ISBN
