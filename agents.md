@@ -1,15 +1,79 @@
-# Rangkai Book Metadata - AI Coding Assistant Prompts
+# Rangkai Agents & Documentation System
 
-## Overview
-This document contains specialized system prompts for AI coding assistants working on the Rangkai Book Metadata Harvester **v2.0**. Copy and paste the relevant prompt into a new chat session when you need domain-specific expertise.
+**Purpose:** This file defines the active AI agents, documentation architecture, and synchronization procedures for the Rangkai Book Metadata Harvester project.
 
-**Version Context:** As of v2.0, the system includes:
+**Last Updated:** November 23, 2025  
+**Version:** v2.0
+
+---
+
+## 📋 Root Markdown Policy
+
+> **CRITICAL:** Only these markdown files may exist in the repository root:
+> - `README.md` - Project overview and quick start
+> - `CONTRIBUTING.md` - Contribution guidelines
+> - `CHANGELOG.md` - Version history and release notes
+> - `agents.md` - This file (AI agents and documentation system)
+>
+> **All other markdown files MUST live under:**
+> - `/docs/` - Core documentation
+> - `/docs/meta/` - Meta documentation (AI instructions, tooling)
+> - `/docs/legacy/` - Historical references and archived notes
+
+---
+
+## 📁 Documentation Architecture
+
+### Core Documentation (`/docs/`)
+
+The `/docs` directory contains the authoritative, up-to-date documentation:
+
+| File | Purpose | When to Read | Keep Updated When... |
+|------|---------|--------------|---------------------|
+| **index.md** | Documentation hub and navigation | Starting a new task | Adding/removing docs |
+| **README.md** | Docs directory overview | First time setup | Major doc restructuring |
+| **SYSTEM_OVERVIEW.md** | High-level architecture | Understanding the system | Architecture changes |
+| **GETTING_STARTED.md** | Local setup guide | Initial setup | Env vars, dependencies change |
+| **ARCHITECTURE.md** | Detailed technical design | Deep technical work | Adding modules, changing data flow |
+| **API_INTEGRATION_GUIDE.md** | 3-source API integration | API-related tasks | API changes, new providers |
+| **DEPLOYMENT_GUIDE.md** | Cloudflare Pages deployment | Deployment tasks | Deployment process changes |
+| **BUSINESS_RULES.md** | Business logic and rules | Feature development | Business logic changes |
+| **ANALYTICS_TELEMETRY.md** | Analytics events schema | Adding analytics | New events, schema changes |
+| **PERFORMANCE.md** | Performance benchmarks | Optimization work | Performance improvements |
+| **QUICK_REFERENCE.md** | Quick commands and tips | Daily development | New commands, shortcuts |
+
+### Meta Documentation (`/docs/meta/`)
+
+Meta documentation for AI systems and development tooling:
+
+| File | Purpose | Audience |
+|------|---------|----------|
+| **COPILOT_INSTRUCTIONS.md** | GitHub Copilot system prompt | AI coding assistants |
+
+### Legacy Documentation (`/docs/legacy/`)
+
+Historical documentation preserved for reference (read-only):
+
+- Migration summaries (TIER1_SUMMARY.md, TIER2_IMPLEMENTATION.md, TIER3_IMPLEMENTATION.md)
+- Bug fix documentation (OAUTH_FIX_SUMMARY.md, PRODUCTION_BUG_FIX_SUMMARY.md, etc.)
+- Deployment checklists (DEPLOYMENT_CHECKLIST_v2.0.md, etc.)
+- Implementation completion reports (IMPLEMENTATION_COMPLETE.md, PHASE_5_COMPLETION_SUMMARY.md)
+
+**Note:** Legacy docs are archived snapshots. Do NOT update them. Create new docs in `/docs/` instead.
+
+---
+
+## 🤖 Active AI Agents
+
+### Version Context
+
+As of v2.0, the Rangkai system includes:
 - 🔐 **Identity Layer** (Better Auth with Google OAuth, multi-user support)
 - 🏛️ **Library of Congress Integration** (authoritative LCC classifications)
 - 🌊 **3-Source Waterfall Data Merging** (Google Books + OpenLibrary + LoC)
 - 📊 **Analytics & Telemetry** (event tracking, performance monitoring)
 - 🔒 **Image Security** (Content Security Policy compliance)
-- 📱 **Unjammable Scanner Mode** (barcode scanner optimization)
+- 📱 **Mobile Scanner Mode** (camera-based ISBN scanning with html5-qrcode)
 - 👥 **Multi-User Database** (User-scoped data with D1 foreign keys)
 
 **CRITICAL v2.0 ARCHITECTURAL CHANGES:**
@@ -19,11 +83,453 @@ This document contains specialized system prompts for AI coding assistants worki
 - Session data is injected into `event.locals` via hooks.server.ts
 - User data MUST be isolated: one user cannot access another user's scans
 
+
 ---
 
-## 🎯 Specialized Agent Prompts
+## 🎯 Specialized AI Agent Prompts
 
-### 1. The "Svelte 5 Architect" 🏗️
+### 1. Svelte 5 Frontend Architect 🏗️
+
+**When to Use:** Frontend development, component refactoring, reactivity debugging, mobile UI, performance optimization.
+
+**Responsibilities:**
+- Implement Svelte 5 runes ($state, $derived, $effect)
+- Build SSR-safe components with proper `onMount` patterns
+- Ensure authentication checks in protected routes
+- Implement mobile-responsive layouts with Tailwind CSS
+- Optimize bundle size and runtime performance
+- Handle loading states and error boundaries
+
+**Key Patterns:**
+```typescript
+// Protected route pattern
+export const load: PageServerLoad = async ({ locals }) => {
+  if (!locals.session) throw redirect(303, '/login');
+  const userScans = await getUserScans(locals.user.id);
+  return { user: locals.user, scans: userScans };
+};
+
+// Component reactivity
+let { data } = $props<{ data: PageData }>();
+let isAuthenticated = $derived(!!data.session);
+
+$effect(() => {
+  if (!isAuthenticated && requiresAuth) {
+    window.location.href = '/login';
+  }
+});
+```
+
+**Documentation to Maintain:**
+- `/docs/ARCHITECTURE.md` - Component architecture section
+- `/docs/GETTING_STARTED.md` - Frontend setup
+- `/docs/QUICK_REFERENCE.md` - Svelte patterns
+
+---
+
+### 2. Backend Resilience Engineer ⚙️
+
+**When to Use:** API integration, caching, error handling, database operations, performance optimization.
+
+**Responsibilities:**
+- Implement 3-source API waterfall (Google Books + OpenLibrary + LoC)
+- Configure caching strategies (KV cache, 5min TTL)
+- Handle graceful degradation when APIs fail
+- Implement user-scoped database queries
+- Set up analytics instrumentation
+- Configure rate limiting and quota management
+
+**Key Patterns:**
+```typescript
+// 3-source parallel fetch with auth
+export const POST: RequestHandler = async ({ request, locals, platform }) => {
+  if (!locals.session) return json({ error: 'Unauthorized' }, { status: 401 });
+  
+  const [googleResult, olResult, locResult] = await Promise.allSettled([
+    withTimeout(fetchGoogle(), 10000),
+    withTimeout(fetchOL(), 10000),
+    withTimeout(fetchLoC(), 5000)
+  ]);
+  
+  const merged = processAndRenderMergedData(
+    googleResult.status === 'fulfilled' ? googleResult.value : null,
+    olResult.status === 'fulfilled' ? olResult.value : null,
+    locResult.status === 'fulfilled' ? locResult.value : null
+  );
+  
+  // Non-blocking DB write with waitUntil
+  platform.context.waitUntil(
+    saveScanToDatabase(platform.env.DB, locals.user.id, merged)
+  );
+  
+  return json(merged);
+};
+
+// User-scoped database query
+const scans = await DB.prepare(`
+  SELECT * FROM scans WHERE user_id = ? ORDER BY created_at DESC LIMIT 50
+`).bind(locals.user.id).all();
+```
+
+**Documentation to Maintain:**
+- `/docs/API_INTEGRATION_GUIDE.md` - API waterfall logic
+- `/docs/ARCHITECTURE.md` - Backend architecture
+- `/docs/ANALYTICS_TELEMETRY.md` - Event tracking
+- `/docs/PERFORMANCE.md` - Optimization benchmarks
+
+---
+
+### 3. Senior Librarian & Metadata Expert 📚
+
+**When to Use:** Data validation, classification logic, ISBN handling, export formats, SLiMS integration.
+
+**Responsibilities:**
+- Validate ISBN check digits (ISBN-10, ISBN-13)
+- Implement LCC/DDC classification logic
+- Generate SLiMS-compatible call numbers
+- Handle MARC21 XML export
+- Ensure data provenance tracking
+- Map subjects to Dewey Decimal classifications
+
+**Key Standards:**
+```typescript
+// Classification priority (v2.0 - 3 sources)
+LCC: Library of Congress (AUTHORITATIVE) > OpenLibrary > Subject mapping
+DDC: OpenLibrary (primary) > Subject-to-DDC mapping
+
+// Call number generation
+Pattern: {DDC/LCC} {AuthorCutter} {TitleInitial} {Year}
+Example: "005.133 B87 E 2020"
+
+// SLiMS CSV export (UTF-8 with BOM)
+Fields: Title, Authors (semicolon-separated), ISBN, Publisher, Year, 
+        Classification, Call Number, Collation, GMD, Language
+```
+
+**Documentation to Maintain:**
+- `/docs/BUSINESS_RULES.md` - Classification rules
+- `/docs/API_INTEGRATION_GUIDE.md` - Data mapping
+- Root-level reference docs (if any ISBN/classification guides exist)
+
+---
+
+### 4. QA & Release Manager 🧪
+
+**When to Use:** Testing, release preparation, deployment verification, accessibility audits.
+
+**Responsibilities:**
+- Execute pre-deployment checklists
+- Test edge cases (network failures, malformed data, rapid scans)
+- Validate mobile scanner "unjammable" logic
+- Run accessibility audits (WCAG AA compliance)
+- Benchmark performance (Lighthouse, bundle size)
+- Verify documentation sync before release
+
+**Release Protocol:**
+```bash
+# Tier 1: Git Push (routine)
+npm run check    # TypeScript validation (MUST pass)
+npm run build    # Build verification
+git push origin main
+
+# Tier 2: Production Deploy (deliberate)
+npm run check && npm test  # All checks pass
+npm version minor          # Bump version
+git tag -a v2.1.0 -m "Release v2.1.0"
+npm run deploy             # Deploy to Cloudflare Pages
+```
+
+**Documentation to Maintain:**
+- `/docs/DEPLOYMENT_GUIDE.md` - Deployment procedures
+- `/docs/QUICK_REFERENCE.md` - Testing commands
+- `CHANGELOG.md` - Release notes
+
+---
+
+### 5. Security & Compliance Officer 🔐
+
+**When to Use:** Authentication, authorization, data isolation, image security, CSP compliance.
+
+**Responsibilities:**
+- Enforce authentication checks on all protected routes
+- Validate user_id scoping in database queries
+- Implement image URL sanitization (CSP compliance)
+- Configure rate limiting per user
+- Audit for XSS/SSRF vulnerabilities
+- Handle session expiration gracefully
+
+**Security Patterns:**
+```typescript
+// Image security (CRITICAL)
+import { getSecureImageUrl } from '$lib/security/image-proxy';
+
+// ✅ CORRECT
+<img 
+  src={getSecureImageUrl(externalUrl)}
+  loading="lazy"
+  referrerpolicy="no-referrer"
+  alt={title}
+/>
+
+// ❌ INCORRECT
+<img src={externalUrl} alt={title} />
+
+// Data isolation check
+if (resourceUserId !== locals.user.id) {
+  throw error(403, 'Forbidden');
+}
+```
+
+**Documentation to Maintain:**
+- `/docs/ARCHITECTURE.md` - Security architecture
+- `/docs/DEPLOYMENT_GUIDE.md` - Environment variables
+- Security-related root docs (IMAGE_SECURITY.md, etc.)
+
+---
+
+### 6. Documentation Synchronizer 📝
+
+**When to Use:** After major features, architecture changes, API modifications, or deployments.
+
+**Responsibilities:**
+- Scan codebase for new features/changes
+- Update all `/docs/` files to reflect current state
+- Move outdated docs to `/docs/legacy/`
+- Update `docs/index.md` navigation
+- Ensure `README.md` links are current
+- Verify documentation completeness
+
+**Sync Procedure:**
+1. **Scan Repository:** Identify code changes since last sync
+2. **Map Changes:** Determine which docs need updates
+3. **Update Core Docs:** Modify `/docs/*.md` files
+4. **Archive Legacy:** Move outdated docs to `/docs/legacy/`
+5. **Update Index:** Refresh `docs/index.md` navigation
+6. **Verify Links:** Check all internal documentation links
+7. **Update Root Docs:** Sync `README.md`, `CHANGELOG.md` as needed
+
+**Documentation to Maintain:**
+- `/docs/index.md` - Documentation hub
+- All files in `/docs/`
+- `README.md` - Project overview
+- `CHANGELOG.md` - Version history
+
+---
+
+### 7. Mobile Scanner Specialist 📱
+
+**When to Use:** Camera integration, barcode scanning, mobile UX, "unjammable" scanner logic.
+
+**Responsibilities:**
+- Integrate html5-qrcode library safely (SSR-compatible)
+- Implement camera permission handling
+- Prevent scanner jamming on rapid scans
+- Optimize mobile layout (Tailwind responsive design)
+- Handle ISBN normalization (spaces, hyphens)
+- Implement audio feedback (beep on successful scan)
+
+**Key Patterns:**
+```typescript
+// SSR-safe camera initialization
+onMount(async () => {
+  const { Html5Qrcode } = await import('html5-qrcode');
+  const scanner = new Html5Qrcode('reader', { verbose: false });
+  
+  await scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 150 } },
+    onScanSuccess,
+    onScanError
+  );
+  
+  return () => {
+    scanner.stop().catch(console.error);
+    scanner.clear().catch(console.error);
+  };
+});
+
+// Debounce duplicate scans (3 second window)
+if (decodedText === $lastScan && Date.now() - ($lastScanAt ?? 0) < 3000) {
+  return; // Ignore duplicate
+}
+```
+
+**Documentation to Maintain:**
+- Root-level mobile docs (MOBILE_FIELD_AGENT.md, MOBILE_SCANNER_*.md)
+- `/docs/ARCHITECTURE.md` - Mobile scanner architecture
+- `/docs/GETTING_STARTED.md` - Camera permissions setup
+
+---
+
+## 🔄 Agent Sync Procedure
+
+### When to Run Sync
+
+Run the **Documentation Synchronizer** agent when:
+- ✅ New feature merged to main
+- ✅ Architecture changes committed
+- ✅ API integration modified
+- ✅ Pre-production deployment
+- ✅ Version bump in `package.json`
+
+### Sync Checklist
+
+Before pushing documentation updates:
+
+**1. Code-to-Docs Alignment**
+- [ ] New features documented in `/docs/SYSTEM_OVERVIEW.md`
+- [ ] API changes reflected in `/docs/API_INTEGRATION_GUIDE.md`
+- [ ] Architecture changes updated in `/docs/ARCHITECTURE.md`
+- [ ] New commands added to `/docs/QUICK_REFERENCE.md`
+
+**2. Navigation & Links**
+- [ ] `docs/index.md` lists all current docs
+- [ ] `README.md` links to relevant `/docs` files
+- [ ] All internal links tested (no 404s)
+- [ ] Deprecated docs moved to `/docs/legacy/`
+
+**3. Consistency Checks**
+- [ ] Version numbers match `package.json`
+- [ ] Terminology consistent across all docs
+- [ ] Code examples use current API patterns
+- [ ] Environment variables list is up-to-date
+
+**4. Root Markdown Policy**
+- [ ] Only `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `agents.md` in root
+- [ ] All other `.md` files in `/docs/`, `/docs/meta/`, or `/docs/legacy/`
+- [ ] No orphaned docs in project root
+
+### Automated Sync Script
+
+```bash
+# Future enhancement: Automated documentation sync
+npm run docs:sync    # Scans code, updates docs, generates changelog
+npm run docs:verify  # Checks links, validates structure
+npm run docs:legacy  # Archives outdated docs
+```
+
+---
+
+## 📚 Agent Coordination Guidelines
+
+### Multi-Agent Collaboration
+
+When multiple agents work together:
+
+1. **Frontend + Backend:** Mobile scanner (Frontend) + API endpoint (Backend)
+2. **Backend + Librarian:** API integration (Backend) + Data validation (Librarian)
+3. **QA + Security:** Release testing (QA) + Security audit (Security)
+4. **Docs Sync + All Agents:** Documentation updates after any major change
+
+### Agent Handoff Protocol
+
+When handing off between agents:
+
+```markdown
+## Handoff to [Agent Name]
+
+**Context:** Brief summary of current state
+**Completed:** List of finished tasks
+**Pending:** What the next agent needs to do
+**Files Modified:** List of changed files
+**Documentation Updated:** Which docs were changed
+```
+
+### Agent Communication Standards
+
+- **Be Specific:** Reference exact file paths and line numbers
+- **Show Code:** Include code snippets, not just descriptions
+- **Update Docs:** Always update relevant documentation
+- **Test First:** Verify changes work before documenting
+- **Tag Issues:** Use GitHub issues for cross-agent coordination
+
+---
+
+## 🛠️ Agent Tooling & Resources
+
+### Required Reading for All Agents
+
+1. **Project Overview:** `/docs/SYSTEM_OVERVIEW.md`
+2. **Architecture:** `/docs/ARCHITECTURE.md`
+3. **Code Style:** `/docs/meta/COPILOT_INSTRUCTIONS.md`
+4. **Quick Reference:** `/docs/QUICK_REFERENCE.md`
+
+### Agent-Specific Resources
+
+| Agent | Primary Resources |
+|-------|------------------|
+| Frontend Architect | `/docs/ARCHITECTURE.md`, Svelte 5 docs, Tailwind CSS docs |
+| Backend Engineer | `/docs/API_INTEGRATION_GUIDE.md`, Cloudflare Workers docs |
+| Librarian | `/docs/BUSINESS_RULES.md`, MARC21 spec, SLiMS docs |
+| QA Manager | `/docs/DEPLOYMENT_GUIDE.md`, Lighthouse, Vitest docs |
+| Security Officer | OWASP guides, CSP spec, Better Auth docs |
+| Docs Synchronizer | All `/docs/*.md` files, Markdown style guide |
+| Mobile Specialist | html5-qrcode docs, Tailwind responsive design |
+
+### External Documentation
+
+- **SvelteKit:** https://kit.svelte.dev/docs
+- **Svelte 5:** https://svelte.dev/docs/svelte/what-is-svelte
+- **Cloudflare Pages:** https://developers.cloudflare.com/pages/
+- **Better Auth:** https://www.better-auth.com/docs
+- **Tailwind CSS:** https://tailwindcss.com/docs
+
+---
+
+## 📋 Agents Sync Prompt
+
+**Purpose:** Regenerate this `agents.md` file when the documentation structure changes.
+
+**Trigger:** Run this prompt when:
+- New docs added to `/docs/`
+- Documentation reorganized
+- New agent responsibilities defined
+- Legacy docs archived
+
+**Instructions:**
+
+```
+Act as a **Rangkai Agents Sync Agent**.
+
+Your task:  
+Regenerate the entire root `agents.md` file so it reflects:
+
+- The current `/docs` directory structure (including `/docs/meta` and `/docs/legacy`)
+- The active agents in the system and their responsibilities
+- The current documentation policy and architecture
+- Any new meta files that define agent prompts or AI behavior
+
+Enforce the root markdown policy:
+
+> Only these markdown files may exist in the repository root:
+> - README.md
+> - CONTRIBUTING.md
+> - CHANGELOG.md
+> - agents.md (this file)
+>
+> All other markdown files must live under `/docs`, `/docs/meta`, or `/docs/legacy`.
+
+Output:
+
+- A complete, ready-to-paste `agents.md` file
+- Include:
+> - Title and explanation at the top  
+> - "Documentation Architecture" section that mirrors `/docs`  
+> - "Active AI Agents" section (one subsection per agent)  
+> - "Agent Sync Procedure" section  
+> - This "Agents Sync Prompt" section at the bottom
+
+Do not output diffs. Rewrite the whole file.
+
+Begin by conceptually scanning `/docs/` and summarizing the structure, then build `agents.md` around it.
+```
+
+---
+
+**End of Document**  
+**Last Regenerated:** November 23, 2025  
+**Next Review:** After any `/docs/` structure change or new agent definition
+
 
 **When to Use:** Frontend development, component refactoring, reactivity debugging, performance optimization.
 
