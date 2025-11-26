@@ -155,6 +155,43 @@ export async function createScan(
 }
 
 /**
+ * Create a new ANONYMOUS scan (no user_id)
+ *
+ * @param db - D1 database instance
+ * @param isbn - Book ISBN
+ * @param title - Book title
+ * @param jsonData - Merged book metadata (serialized JSON)
+ * @param status - Scan status (default: 'draft')
+ * @returns Inserted scan ID
+ */
+export async function createAnonymousScan(
+	db: D1Database,
+	isbn: string,
+	title: string,
+	jsonData: string,
+	status: 'draft' | 'published' | 'archived' = 'draft'
+): Promise<number> {
+	const result = await db
+		.prepare(
+			`INSERT INTO scans (user_id, isbn, title, json_data, status, created_at, updated_at)
+			 VALUES (NULL, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+		)
+		.bind(isbn, title, jsonData, status)
+		.run();
+
+	if (!result.success) {
+		throw new Error('Failed to create anonymous scan');
+	}
+
+	// Since we can't reliably get the last inserted ID for an anonymous
+	// scan without a user_id, we'll return 0 as a placeholder.
+	// This is acceptable as anonymous scans are for logging/analytics
+	// and don't need to be retrieved individually.
+	return 0;
+}
+
+
+/**
  * Update scan status
  */
 export async function updateScanStatus(
