@@ -284,51 +284,51 @@
 	// --- Input Debouncing (Manual Typing Only) ---
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-        function handleInputChange() {
-                const trimmedQuery = searchQuery.trim();
-                if (!trimmedQuery) return;
+	function handleInputChange() {
+		const trimmedQuery = searchQuery.trim();
+		if (!trimmedQuery) return;
 
-                const cleanedQuery = cleanISBN(trimmedQuery);
-                const isCompleteIsbn = /^\d{10}(\d{3})?$/.test(cleanedQuery);
+		const cleanedQuery = cleanISBN(trimmedQuery);
+		const isCompleteIsbn = /^\d{10}(\d{3})?$/.test(cleanedQuery);
 
-                // Clear any existing debounce timer before scheduling a new one
-                if (debounceTimer) {
-                        clearTimeout(debounceTimer);
-                        debounceTimer = null;
-                }
+		// Clear any existing debounce timer before scheduling a new one
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+			debounceTimer = null;
+		}
 
-                if (scannerModeEnabled) {
-                        // Scanner Mode Auto-Submit Logic
-                        if (isCompleteIsbn) {
-                                // Barcode scanners should submit instantly when a full ISBN is present
-                                handleSearch();
-                                return;
-                        }
+		if (scannerModeEnabled) {
+			// Scanner Mode Auto-Submit Logic
+			if (isCompleteIsbn) {
+				// Barcode scanners should submit instantly when a full ISBN is present
+				handleSearch();
+				return;
+			}
 
-                        if (cleanedQuery.length >= 3) {
-                                // Partial scanner input: debounce briefly to avoid ghost scans
-                                debounceTimer = setTimeout(() => {
-                                        if (cleanedQuery.length >= 9) {
-                                                handleSearch();
-                                        }
-                                }, 500);
-                        }
+			if (cleanedQuery.length >= 3) {
+				// Partial scanner input: debounce briefly to avoid ghost scans
+				debounceTimer = setTimeout(() => {
+					if (cleanedQuery.length >= 9) {
+						handleSearch();
+					}
+				}, 500);
+			}
 
-                        return;
-                }
+			return;
+		}
 
-                // Manual typing: debounce partial input, but allow instant search for full ISBNs
-                if (isCompleteIsbn) {
-                        handleSearch();
-                        return;
-                }
+		// Manual typing: debounce partial input, but allow instant search for full ISBNs
+		if (isCompleteIsbn) {
+			handleSearch();
+			return;
+		}
 
-                if (cleanedQuery.length >= 3) {
-                        debounceTimer = setTimeout(() => {
-                                handleSearch();
-                        }, 400);
-                }
-        }
+		if (cleanedQuery.length >= 3) {
+			debounceTimer = setTimeout(() => {
+				handleSearch();
+			}, 400);
+		}
+	}
 
 	// --- Enhanced Main Search Function ---
 	async function handleSearch() {
