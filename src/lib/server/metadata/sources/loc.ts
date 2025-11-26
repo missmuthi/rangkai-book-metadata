@@ -21,12 +21,15 @@ const DEFAULT_TIMEOUT = 5000; // 5 seconds (LoC can be slow, fail fast)
  * @param isbn - ISBN identifier
  * @returns LoC API response or null
  */
-export async function fetchLibraryOfCongress(isbn: string): Promise<LoCBookData | null> {
+export async function fetchLibraryOfCongress(
+	fetchFn: typeof fetch,
+	isbn: string
+): Promise<LoCBookData | null> {
 	const startTime = performance.now();
 	const url = `${LOC_BASE}?q=${encodeURIComponent(isbn)}&fo=json&at=results`;
 
 	try {
-		const response = await fetch(url);
+		const response = await fetchFn(url);
 		const duration = Math.round(performance.now() - startTime);
 		
 		// Graceful degradation: Don't throw on errors, return null to allow fallback
@@ -99,11 +102,12 @@ export async function fetchLibraryOfCongress(isbn: string): Promise<LoCBookData 
  * Fetch with timeout wrapper
  */
 export async function fetchLibraryOfCongressWithTimeout(
+	fetchFn: typeof fetch,
 	isbn: string,
 	timeoutMs = DEFAULT_TIMEOUT
 ): Promise<LoCBookData | null> {
 	return withTimeout(
-		fetchLibraryOfCongress(isbn),
+		fetchLibraryOfCongress(fetchFn, isbn),
 		timeoutMs,
 		'Library of Congress API timeout'
 	);

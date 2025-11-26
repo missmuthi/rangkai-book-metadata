@@ -47,9 +47,9 @@ export interface MetadataFetchResult {
  * console.log(book.title, book.lcc, book.dataSource);
  * ```
  */
-export async function fetchBookByIsbn(isbn: string): Promise<MergedBookData> {
+export async function fetchBookByIsbn(fetchFn: typeof fetch, isbn: string): Promise<MergedBookData> {
 	// Fetch from all three sources in parallel
-	const result = await fetchAllSources(isbn, true);
+	const result = await fetchAllSources(fetchFn, isbn, true);
 
 	// Check if we have at least one data source
 	if (!result.google && !result.openlibrary && !result.loc) {
@@ -66,7 +66,7 @@ export async function fetchBookByIsbn(isbn: string): Promise<MergedBookData> {
 	const googleVolumeInfo = result.google?.items?.[0]?.volumeInfo || null;
 	const mergedData = processAndRenderMergedData(
 		googleVolumeInfo,
-		result.openlibrary as any,
+		result.openlibrary,
 		result.loc
 	);
 
@@ -86,9 +86,13 @@ export async function fetchBookByIsbn(isbn: string): Promise<MergedBookData> {
  * console.log(results.google?.items?.length);
  * ```
  */
-export async function searchBooksByTitle(title: string, limit = 10): Promise<MetadataFetchResult> {
+export async function searchBooksByTitle(
+	fetchFn: typeof fetch,
+	title: string,
+	limit = 10
+): Promise<MetadataFetchResult> {
 	// LoC doesn't support title search, only ISBN
-	return fetchAllSources(title, false, limit, limit);
+	return fetchAllSources(fetchFn, title, false, limit, limit);
 }
 
 /**
@@ -102,18 +106,19 @@ export async function searchBooksByTitle(title: string, limit = 10): Promise<Met
  * @returns Metadata from all sources with error tracking
  */
 export async function fetchAllSources(
+	fetchFn: typeof fetch,
 	query: string,
 	isIsbn: boolean,
 	googleLimit = 1,
 	openLibraryLimit = 1
 ): Promise<MetadataFetchResult> {
 	// Execute all three API calls in parallel
-	const googlePromise = fetchGoogleBooksWithTimeout(query, isIsbn, googleLimit, TIMEOUTS.google);
-	const openLibraryPromise = fetchOpenLibraryWithTimeout(query, isIsbn, openLibraryLimit, TIMEOUTS.openlibrary);
+	const googlePromise = fetchGoogleBooksWithTimeout(fetchFn, query, isIsbn, googleLimit, TIMEOUTS.google);
+	const openLibraryPromise = fetchOpenLibraryWithTimeout(fetchFn, query, isIsbn, openLibraryLimit, TIMEOUTS.openlibrary);
 	
 	// LoC only supports ISBN search
 	const locPromise = isIsbn 
-		? fetchLibraryOfCongressWithTimeout(query, TIMEOUTS.loc)
+		? fetchLibraryOfCongressWithTimeout(fetchFn, query, TIMEOUTS.loc)
 		: Promise.resolve(null);
 
 	const [googleResult, openLibraryResult, locResult] = await Promise.allSettled([

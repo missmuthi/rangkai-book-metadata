@@ -34,7 +34,7 @@ import {
  * 3. Return response IMMEDIATELY
  * 4. Background: Write to KV (non-blocking)
  */
-export const GET: RequestHandler = async ({ params, platform }) => {
+export const GET: RequestHandler = async ({ params, platform, fetch }) => {
 	const { isbn } = params;
 	const startTime = performance.now();
 
@@ -73,7 +73,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 	let sources: { google: boolean; openlibrary: boolean; loc: boolean };
 	
 	try {
-		mergedData = await fetchBookByIsbn(isbn);
+		mergedData = await fetchBookByIsbn(fetch, isbn);
 		
 		// Get source status from the metadata (with fallback)
 		const dataSource = mergedData.dataSource || '';
