@@ -6,6 +6,7 @@
         import { processAndRenderMergedData } from '$lib/merge';
         import { BookApiService, googleCache, openLibraryCache, locCache } from '$lib/api';
         import { retry, isOnline, getSecureImageUrl } from '$lib/utils';
+        import { cleanISBN } from '$lib/isbn-helpers';
 	import SkeletonCard from '$lib/SkeletonCard.svelte';
 	import { Analytics } from '$lib/services/analytics';
 
@@ -107,14 +108,6 @@
 		'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTBlMGUwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjN2M3YzdjIj5ObyBDb3ZlcjwvdGV4dD48L3N2Zz4=';
 
 
-	// --- ISBN Sanitization Utility ---
-	/**
-	 * Clean ISBN input from barcode scanners
-	 * Strips all non-alphanumeric characters (dashes, spaces)
-	 */
-	function cleanISBN(input: string): string {
-		return input.replace(/[^a-zA-Z0-9]/g, '');
-	}
 
 	// --- Secure Image Proxy Utility (SSRF Protection) ---
 	/**
