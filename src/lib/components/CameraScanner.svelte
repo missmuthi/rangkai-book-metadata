@@ -20,12 +20,15 @@
         let cooldownTimeout: ReturnType<typeof setTimeout> | null = null;
         let isOnline = browser ? navigator.onLine : true;
 
-        const scanConfig: Html5QrcodeCameraScanConfig = {
-                fps: 10,
-                qrbox: { width: 260, height: 260 }
-        };
+	const scanConfig: Html5QrcodeCameraScanConfig = {
+		fps: 10,
+		qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+			const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+			const size = Math.max(180, Math.min(320, Math.floor(minEdge * 0.65)));
 
-        onMount(() => {
+			return { width: size, height: size };
+		}
+	};        onMount(() => {
                 const cleanupNetworkListeners = setupNetworkListeners();
                 startIfNeeded();
 
@@ -83,7 +86,12 @@
                         statusMessage = 'Camera active';
                         dispatch('status', { active: true, online: isOnline });
                 } catch (err) {
-                        const message = err instanceof Error ? err.message : 'Unable to start camera';
+                        let message = err instanceof Error ? err.message : 'Unable to start camera';
+
+                        if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) {
+                                message = 'Camera permission denied. Please allow camera access to scan.';
+                        }
+
                         errorMessage = message;
                         statusMessage = 'Camera unavailable';
                 } finally {

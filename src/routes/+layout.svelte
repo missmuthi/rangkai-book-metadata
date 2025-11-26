@@ -83,11 +83,24 @@ async function onSignOut() {
 	<header class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
 		<div class="max-w-7xl mx-auto px-4 py-3">
 			<div class="flex items-center justify-between">
-				<!-- Logo/Brand -->
-				<a href="/" class="flex items-center gap-2 text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors">
-					<img src={favicon} alt="Rangkai Logo" class="size-8" />
-					<span>Rangkai</span>
-				</a>
+				<!-- Logo/Brand + Mobile Nav -->
+				<div class="flex items-center gap-3">
+					<a href="/" class="flex items-center gap-2 text-lg font-bold text-gray-900 transition-colors hover:text-blue-600">
+						<img src={favicon} alt="Rangkai Logo" class="size-8" />
+						<span>Rangkai</span>
+					</a>
+
+					<a
+						href="/scan/mobile"
+						class="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+					>
+						<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M7 5H5a2 2 0 00-2 2v2m14-4h2a2 2 0 012 2v2m0 6v2a2 2 0 01-2 2h-2m-8 0H5a2 2 0 01-2-2v-2"></path>
+							<rect x="8" y="8" width="8" height="8" rx="2" ry="2"></rect>
+						</svg>
+						<span>Scan</span>
+					</a>
+				</div>
 
 				<!-- Auth Section -->
 				<div class="flex items-center gap-4">
