@@ -12,30 +12,33 @@ import type { MergedBookData } from '../types';
 /**
  * Comprehensive event catalog for Rangkai analytics
  */
-export type AnalyticsEvent = 
-	| SearchPerformedEvent
-	| CacheHitEvent
-	| DataSourceUsedEvent
-	| ScannerModeToggledEvent
-	| BatchExportEvent
-	| SingleExportEvent
-	| ErrorOccurredEvent
-	| ApiTimingEvent
-	| UserInteractionEvent
-	| AutoAddTriggeredEvent;
+export type AnalyticsEvent =
+        | SearchPerformedEvent
+        | CacheHitEvent
+        | DataSourceUsedEvent
+        | ScannerModeToggledEvent
+        | BatchExportEvent
+        | SingleExportEvent
+        | ErrorOccurredEvent
+        | ApiTimingEvent
+        | UserInteractionEvent
+        | AutoAddTriggeredEvent
+        | ScanLatencyEvent;
 
 /**
  * Search tracking (ISBN vs Title, with performance metrics)
  */
 interface SearchPerformedEvent {
-	name: 'search_performed';
-	properties: {
-		type: 'isbn' | 'title';
-		query_length: number;
-		duration_ms: number;
-		result_count: number;
-		timestamp: string;
-	};
+        name: 'search_performed';
+        properties: {
+                type: 'isbn' | 'title';
+                query_length: number;
+                duration_ms: number;
+                latency_ms: number;
+                result_count: number;
+                cache_hit?: boolean;
+                timestamp: string;
+        };
 }
 
 /**
@@ -158,16 +161,24 @@ interface UserInteractionEvent {
  * Auto-add triggered event (scanner mode continuous workflow)
  */
 interface AutoAddTriggeredEvent {
-	name: 'auto_add_triggered';
-	properties: {
-		isbn: string;
+        name: 'auto_add_triggered';
+        properties: {
+                isbn: string;
 		is_partial_data: boolean;
 		data_source: string;
 		has_google: boolean;
 		has_openlibrary: boolean;
 		has_loc: boolean;
-		timestamp: string;
-	};
+                timestamp: string;
+        };
+}
+
+interface ScanLatencyEvent {
+        name: 'scan_latency';
+        properties: {
+                duration: number;
+                timestamp: string;
+        };
 }
 
 // --- Analytics Service Implementation ---
@@ -221,29 +232,31 @@ class AnalyticsService {
 		if (!this.enabled) return;
 
 		// Add timestamp
-		const eventData = {
-			name,
-			properties: {
-				...properties,
-				timestamp: new Date().toISOString()
-			}
-		};
+                const eventData = {
+                        name,
+                        properties: {
+                                ...properties,
+                                timestamp: new Date().toISOString()
+                        }
+                };
 
-		if (this.isDev) {
-			this.logDevMode(eventData);
-		} else {
-			this.logProdMode(eventData);
-		}
-	}
+                const sanitizedEvent = this.sanitizeEvent(eventData);
+
+                if (this.isDev) {
+                        this.logDevMode(sanitizedEvent);
+                } else {
+                        this.logProdMode(sanitizedEvent);
+                }
+        }
 
 	/**
 	 * Dev mode logging with colors and emojis
 	 */
-	private logDevMode(event: { name: string; properties: any }): void {
-		const emoji = this.getEventEmoji(event.name);
-		const color = this.getEventColor(event.name);
+        private logDevMode(event: { name: string; properties: any }): void {
+                const emoji = this.getEventEmoji(event.name);
+                const color = this.getEventColor(event.name);
 
-		console.log(
+                console.log(
 			`%c${emoji} [Analytics] ${event.name}`,
 			`color: ${color}; font-weight: bold;`,
 			event.properties
@@ -251,11 +264,11 @@ class AnalyticsService {
 	}
 
 	/**
-	 * Production mode logging (console.info with prefix)
-	 * Future: Replace with actual analytics service (Plausible, GA, PostHog)
-	 */
-	private logProdMode(event: { name: string; properties: any }): void {
-		console.info('[Analytics]', event.name, event.properties);
+         * Production mode logging (console.info with prefix)
+         * Future: Replace with actual analytics service (Plausible, GA, PostHog)
+         */
+        private logProdMode(event: { name: string; properties: any }): void {
+                console.info('[Analytics]', event.name, event.properties);
 
 		// TODO: Send to analytics service
 		// Example for Plausible:
@@ -272,42 +285,95 @@ class AnalyticsService {
 	/**
 	 * Get emoji for event type
 	 */
-	private getEventEmoji(eventName: string): string {
-		const emojiMap: Record<string, string> = {
-			'cache_hit': '⚡',
-			'cache_miss': '💨',
-			'search_performed': '🔍',
+        private getEventEmoji(eventName: string): string {
+                const emojiMap: Record<string, string> = {
+                        'cache_hit': '⚡',
+                        'cache_miss': '💨',
+                        'search_performed': '🔍',
 			'data_source_used': '📊',
 			'scanner_mode_toggled': '📱',
 			'batch_export': '📦',
 			'single_export': '💾',
 			'error_occurred': '❌',
-			'api_timing': '⏱️',
-			'user_interaction': '🖱️',
-			'auto_add_triggered': '🚀'
-		};
-		return emojiMap[eventName] || '📌';
-	}
+                        'api_timing': '⏱️',
+                        'user_interaction': '🖱️',
+                        'auto_add_triggered': '🚀',
+                        'scan_latency': '⌛'
+                };
+                return emojiMap[eventName] || '📌';
+        }
 
 	/**
 	 * Get color for event type
 	 */
-	private getEventColor(eventName: string): string {
-		const colorMap: Record<string, string> = {
-			'cache_hit': '#10b981', // green
-			'cache_miss': '#6b7280', // gray
-			'search_performed': '#3b82f6', // blue
+        private getEventColor(eventName: string): string {
+                const colorMap: Record<string, string> = {
+                        'cache_hit': '#10b981', // green
+                        'cache_miss': '#6b7280', // gray
+                        'search_performed': '#3b82f6', // blue
 			'data_source_used': '#8b5cf6', // purple
 			'scanner_mode_toggled': '#f59e0b', // amber
 			'batch_export': '#ec4899', // pink
 			'single_export': '#06b6d4', // cyan
 			'error_occurred': '#ef4444', // red
-			'api_timing': '#14b8a6', // teal
-			'user_interaction': '#6366f1', // indigo
-			'auto_add_triggered': '#22c55e' // lime green
-		};
-		return colorMap[eventName] || '#000000';
-	}
+                        'api_timing': '#14b8a6', // teal
+                        'user_interaction': '#6366f1', // indigo
+                        'auto_add_triggered': '#22c55e', // lime green
+                        'scan_latency': '#0ea5e9' // sky blue
+                };
+                return colorMap[eventName] || '#000000';
+        }
+
+        /**
+         * Remove or hash sensitive values before logging
+         */
+        private sanitizeEvent(event: { name: string; properties: any }) {
+                return {
+                        ...event,
+                        properties: this.sanitizeProperties(event.properties)
+                };
+        }
+
+        private sanitizeProperties(properties: Record<string, any>): Record<string, any> {
+                const sanitizeValue = (value: any, key?: string): any => {
+                        if (value === null || value === undefined) return value;
+
+                        if (typeof value === 'object') {
+                                if (Array.isArray(value)) {
+                                        return value.map(item => sanitizeValue(item));
+                                }
+
+                                return Object.entries(value).reduce<Record<string, any>>((acc, [childKey, childValue]) => {
+                                        acc[childKey] = sanitizeValue(childValue, childKey);
+                                        return acc;
+                                }, {});
+                        }
+
+                        if (key && this.isSensitiveKey(key)) {
+                                if (typeof value === 'string') {
+                                        return this.hashSensitiveValue(value);
+                                }
+                                return '[REDACTED]';
+                        }
+
+                        return value;
+                };
+
+                return sanitizeValue(properties) as Record<string, any>;
+        }
+
+        private isSensitiveKey(key: string): boolean {
+                return /(email|token|code|state)/i.test(key);
+        }
+
+        private hashSensitiveValue(value: string): string {
+                let hash = 0;
+                for (let i = 0; i < value.length; i++) {
+                        hash = (hash << 5) - hash + value.charCodeAt(i);
+                        hash |= 0;
+                }
+                return `[REDACTED:${Math.abs(hash)}]`;
+        }
 
 	/**
 	 * Enable/disable analytics
@@ -334,9 +400,10 @@ export type {
 	DataSourceUsedEvent,
 	ScannerModeToggledEvent,
 	BatchExportEvent,
-	SingleExportEvent,
-	ErrorOccurredEvent,
-	ApiTimingEvent,
-	UserInteractionEvent,
-	AutoAddTriggeredEvent
+        SingleExportEvent,
+        ErrorOccurredEvent,
+        ApiTimingEvent,
+        UserInteractionEvent,
+        AutoAddTriggeredEvent,
+        ScanLatencyEvent
 };
