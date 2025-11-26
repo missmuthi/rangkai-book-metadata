@@ -7,16 +7,18 @@
 
         const dispatch = createEventDispatcher<{
                 scan: { text: string };
-                status: { active: boolean };
+                status: { active: boolean; online?: boolean };
         }>();
 
         let scanner: Html5Qrcode | null = null;
         let scannerModule: typeof import('html5-qrcode') | null = null;
         let isScanning = false;
         let isStarting = false;
+        let facingMode: 'environment' | 'user' = 'environment';
         let statusMessage = 'Initializing camera...';
         let errorMessage: string | null = null;
         let cooldownTimeout: ReturnType<typeof setTimeout> | null = null;
+        let isOnline = browser ? navigator.onLine : true;
 
         const scanConfig: Html5QrcodeCameraScanConfig = {
                 fps: 10,
@@ -24,9 +26,11 @@
         };
 
         onMount(() => {
+                const cleanupNetworkListeners = setupNetworkListeners();
                 startIfNeeded();
 
                 return () => {
+                        cleanupNetworkListeners();
                         teardown();
                 };
         });
@@ -70,14 +74,14 @@
 
                 try {
                         await instance.start(
-                                { facingMode: 'environment' },
+                                { facingMode },
                                 scanConfig,
                                 handleScanSuccess,
                                 handleScanError
                         );
                         isScanning = true;
                         statusMessage = 'Camera active';
-                        dispatch('status', { active: true });
+                        dispatch('status', { active: true, online: isOnline });
                 } catch (err) {
                         const message = err instanceof Error ? err.message : 'Unable to start camera';
                         errorMessage = message;
@@ -96,7 +100,7 @@
                         await scanner.stop();
                         isScanning = false;
                         statusMessage = 'Camera stopped';
-                        dispatch('status', { active: false });
+                        dispatch('status', { active: false, online: isOnline });
                 } catch (err) {
                         console.debug('Unable to stop scanner', err);
                 }
@@ -117,6 +121,20 @@
                                 console.debug('Unable to clear scanner', err);
                         }
                         scanner = null;
+                }
+        }
+
+        async function switchCamera() {
+                facingMode = facingMode === 'environment' ? 'user' : 'environment';
+                statusMessage = 'Switching camera...';
+                await restartScanner();
+        }
+
+        async function restartScanner() {
+                await stopScanning();
+
+                if (active) {
+                        await startIfNeeded();
                 }
         }
 
@@ -170,6 +188,29 @@
                         console.debug('Audio unavailable', err);
                 }
         }
+
+        function setupNetworkListeners() {
+                if (!browser) {
+                        return () => {};
+                }
+
+                const updateOnlineStatus = () => {
+                        isOnline = navigator.onLine;
+                        if (!isOnline) {
+                                statusMessage = 'Offline — camera ready when connection returns';
+                        }
+                        dispatch('status', { active: isScanning, online: isOnline });
+                };
+
+                window.addEventListener('online', updateOnlineStatus);
+                window.addEventListener('offline', updateOnlineStatus);
+                updateOnlineStatus();
+
+                return () => {
+                        window.removeEventListener('online', updateOnlineStatus);
+                        window.removeEventListener('offline', updateOnlineStatus);
+                };
+        }
 </script>
 
 <div class="space-y-4">
@@ -180,9 +221,54 @@
         >
                 <div id="camera-viewfinder" class="aspect-[3/4] w-full"></div>
 
+                {#if !isOnline}
+                        <div class="absolute right-2 top-2 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-amber-50 shadow">
+                                🔌 Offline
+                        </div>
+                {/if}
+
                 {#if !active}
                         <div class="absolute inset-0 flex items-center justify-center bg-black/70 text-white">Camera paused</div>
                 {/if}
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+                <button
+                        type="button"
+                        class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                        on:click={() => {
+                                active = false;
+                                stopScanning();
+                        }}
+                        disabled={!isScanning && !isStarting}
+                        aria-label="Stop camera"
+                        title="Stop camera"
+                >
+                        ⏸️ Stop
+                </button>
+                <button
+                        type="button"
+                        class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                        on:click={switchCamera}
+                        disabled={isStarting}
+                        aria-label="Switch between front and rear camera"
+                        title="Switch between front and rear camera"
+                >
+                        🔄 Switch
+                </button>
+                <button
+                        type="button"
+                        class="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                        on:click={() => {
+                                active = true;
+                                startIfNeeded();
+                        }}
+                        disabled={isScanning || isStarting}
+                        aria-label="Resume camera"
+                        title="Resume camera"
+                >
+                        ▶️ Resume
+                </button>
         </div>
 
         <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">

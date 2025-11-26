@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { tick } from 'svelte';
-	import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
-	import { scanHistory } from '$lib/stores/history.svelte';
-	import { processAndRenderMergedData } from '$lib/merge';
-	import { BookApiService, googleCache, openLibraryCache, locCache } from '$lib/api';
-	import { retry, isOnline, getSecureImageUrl } from '$lib/utils';
+        import { browser } from '$app/environment';
+        import { onMount, tick } from 'svelte';
+        import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
+        import { scanHistory } from '$lib/stores/history.svelte';
+        import { processAndRenderMergedData } from '$lib/merge';
+        import { BookApiService, googleCache, openLibraryCache, locCache } from '$lib/api';
+        import { retry, isOnline, getSecureImageUrl } from '$lib/utils';
 	import SkeletonCard from '$lib/SkeletonCard.svelte';
 	import { Analytics } from '$lib/services/analytics';
 
@@ -197,9 +198,10 @@
 	let rateLimitStatus = $state(getRateLimitStatus());
 
 	// Scanner Mode: Input reference for auto-focus
-	let searchInputRef: HTMLInputElement | null = null;
+        let searchInputRef: HTMLInputElement | null = null;
         let scannerModeEnabled = $state(false);
         let autoAddEnabled = $state(false); // Auto-add to batch without showing detail card
+        let isNetworkOnline = $state(isOnline());
 
         // Toast Notification System (single toast at a time)
         let toast = $state<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -226,13 +228,13 @@
 	 * Play audio feedback for scan success/error
 	 * Uses Web Audio API for non-intrusive beep sounds
 	 */
-	function playFeedbackSound(type: 'success' | 'error') {
-		if (typeof window === 'undefined' || !window.AudioContext) return;
+        function playFeedbackSound(type: 'success' | 'error') {
+                if (typeof window === 'undefined' || !window.AudioContext) return;
 		
-		try {
-			const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-			const oscillator = audioContext.createOscillator();
-			const gainNode = audioContext.createGain();
+                try {
+                        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
 			
 			oscillator.connect(gainNode);
 			gainNode.connect(audioContext.destination);
@@ -243,14 +245,34 @@
 			
 			// Quick beep (100ms)
 			gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-			gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-			
-			oscillator.start(audioContext.currentTime);
-			oscillator.stop(audioContext.currentTime + 0.1);
-		} catch (err) {
-			console.warn('[Audio] Feedback sound failed:', err);
-		}
-	}
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.1);
+                } catch (err) {
+                        console.warn('[Audio] Feedback sound failed:', err);
+                }
+        }
+
+        onMount(() => {
+                if (!browser) return;
+
+                const updateNetworkState = () => {
+                        isNetworkOnline = navigator.onLine;
+                        if (!isNetworkOnline) {
+                                autoAddEnabled = false;
+                        }
+                };
+
+                window.addEventListener('online', updateNetworkState);
+                window.addEventListener('offline', updateNetworkState);
+                updateNetworkState();
+
+                return () => {
+                        window.removeEventListener('online', updateNetworkState);
+                        window.removeEventListener('offline', updateNetworkState);
+                };
+        });
 
 	// Auto-focus input on mount (Scanner Mode)
 	$effect(() => {
@@ -330,12 +352,13 @@
 		}
 	}
 
-	// --- Enhanced Main Search Function ---
-	async function handleSearch() {
-		const searchStartTime = performance.now();
-		const trimmedQuery = searchQuery.trim();
-		if (!trimmedQuery) {
-			error = 'Please enter an ISBN or Title.';
+        // --- Enhanced Main Search Function ---
+        async function handleSearch() {
+                const scanLatencyStart = performance.now();
+                const searchStartTime = scanLatencyStart;
+                const trimmedQuery = searchQuery.trim();
+                if (!trimmedQuery) {
+                        error = 'Please enter an ISBN or Title.';
 			return;
 		}
 
@@ -391,26 +414,28 @@
 				error = 'No data found from any source for this ISBN.';
 				
 				// Track failed search
-				const searchDuration = Math.round(performance.now() - searchStartTime);
-				Analytics.track('search_performed', {
-					type: 'isbn',
-					query_length: cleanedQuery.length,
-					duration_ms: searchDuration,
-					result_count: 0
-				});
-			} else {
+                                const searchDuration = Math.round(performance.now() - searchStartTime);
+                                Analytics.track('search_performed', {
+                                        type: 'isbn',
+                                        query_length: cleanedQuery.length,
+                                        duration_ms: searchDuration,
+                                        latency_ms: searchDuration,
+                                        result_count: 0
+                                });
+                        } else {
 				// Track partial data state based on which sources succeeded
 				isPartialData = !(hasGoogle && hasOpenLib && hasLoC);
 				
 				// Track successful search and data source
-				const searchDuration = Math.round(performance.now() - searchStartTime);
-				Analytics.track('search_performed', {
-					type: 'isbn',
-					query_length: cleanedQuery.length,
-					duration_ms: searchDuration,
-					result_count: 1,
-					cache_hit: meta.cacheHit || false
-				});
+                                const searchDuration = Math.round(performance.now() - searchStartTime);
+                                Analytics.track('search_performed', {
+                                        type: 'isbn',
+                                        query_length: cleanedQuery.length,
+                                        duration_ms: searchDuration,
+                                        latency_ms: searchDuration,
+                                        result_count: 1,
+                                        cache_hit: meta.cacheHit || false
+                                });
 
 				Analytics.track('data_source_used', {
 					source: mergedData.dataSource || 'unknown',
@@ -435,6 +460,9 @@
                                                 : mergedData.title;
 
                                         showToast(`Added: ${truncatedTitle}`, 'success');
+
+                                        const scanLatencyEnd = performance.now();
+                                        Analytics.track('scan_latency', { duration: Math.round(scanLatencyEnd - scanLatencyStart) });
 
                                         // Track auto-add with partial data context
                                         Analytics.track('auto_add_triggered', {
@@ -499,14 +527,15 @@
 				}
 
 				// Track title search
-				const searchDuration = Math.round(performance.now() - searchStartTime);
-				Analytics.track('search_performed', {
-					type: 'title',
-					query_length: trimmedQuery.length,
-					duration_ms: searchDuration,
-					result_count: totalResults
-				});
-			}
+                                const searchDuration = Math.round(performance.now() - searchStartTime);
+                                Analytics.track('search_performed', {
+                                        type: 'title',
+                                        query_length: trimmedQuery.length,
+                                        duration_ms: searchDuration,
+                                        latency_ms: searchDuration,
+                                        result_count: totalResults
+                                });
+                        }
 		} catch (err) {
 			console.error('[Scanner Mode] Search failed:', err);
 			const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred during search.';
@@ -829,6 +858,9 @@
                                                                 }
                                                         }}
                                                         class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                        disabled={!isNetworkOnline}
+                                                        aria-disabled={!isNetworkOnline}
+                                                        title={isNetworkOnline ? 'Automatically add scans to the batch' : 'Auto-Add is disabled while offline'}
                                                 />
                                                 <div class="flex items-center gap-2">
                                                         <span class="text-lg">⚡</span>
@@ -838,6 +870,9 @@
                                                         </div>
                                                 </div>
                                         </label>
+                                        {#if !isNetworkOnline}
+                                                <p class="text-xs font-semibold text-amber-600">Offline detected — Auto-Add is paused until you reconnect.</p>
+                                        {/if}
                                 {/if}
                         </div>
                 </div>
