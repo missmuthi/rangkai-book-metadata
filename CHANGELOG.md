@@ -325,3 +325,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.2.1]: https://github.com/missmuthi/rangkai-book-metadata/releases/tag/v1.2.1
 [1.1.0]: https://github.com/missmuthi/rangkai-book-metadata/releases/tag/v1.1.0
 [0.0.1]: https://github.com/missmuthi/rangkai-book-metadata/releases/tag/v0.0.1
+
+## [2.0.3] - 2025-11-26 - **Add Book Detail Modal (PR #10)**
+
+### ✨ Added
+- **Book Detail Modal (PR #10)**: Introduced a reusable `BookDetailModal` component and integrated it into the mobile scan and history views for accessible, keyboard-friendly metadata inspection. The component sanitizes and secures cover image URLs and provides copy-to-clipboard support.
+
+### ✅ Notes
+- Merged PR #10 into `main` and deleted the remote feature branch `codex/create-reusable-bookdetailmodal-component`.
+

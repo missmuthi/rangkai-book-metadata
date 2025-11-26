@@ -41,6 +41,10 @@
                 }
         }
 
+        let coverUrl: string = FALLBACK_COVER;
+
+        $: coverUrl = getSecureProxyUrl(book.cover);
+
         async function copyAll() {
                 const lines = [
                         `Title: ${book.title}`,
@@ -96,7 +100,6 @@
                 <div class="grid gap-6 p-6 md:grid-cols-[1fr_1.1fr]">
                         <div class="space-y-4">
                                 <div class="overflow-hidden rounded-xl bg-gray-50 shadow-inner">
-                                        {@const coverUrl = getSecureProxyUrl(book.cover)}
                                         {#if coverUrl === FALLBACK_COVER}
                                                 <div class="flex aspect-[2/3] items-center justify-center text-sm text-gray-500">
                                                         No Cover Available
