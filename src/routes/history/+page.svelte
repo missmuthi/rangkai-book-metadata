@@ -1,8 +1,11 @@
 <script lang="ts">
-	import type { PageData } from './$types';
-	import { Card, Button, EmptyState, Alert, Input } from '$lib/components/ui';
+        import type { PageData } from './$types';
+        import { Card, Button, EmptyState, Alert, Input } from '$lib/components/ui';
+        import BookDetailModal from '$lib/components/BookDetailModal.svelte';
+        import type { MergedBookData } from '$lib/types';
 
-	let { data }: { data: PageData } = $props();
+        let { data }: { data: PageData } = $props();
+        let selectedBook = $state<MergedBookData | null>(null);
 
 	// Filter state
 	let searchQuery = $state('');
@@ -18,9 +21,9 @@
 	);
 
 	// Export to CSV
-	async function exportToCSV() {
-		try {
-			const { exportBatchToSLiMSCSV } = await import('$lib/export');
+        async function exportToCSV() {
+                try {
+                        const { exportBatchToSLiMSCSV } = await import('$lib/export');
 			
 			// Parse json_data for each scan
 			const books = filteredScans
@@ -42,10 +45,26 @@
 		} catch (err) {
 			// Log error without exposing to user (they see alert)
 			const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-			console.error('[History] Export failed:', errorMessage);
-			alert('Failed to export CSV. Please try again.');
-		}
-	}
+                        console.error('[History] Export failed:', errorMessage);
+                        alert('Failed to export CSV. Please try again.');
+                }
+        }
+
+        function openScanDetails(scan: any) {
+                try {
+                        selectedBook = JSON.parse(scan.json_data) as MergedBookData;
+                } catch (err) {
+                        console.error('[History] Failed to parse scan json_data', err);
+                        selectedBook = null;
+                }
+        }
+
+        function handleRowKeydown(event: KeyboardEvent, scan: any) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openScanDetails(scan);
+                }
+        }
 </script>
 
 <div class="min-h-screen bg-gray-50">
@@ -134,11 +153,17 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-gray-200">
-							{#each filteredScans as scan}
-								<tr class="hover:bg-gray-50 transition-colors">
-									<td class="px-6 py-4">
-										<div class="text-sm font-medium text-gray-900">
-											{scan.title || 'Untitled'}
+                                                        {#each filteredScans as scan}
+                                                                <tr
+                                                                        class="hover:bg-gray-50 transition-colors cursor-pointer"
+                                                                        role="button"
+                                                                        tabindex="0"
+                                                                        on:click={() => openScanDetails(scan)}
+                                                                        on:keydown={(event) => handleRowKeydown(event, scan)}
+                                                                >
+                                                                        <td class="px-6 py-4">
+                                                                                <div class="text-sm font-medium text-gray-900">
+                                                                                        {scan.title || 'Untitled'}
 										</div>
 									</td>
 									<td class="px-6 py-4">
@@ -163,9 +188,13 @@
 								</tr>
 							{/each}
 						</tbody>
-					</table>
-				</div>
-			</Card>
-		{/if}
-	</div>
+                                        </table>
+                                </div>
+                        </Card>
+                {/if}
+        </div>
+
+        {#if selectedBook}
+                <BookDetailModal book={selectedBook} onClose={() => (selectedBook = null)} />
+        {/if}
 </div>

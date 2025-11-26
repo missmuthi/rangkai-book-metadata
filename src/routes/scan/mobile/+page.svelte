@@ -1,5 +1,6 @@
 <script lang="ts">
         import CameraScanner from '$lib/components/CameraScanner.svelte';
+        import BookDetailModal from '$lib/components/BookDetailModal.svelte';
         import { BookApiService } from '$lib/api';
         import { normalizeISBN } from '$lib/isbn-helpers';
         import type { MergedBookData } from '$lib/types';
@@ -9,6 +10,7 @@
         let lastResult: MergedBookData | null = null;
         let isLoading = false;
         let error: string | null = null;
+        let selectedBook = $state<MergedBookData | null>(null);
 
         async function handleScan(event: CustomEvent<{ text: string }>) {
                 const text = event.detail.text;
@@ -92,10 +94,20 @@
                         {:else if error}
                                 <p class="text-sm font-semibold text-red-600" role="alert">{error}</p>
                         {:else if lastResult}
-                                <div class="flex gap-4">
-                                        {#if lastResult.cover && lastResult.cover !== '-'}
-                                                <img
-                                                        src={lastResult.cover}
+                                        <div
+                                                class="flex gap-4 cursor-pointer rounded-lg transition hover:bg-slate-50"
+                                                role="button"
+                                                tabindex="0"
+                                                on:click={() => (selectedBook = lastResult)}
+                                                on:keydown={(event) =>
+                                                        (event.key === 'Enter' || event.key === ' ')
+                                                                ? ((event.preventDefault(), (selectedBook = lastResult)))
+                                                                : null
+                                                }
+                                        >
+                                                {#if lastResult.cover && lastResult.cover !== '-'}
+                                                        <img
+                                                                src={lastResult.cover}
                                                         alt={`Cover art for ${lastResult.title}`}
                                                         class="h-32 w-24 rounded-md object-cover shadow"
                                                 />
@@ -115,4 +127,8 @@
                         {/if}
                 </section>
         </div>
+
+        {#if selectedBook}
+                <BookDetailModal book={selectedBook} onClose={() => (selectedBook = null)} />
+        {/if}
 </div>
