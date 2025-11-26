@@ -158,8 +158,8 @@
                                                                         class="hover:bg-gray-50 transition-colors cursor-pointer"
                                                                         role="button"
                                                                         tabindex="0"
-                                                                        on:click={() => openScanDetails(scan)}
-                                                                        on:keydown={(event) => handleRowKeydown(event, scan)}
+                                                                        onclick={() => openScanDetails(scan)}
+                                                                        onkeydown={(event) => handleRowKeydown(event, scan)}
                                                                 >
                                                                         <td class="px-6 py-4">
                                                                                 <div class="text-sm font-medium text-gray-900">
