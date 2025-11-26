@@ -59,3 +59,11 @@ export function formatISBN(isbn: string): string {
 	
 	return normalized;
 }
+
+/**
+ * Clean ISBN input from barcode scanners
+ * Strips all non-alphanumeric characters (dashes, spaces)
+ */
+export function cleanISBN(input: string): string {
+	return input.replace(/[^a-zA-Z0-9X]/gi, '');
+}
