@@ -2,6 +2,7 @@
 import "../app.css";
 import favicon from '$lib/assets/favicon.svg';
 import ErrorBoundary from '$lib/ErrorBoundary.svelte';
+import { onMount } from 'svelte';
 
 let { children, data } = $props();
 
@@ -13,8 +14,16 @@ function toggleUserMenu() {
 }
 
 function closeUserMenu() {
-	showUserMenu = false;
+        showUserMenu = false;
 }
+
+onMount(() => {
+        if ('serviceWorker' in navigator) {
+                navigator.serviceWorker
+                        .register('/service-worker.js')
+                        .catch((err) => console.error('Service worker registration failed', err));
+        }
+});
 
 async function onSignOut() {
 	closeUserMenu();
@@ -54,13 +63,19 @@ async function onSignOut() {
 
 <!-- Close menu when clicking outside - positioned BEHIND dropdown -->
 {#if showUserMenu}
-	<div
-		class="fixed inset-0 z-20"
-		onclick={closeUserMenu}
-		role="button"
-		tabindex="-1"
-		aria-label="Close menu"
-	></div>
+        <div
+                class="fixed inset-0 z-20"
+                onclick={closeUserMenu}
+                onkeydown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                closeUserMenu();
+                        }
+                }}
+                role="button"
+                tabindex="0"
+                aria-label="Close menu"
+        ></div>
 {/if}
 
 <div class="flex flex-col min-h-screen">
