@@ -1,402 +1,196 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
-	import type { Html5Qrcode } from 'html5-qrcode';
+        import { browser } from '$app/environment';
+        import { createEventDispatcher, onMount } from 'svelte';
+        import type { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 
-	interface Props {
-		onscan?: (detail: { text: string }) => void;
-		onerror?: (detail: { message: string }) => void;
-		autopause?: boolean; // Auto-pause when tab is hidden
-	}
+        export let active = true;
 
-	let { onscan, onerror: onErrorCallback, autopause = true }: Props = $props();
+        const dispatch = createEventDispatcher<{
+                scan: { text: string };
+                status: { active: boolean };
+        }>();
 
-	let lastScan = $state<string | null>(null);
-	let lastScanAt = $state<number | null>(null);
-	let error = $state<string | null>(null);
-	let status = $state<string>('Camera starting...');
-	let isPaused = $state(false);
+        let scanner: Html5Qrcode | null = null;
+        let scannerModule: typeof import('html5-qrcode') | null = null;
+        let isScanning = false;
+        let isStarting = false;
+        let statusMessage = 'Initializing camera...';
+        let errorMessage: string | null = null;
+        let cooldownTimeout: ReturnType<typeof setTimeout> | null = null;
 
-	let html5Qrcode: Html5Qrcode | null = null;
-	let audioContext: AudioContext | null = null;
-	let wakeLock: any = null;
-	let errorElement = $state<HTMLDivElement | null>(null);
-	let availableCameras: any[] = [];
-	let currentCameraIndex = $state(0);
+        const scanConfig: Html5QrcodeCameraScanConfig = {
+                fps: 10,
+                qrbox: { width: 260, height: 260 }
+        };
 
-	const DEBOUNCE_MS = 3000;
-	const BEEP_FREQUENCY = 800;
-	const BEEP_DURATION = 0.1;
+        onMount(() => {
+                startIfNeeded();
 
-	/**
-	 * Play audio feedback on successful scan
-	 * Reuses AudioContext for better performance
-	 */
-	function playBeep() {
-		try {
-			if (!audioContext) {
-				audioContext = new AudioContext();
-			}
+                return () => {
+                        teardown();
+                };
+        });
 
-			const oscillator = audioContext.createOscillator();
-			const gainNode = audioContext.createGain();
+        $: if (active) {
+                startIfNeeded();
+        } else {
+                stopScanning();
+        }
 
-			oscillator.connect(gainNode);
-			gainNode.connect(audioContext.destination);
+        async function loadScanner(): Promise<Html5Qrcode | null> {
+                if (!browser) {
+                        return null;
+                }
 
-			oscillator.frequency.value = BEEP_FREQUENCY;
-			oscillator.type = 'sine';
+                if (!scannerModule) {
+                        scannerModule = await import('html5-qrcode');
+                }
 
-			gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-			gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + BEEP_DURATION);
+                if (!scanner) {
+                        const { Html5Qrcode } = scannerModule;
+                        scanner = new Html5Qrcode('camera-viewfinder');
+                }
 
-			oscillator.start(audioContext.currentTime);
-			oscillator.stop(audioContext.currentTime + BEEP_DURATION);
-		} catch (err) {
-			// Audio failed, continue silently
-			console.debug('Audio beep failed:', err);
-		}
-	}
+                return scanner;
+        }
 
-	/**
-	 * Handle successful barcode scan with debouncing
-	 */
-	function onScanSuccess(decodedText: string) {
-		const normalized = decodedText.trim();
+        async function startIfNeeded() {
+                if (!active || isScanning || isStarting) {
+                        return;
+                }
 
-		// Debounce duplicate scans
-		if (normalized === lastScan && Date.now() - (lastScanAt ?? 0) < DEBOUNCE_MS) {
-			return;
-		}
+                const instance = await loadScanner();
+                if (!instance) {
+                        return;
+                }
 
-		lastScan = normalized;
-		lastScanAt = Date.now();
+                isStarting = true;
+                errorMessage = null;
+                statusMessage = 'Starting camera...';
 
-		playBeep();
-		onscan?.({ text: normalized });
-	}
+                try {
+                        await instance.start(
+                                { facingMode: 'environment' },
+                                scanConfig,
+                                handleScanSuccess,
+                                handleScanError
+                        );
+                        isScanning = true;
+                        statusMessage = 'Camera active';
+                        dispatch('status', { active: true });
+                } catch (err) {
+                        const message = err instanceof Error ? err.message : 'Unable to start camera';
+                        errorMessage = message;
+                        statusMessage = 'Camera unavailable';
+                } finally {
+                        isStarting = false;
+                }
+        }
 
-	/**
-	 * Handle scan errors (mostly per-frame decode failures)
-	 */
-	function onScanError(_errorMessage: string) {
-		// Ignore noisy per-frame decode failures
-	}
+        async function stopScanning() {
+                if (!scanner || !isScanning) {
+                        return;
+                }
 
-	/**
-	 * Request wake lock to prevent screen from sleeping during scanning
-	 */
-	async function requestWakeLock() {
-		try {
-			if ('wakeLock' in navigator) {
-				wakeLock = await (navigator as any).wakeLock.request('screen');
-				wakeLock.addEventListener('release', () => {
-					console.debug('Wake lock released');
-				});
-			}
-		} catch (err) {
-			console.debug('Wake lock request failed:', err);
-		}
-	}
+                try {
+                        await scanner.stop();
+                        isScanning = false;
+                        statusMessage = 'Camera stopped';
+                        dispatch('status', { active: false });
+                } catch (err) {
+                        console.debug('Unable to stop scanner', err);
+                }
+        }
 
-	/**
-	 * Release wake lock
-	 */
-	async function releaseWakeLock() {
-		try {
-			if (wakeLock) {
-				await wakeLock.release();
-				wakeLock = null;
-			}
-		} catch (err) {
-			console.debug('Wake lock release failed:', err);
-		}
-	}
+        async function teardown() {
+                if (cooldownTimeout) {
+                        clearTimeout(cooldownTimeout);
+                        cooldownTimeout = null;
+                }
 
-	/**
-	 * Pause scanning (e.g., when tab is hidden)
-	 */
-	async function pauseScanning() {
-		if (html5Qrcode && !isPaused) {
-			try {
-				await html5Qrcode.pause();
-				isPaused = true;
-				status = 'Scanning paused';
-				await releaseWakeLock();
-			} catch (err) {
-				console.debug('Pause failed:', err);
-			}
-		}
-	}
+                await stopScanning();
 
-	/**
-	 * Resume scanning (e.g., when tab becomes visible)
-	 */
-	async function resumeScanning() {
-		if (html5Qrcode && isPaused) {
-			try {
-				html5Qrcode.resume();
-				isPaused = false;
-				status = 'Scanning...';
-				await requestWakeLock();
-			} catch (err) {
-				console.debug('Resume failed:', err);
-			}
-		}
-	}
+                if (scanner) {
+                        try {
+                                await scanner.clear();
+                        } catch (err) {
+                                console.debug('Unable to clear scanner', err);
+                        }
+                        scanner = null;
+                }
+        }
 
-	/**
-	 * Switch between available cameras
-	 */
-	async function switchCamera() {
-		if (!html5Qrcode || availableCameras.length <= 1) return;
+        function handleScanSuccess(decodedText: string) {
+                const text = decodedText.trim();
 
-		try {
-			await html5Qrcode.stop();
-			
-			currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-			const nextCamera = availableCameras[currentCameraIndex];
+                if (!text) {
+                        return;
+                }
 
-			await html5Qrcode.start(
-				nextCamera.id,
-				{
-					fps: 10,
-					qrbox: {
-						width: 250,
-						height: 150
-					},
-					aspectRatio: 1.0
-				},
-				onScanSuccess,
-				onScanError
-			);
+                playBeep();
+                dispatch('scan', { text });
+                pauseAfterScan();
+        }
 
-			status = 'Scanning...';
-			isPaused = false;
-		} catch (err) {
-			console.error('Camera switch failed:', err);
-			setError('Failed to switch camera');
-		}
-	}
+        function handleScanError(_error: string) {
+                // Ignored: per-frame decode errors are expected during scanning
+        }
 
-	// Expose methods to parent component
-	export { pauseScanning, resumeScanning, switchCamera };
+        function pauseAfterScan() {
+                if (cooldownTimeout) {
+                        clearTimeout(cooldownTimeout);
+                }
 
-	/**
-	 * Handle page visibility changes
-	 */
-	function handleVisibilityChange() {
-		if (!autopause) return;
+                stopScanning();
+                statusMessage = 'Processing scan...';
 
-		if (document.hidden) {
-			pauseScanning();
-		} else {
-			resumeScanning();
-		}
-	}
+                cooldownTimeout = setTimeout(() => {
+                        if (active) {
+                                startIfNeeded();
+                        }
+                }, 3000);
+        }
 
-	/**
-	 * Set error and announce to screen readers
-	 */
-	function setError(message: string) {
-		error = message;
-		status = message;
-		onErrorCallback?.({ message });
+        function playBeep() {
+                try {
+                        const context = new AudioContext();
+                        const oscillator = context.createOscillator();
+                        const gain = context.createGain();
 
-		// Focus error for screen readers
-		if (errorElement) {
-			errorElement.focus();
-		}
-	}
+                        oscillator.type = 'sine';
+                        oscillator.frequency.value = 880;
+                        gain.gain.value = 0.1;
 
-	onMount(() => {
-		let mounted = true;
+                        oscillator.connect(gain);
+                        gain.connect(context.destination);
 
-		async function initScanner() {
-			try {
-				// Lazy load html5-qrcode library
-				const { Html5Qrcode } = await import('html5-qrcode');
-				if (!mounted) return;
-
-				html5Qrcode = new Html5Qrcode('reader', { verbose: false });
-
-				// Try to get available cameras
-				const cameras = await Html5Qrcode.getCameras();
-				
-				// Store available cameras
-				if (cameras && cameras.length > 0) {
-					availableCameras = cameras;
-				}
-				
-				// Prefer rear camera (environment) if available
-				let cameraId: string | { facingMode: string };
-				if (cameras && cameras.length > 0) {
-					const rearCamera = cameras.find(cam => 
-						cam.label.toLowerCase().includes('back') || 
-						cam.label.toLowerCase().includes('rear')
-					);
-					cameraId = rearCamera?.id || cameras[0].id;
-					currentCameraIndex = rearCamera ? cameras.indexOf(rearCamera) : 0;
-				} else {
-					// Fallback to facingMode if camera enumeration not available
-					cameraId = { facingMode: 'environment' };
-				}
-
-				await html5Qrcode.start(
-					cameraId,
-					{
-						fps: 10,
-						qrbox: {
-							width: 250,
-							height: 150
-						},
-						aspectRatio: 1.0
-					},
-					onScanSuccess,
-					onScanError
-				);
-
-				if (!mounted) {
-					await html5Qrcode.stop();
-					await html5Qrcode.clear();
-					return;
-				}
-
-				status = 'Scanning...';
-				
-				// Request wake lock
-				await requestWakeLock();
-
-				// Add visibility change listener
-				if (autopause) {
-					document.addEventListener('visibilitychange', handleVisibilityChange);
-				}
-
-			} catch (err) {
-				if (!mounted) return;
-				
-				let errorMsg = 'Camera permission denied';
-				if (err instanceof Error) {
-					if (err.message.includes('NotAllowedError')) {
-						errorMsg = 'Camera access denied. Please allow camera permissions.';
-					} else if (err.message.includes('NotFoundError')) {
-						errorMsg = 'No camera found. Please connect a camera.';
-					} else if (err.message.includes('NotReadableError')) {
-						errorMsg = 'Camera is already in use by another application.';
-					} else {
-						errorMsg = err.message;
-					}
-				}
-				
-				setError(errorMsg);
-			}
-		}
-
-		initScanner();
-
-		return () => {
-			mounted = false;
-		};
-	});
-
-	onDestroy(async () => {
-		// Remove visibility listener
-		if (autopause) {
-			document.removeEventListener('visibilitychange', handleVisibilityChange);
-		}
-
-		// Release wake lock
-		await releaseWakeLock();
-
-		// Close audio context
-		if (audioContext) {
-			try {
-				await audioContext.close();
-			} catch (err) {
-				console.debug('Audio context close failed:', err);
-			}
-		}
-
-		// Stop and cleanup scanner
-		if (html5Qrcode) {
-			try {
-				await html5Qrcode.stop();
-				await html5Qrcode.clear();
-			} catch (err) {
-				console.debug('Scanner cleanup failed:', err);
-			}
-		}
-	});
+                        oscillator.start();
+                        oscillator.stop(context.currentTime + 0.15);
+                } catch (err) {
+                        console.debug('Audio unavailable', err);
+                }
+        }
 </script>
 
-<div class="camera-scanner">
-	<!-- Scanner Container -->
-	<div 
-		class="scanner-container bg-black rounded-lg overflow-hidden"
-		role="region"
-		aria-label="Barcode scanner camera feed"
-	>
-		<div id="reader" class="w-full"></div>
-		
-		{#if isPaused}
-			<div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-				<p class="text-white text-sm">Scanning paused</p>
-			</div>
-		{/if}
-	</div>
+<div class="space-y-4">
+        <div
+                class="relative overflow-hidden rounded-xl bg-black shadow-lg"
+                role="region"
+                aria-label="Camera scanner viewfinder"
+        >
+                <div id="camera-viewfinder" class="aspect-[3/4] w-full"></div>
 
-	<!-- Status and Error Messages -->
-	<div class="status-container mt-4 text-center">
-		{#if error}
-			<div 
-				bind:this={errorElement}
-				role="alert"
-				aria-live="assertive"
-				tabindex="-1"
-				class="text-red-600 font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded px-2 py-1"
-			>
-				{error}
-			</div>
-			<p class="text-sm text-gray-500 mt-2">
-				Please check your camera permissions and try again
-			</p>
-		{:else}
-			<p 
-				class="text-gray-700"
-				role="status"
-				aria-live="polite"
-			>
-				{status}
-			</p>
-			<p class="text-sm text-gray-500 mt-2" id="scanner-instructions">
-				Align the book's barcode within the frame
-			</p>
-		{/if}
-	</div>
+                {#if !active}
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/70 text-white">Camera paused</div>
+                {/if}
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                {#if errorMessage}
+                        <p class="text-sm font-semibold text-red-600" role="alert" aria-live="assertive">{errorMessage}</p>
+                {:else}
+                        <p class="text-sm text-slate-700" role="status" aria-live="polite">{statusMessage}</p>
+                        <p class="mt-1 text-xs text-slate-500">Rear camera is used for faster ISBN scanning.</p>
+                {/if}
+        </div>
 </div>
-
-<style>
-	.camera-scanner {
-		width: 100%;
-		max-width: 500px;
-		margin: 0 auto;
-	}
-
-	.scanner-container {
-		position: relative;
-		min-height: 300px;
-	}
-
-	:global(#reader) {
-		border: none;
-	}
-
-	:global(#reader video) {
-		width: 100%;
-		height: auto;
-		display: block;
-	}
-
-	:global(#reader__scan_region) {
-		border: 2px solid rgba(59, 130, 246, 0.5) !important;
-	}
-</style>
