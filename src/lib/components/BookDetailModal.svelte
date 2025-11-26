@@ -4,6 +4,8 @@
         let { book, onClose }: { book: MergedBookData; onClose: () => void } = $props();
         let copyStatus = $state<'idle' | 'copied' | 'error'>('idle');
 
+        let coverUrl = $derived(getSecureProxyUrl(book.cover));
+
         const FALLBACK_COVER =
                 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTBlMGUwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjN2M3YzdjIj5ObyBDb3ZlcjwvdGV4dD48L3N2Zz4=';
 
@@ -85,13 +87,19 @@
         role="dialog"
         aria-modal="true"
         aria-label="Book details for {book.title}"
-        on:click={onBackdropClick}
+        onclick={onBackdropClick}
+        onkeydown={(e) => e.key === 'Escape' && onClose()}
+        tabindex="-1"
 >
-        <div class="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div
+                class="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+                role="document"
+                tabindex="-1"
+        >
                 <button
                         class="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:scale-105 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         type="button"
-                        on:click={onClose}
+                        onclick={onClose}
                         aria-label="Close book details"
                 >
                         ✕
@@ -206,14 +214,14 @@
                                                 <button
                                                         class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                         type="button"
-                                                        on:click={onClose}
+                                                        onclick={onClose}
                                                 >
                                                         Close
                                                 </button>
                                                 <button
                                                         class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                         type="button"
-                                                        on:click={copyAll}
+                                                        onclick={copyAll}
                                                 >
                                                         {#if copyStatus === 'copied'}
                                                                 Copied!
