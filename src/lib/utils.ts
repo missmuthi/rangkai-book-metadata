@@ -16,18 +16,17 @@ export function getSecureImageUrl(url: string | null | undefined): string {
 	}
 
 	// Validate data: URIs - only allow safe image types
-	if (url.startsWith('data:')) {
-		// Regex: Only allow image/svg+xml, image/png, image/jpeg, image/gif, image/webp
-		const safeDataUriPattern = /^data:image\/(svg\+xml|png|jpe?g|gif|webp);base64,/i;
-		
-		if (safeDataUriPattern.test(url)) {
-			return url; // Safe data URI
-		} else {
-			// Reject dangerous data URIs (e.g., data:text/html, data:application/javascript)
-			console.warn('[Security] Blocked unsafe data: URI:', url.substring(0, 50));
-			return ''; // Return empty to prevent XSS
-		}
-	}
+        if (url.startsWith('data:')) {
+                const safeImageDataUri = /^data:image\/(svg\+xml|png|jpeg|gif|webp);base64,/i;
+
+                if (safeImageDataUri.test(url)) {
+                        return url; // Safe data URI
+                }
+
+                // Reject dangerous data URIs (e.g., data:text/html, data:application/javascript)
+                console.warn('[Security] Blocked unsafe data: URI:', url.substring(0, 50));
+                return ''; // Return empty to prevent XSS
+        }
 
 	// Validate URL scheme - prevent javascript:, file:, etc.
 	try {
