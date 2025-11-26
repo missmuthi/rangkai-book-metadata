@@ -5,11 +5,11 @@
         import { normalizeISBN } from '$lib/isbn-helpers';
         import type { MergedBookData } from '$lib/types';
 
-        let cameraActive = true;
-        let lastScanned: string | null = null;
-        let lastResult: MergedBookData | null = null;
-        let isLoading = false;
-        let error: string | null = null;
+        let cameraActive = $state(true);
+        let lastScanned = $state<string | null>(null);
+        let lastResult = $state<MergedBookData | null>(null);
+        let isLoading = $state(false);
+        let error = $state<string | null>(null);
         let selectedBook = $state<MergedBookData | null>(null);
 
         async function handleScan(event: CustomEvent<{ text: string }>) {
@@ -66,14 +66,14 @@
                                 <button
                                         type="button"
                                         class="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                        on:click={toggleCamera}
+                                        onclick={toggleCamera}
                                 >
                                         {cameraActive ? 'Stop Camera' : 'Resume Camera'}
                                 </button>
                                 <button
                                         type="button"
                                         class="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                        on:click={() => lookupIsbn(lastScanned ?? '')}
+                                        onclick={() => lookupIsbn(lastScanned ?? '')}
                                         disabled={!lastScanned || isLoading}
                                 >
                                         Refresh Lookup
@@ -98,8 +98,8 @@
                                                 class="flex gap-4 cursor-pointer rounded-lg transition hover:bg-slate-50"
                                                 role="button"
                                                 tabindex="0"
-                                                on:click={() => (selectedBook = lastResult)}
-                                                on:keydown={(event) =>
+                                                onclick={() => (selectedBook = lastResult)}
+                                                onkeydown={(event) =>
                                                         (event.key === 'Enter' || event.key === ' ')
                                                                 ? ((event.preventDefault(), (selectedBook = lastResult)))
                                                                 : null
