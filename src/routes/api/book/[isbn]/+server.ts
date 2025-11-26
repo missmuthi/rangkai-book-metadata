@@ -19,7 +19,10 @@ import {
 	cacheGet,
 	cacheSet,
 	fetchBookByIsbn,
-	getSourceStatus
+	getSourceStatus,
+	getDB,
+	createScan,
+	createAnonymousScan
 } from '$lib/server';
 
 /**
@@ -102,20 +105,44 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 		}
 	};
 
-	// === STEP 3: Background Cache Write (waitUntil Pattern) ===
-	if (platform?.context?.waitUntil && kv) {
+	// === STEP 3: Background Tasks (waitUntil Pattern) ===
+	if (platform?.context?.waitUntil) {
+		const db = getDB(platform);
+		const { locals } = platform.context;
+
+		// 1. Cache Write Promise
 		const cacheWritePromise = (async () => {
-			try {
-				await cacheSet(kv, CacheKeys.book(isbn), responseData, CacheTTL.book);
-				console.info(`✅ [KV Write] ${isbn} cached`);
-			} catch (kvError) {
-				console.error('❌ [KV Write Error]:', kvError);
-				// Don't throw - this is a background task
+			if (kv) {
+				try {
+					await cacheSet(kv, CacheKeys.book(isbn), responseData, CacheTTL.book);
+					console.info(`✅ [KV Write] ${isbn} cached`);
+				} catch (kvError) {
+					console.error('❌ [KV Write Error]:', kvError);
+				}
 			}
 		})();
 
-		// Schedule background write to complete after response is sent
-		platform.context.waitUntil(cacheWritePromise);
+		// 2. Scan Logging Promise
+		const scanLogPromise = (async () => {
+			try {
+				const userId = locals.session?.user?.id ?? null;
+				const title = responseData.title || 'Unknown Title';
+				const jsonData = JSON.stringify(responseData);
+
+				if (userId) {
+					await createScan(db, userId, isbn, title, jsonData);
+					console.info(`✅ [DB Log] User scan logged for user ${userId}`);
+				} else {
+					await createAnonymousScan(db, isbn, title, jsonData);
+					console.info(`✅ [DB Log] Anonymous scan logged`);
+				}
+			} catch (dbError) {
+				console.error('❌ [DB Write Error]:', dbError);
+			}
+		})();
+
+		// Schedule both background tasks to complete after response is sent
+		platform.context.waitUntil(Promise.allSettled([cacheWritePromise, scanLogPromise]));
 	} else if (!kv) {
 		console.warn('⚠️ KV not available - caching skipped');
 	} else {
