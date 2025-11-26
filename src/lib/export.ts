@@ -294,9 +294,10 @@ export function downloadFile(content: string, filename: string, mimeType: string
 export function exportToSLiMSCSV(data: MergedBookData): void {
   const csv = generateSLiMSCSV(data);
   const filename = `slims_${data.isbn13 || data.isbn10 || 'book'}_${Date.now()}.csv`;
-  
+
   // Prepend UTF-8 BOM for Excel/SLiMS compatibility (Windows)
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const bomPrefixedCsv = '\uFEFF' + csv;
+  const blob = new Blob([bomPrefixedCsv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
