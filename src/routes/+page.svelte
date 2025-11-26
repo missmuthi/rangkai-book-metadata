@@ -305,16 +305,18 @@
 				return;
 			}
 
-			if (cleanedQuery.length >= 3) {
-				// Partial scanner input: debounce briefly to avoid ghost scans
-				debounceTimer = setTimeout(() => {
-					if (cleanedQuery.length >= 9) {
-						handleSearch();
-					}
-				}, 500);
-			}
+		if (cleanedQuery.length >= 3) {
+			// Partial scanner input: debounce briefly to avoid ghost scans
+			// Capture current query length for the timeout check
+			const capturedLength = cleanedQuery.length;
+			debounceTimer = setTimeout(() => {
+				if (capturedLength >= 9) {
+					handleSearch();
+				}
+			}, 500);
+		}
 
-			return;
+		return;
 		}
 
 		// Manual typing: debounce partial input, but allow instant search for full ISBNs
