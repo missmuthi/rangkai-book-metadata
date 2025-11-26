@@ -19,7 +19,7 @@ export function getSecureImageUrl(url: string | null | undefined): string {
 	if (url.startsWith('data:')) {
 		// Validate complete data URI format: type must be safe image, encoding must be base64,
 		// and content must only contain valid base64 characters
-		const safeImageDataUri = /^data:image\/(svg\+xml|png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$/i;
+		const safeImageDataUri = /^data:image\/(svg\+xml|png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/i;
 
 		if (safeImageDataUri.test(url)) {
 			return url; // Safe data URI
