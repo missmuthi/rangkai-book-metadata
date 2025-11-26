@@ -43,10 +43,6 @@
                 }
         }
 
-        let coverUrl: string = FALLBACK_COVER;
-
-        $: coverUrl = getSecureProxyUrl(book.cover);
-
         async function copyAll() {
                 const lines = [
                         `Title: ${book.title}`,
