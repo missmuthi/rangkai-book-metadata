@@ -198,31 +198,29 @@
 
 	// Scanner Mode: Input reference for auto-focus
 	let searchInputRef: HTMLInputElement | null = null;
-	let scannerModeEnabled = $state(false);
-	let autoAddMode = $state(false); // Auto-add to batch without showing detail card
+        let scannerModeEnabled = $state(false);
+        let autoAddEnabled = $state(false); // Auto-add to batch without showing detail card
 
-	// Toast Notification System
-	interface ToastMessage {
-		id: number;
-		message: string;
-		type: 'success' | 'error' | 'info';
-	}
-	let toasts = $state<ToastMessage[]>([]);
-	let toastIdCounter = 0;
+        // Toast Notification System (single toast at a time)
+        let toast = $state<{ message: string; type: 'success' | 'error' } | null>(null);
+        let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
-	/**
-	 * Show a toast notification
-	 * Automatically dismisses after 2 seconds
-	 */
-	function showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
-		const id = toastIdCounter++;
-		toasts = [...toasts, { id, message, type }];
-		
-		// Auto-dismiss after 2 seconds
-		setTimeout(() => {
-			toasts = toasts.filter(t => t.id !== id);
-		}, 2000);
-	}
+        /**
+         * Show a toast notification
+         * Automatically dismisses after 2 seconds
+         */
+        function showToast(message: string, type: 'success' | 'error') {
+                toast = { message, type };
+
+                if (toastTimeout) {
+                        clearTimeout(toastTimeout);
+                }
+
+                toastTimeout = setTimeout(() => {
+                        toast = null;
+                        toastTimeout = null;
+                }, 2000);
+        }
 
 	/**
 	 * Play audio feedback for scan success/error
@@ -427,27 +425,21 @@
 				
 				// AUTO-ADD MODE: Add directly to batch without showing detail card
 				// Works even with partial data (e.g., Google-only when OpenLibrary fails)
-				if (scannerModeEnabled && autoAddMode && hasUsableData) {
-					scanHistory.add(mergedData);
-					playFeedbackSound('success');
-					
-					// Show toast notification with book title
-					const truncatedTitle = mergedData.title.length > 40 
-						? mergedData.title.substring(0, 40) + '...' 
-						: mergedData.title;
-					
-					// Add partial data warning to toast if applicable
-					const toastMessage = isPartialData 
-						? `⚠️ Added (partial data): ${truncatedTitle}`
-						: `✓ Added: ${truncatedTitle}`;
-					const toastType = isPartialData ? 'info' : 'success';
-					
-					showToast(toastMessage, toastType);
-					
-					// Track auto-add with partial data context
-					Analytics.track('auto_add_triggered', {
-						isbn: cleanedQuery,
-						is_partial_data: isPartialData,
+                                if (scannerModeEnabled && autoAddEnabled && hasUsableData) {
+                                        scanHistory.add(mergedData);
+                                        playFeedbackSound('success');
+
+                                        // Show toast notification with book title
+                                        const truncatedTitle = mergedData.title.length > 40
+                                                ? mergedData.title.substring(0, 40) + '...'
+                                                : mergedData.title;
+
+                                        showToast(`Added: ${truncatedTitle}`, 'success');
+
+                                        // Track auto-add with partial data context
+                                        Analytics.track('auto_add_triggered', {
+                                                isbn: cleanedQuery,
+                                                is_partial_data: isPartialData,
 						data_source: mergedData.dataSource || 'unknown',
 						has_google: hasGoogle,
 						has_openlibrary: hasOpenLib,
@@ -459,14 +451,15 @@
 						source: 'scanner_mode',
 						is_partial: isPartialData
 					});
-					
-					// Skip showing result card - stay in search view for continuous scanning
-					currentView = 'search';
-				} else if (!hasUsableData) {
-					// CRITICAL FAILURE: No usable data even after merge
-					error = 'Data fetched but no usable title found. Cannot add to batch.';
-					playFeedbackSound('error');
-					showToast('✗ No usable data found', 'error');
+
+                                        // Skip showing result card - stay in search view for continuous scanning
+                                        currentView = 'search';
+                                        mergedData = null;
+                                } else if (!hasUsableData) {
+                                        // CRITICAL FAILURE: No usable data even after merge
+                                        error = 'Data fetched but no usable title found. Cannot add to batch.';
+                                        playFeedbackSound('error');
+                                        showToast('✗ No usable data found', 'error');
 				} else {
 					// MANUAL MODE: Show result card for review
 					currentView = 'result';
@@ -520,10 +513,10 @@
 			error = errorMessage;
 			
 			// AUTO-ADD MODE: Show error toast and play error sound
-			if (scannerModeEnabled && autoAddMode) {
-				playFeedbackSound('error');
-				showToast(`✗ Error: ${errorMessage}`, 'error');
-			}
+                        if (scannerModeEnabled && autoAddEnabled) {
+                                playFeedbackSound('error');
+                                showToast(`✗ Error: ${errorMessage}`, 'error');
+                        }
 		} finally {
 			isLoading = false;
 			rateLimitStatus = getRateLimitStatus();
@@ -820,34 +813,34 @@
 					{/if}
 				</div>
 				
-				<!-- Auto-Add to Batch Toggle (Only visible when Scanner Mode is ON) -->
-				{#if scannerModeEnabled}
-					<label class="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
-						<input 
-							type="checkbox" 
-							bind:checked={autoAddMode}
-							onchange={() => {
-								Analytics.track('user_interaction', {
-									action: 'auto_add_mode_toggled',
-									enabled: autoAddMode
-								});
-								if (autoAddMode) {
-									showToast('⚡ Auto-Add Mode: ON - Books will be added to batch automatically', 'info');
-								}
-							}}
-							class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-						/>
-						<div class="flex items-center gap-2">
-							<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-							</svg>
-							<span class="text-sm font-medium text-gray-700">Auto-Add to Batch</span>
-							<span class="text-xs text-gray-500">(No review card)</span>
-						</div>
-					</label>
-				{/if}
-			</div>
-		</div>
+                                <!-- Auto-Add Toggle (High-Velocity Scanning) -->
+                                {#if scannerModeEnabled}
+                                        <label class="flex items-center gap-3 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+                                                <input
+                                                        type="checkbox"
+                                                        bind:checked={autoAddEnabled}
+                                                        onchange={() => {
+                                                                Analytics.track('user_interaction', {
+                                                                        action: 'auto_add_mode_toggled',
+                                                                        enabled: autoAddEnabled
+                                                                });
+                                                                if (autoAddEnabled) {
+                                                                        showToast('Added scans will save automatically', 'success');
+                                                                }
+                                                        }}
+                                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                <div class="flex items-center gap-2">
+                                                        <span class="text-lg">⚡</span>
+                                                        <div class="flex flex-col leading-tight">
+                                                                <span class="text-sm font-semibold text-gray-800">Auto-Add to Batch</span>
+                                                                <span class="text-xs text-gray-500">Skip review card, keep scanning</span>
+                                                        </div>
+                                                </div>
+                                        </label>
+                                {/if}
+                        </div>
+                </div>
 
 		<!-- Error Message -->
 		{#if error}
@@ -1312,71 +1305,29 @@
 
 	</main>
 	
-	<!-- Toast Notification Container -->
-	<div class="fixed bottom-4 right-4 z-50 space-y-2">
-		{#each toasts as toast (toast.id)}
-			<div 
-				class="flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border backdrop-blur-sm animate-slide-in-right max-w-md"
-				class:bg-green-50={toast.type === 'success'}
-				class:border-green-300={toast.type === 'success'}
-				class:bg-red-50={toast.type === 'error'}
-				class:border-red-300={toast.type === 'error'}
-				class:bg-blue-50={toast.type === 'info'}
-				class:border-blue-300={toast.type === 'info'}
-			>
-				<!-- Icon -->
-				{#if toast.type === 'success'}
-					<svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-					</svg>
-				{:else if toast.type === 'error'}
-					<svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-					</svg>
-				{:else}
-					<svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-					</svg>
-				{/if}
-				
-				<!-- Message -->
-				<p 
-					class="text-sm font-medium flex-1"
-					class:text-green-800={toast.type === 'success'}
-					class:text-red-800={toast.type === 'error'}
-					class:text-blue-800={toast.type === 'info'}
-				>
-					{toast.message}
-				</p>
-				
-				<!-- Close Button -->
-				<button 
-					onclick={() => toasts = toasts.filter(t => t.id !== toast.id)}
-					class="text-gray-400 hover:text-gray-600 transition-colors"
-					aria-label="Dismiss notification"
-				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
-				</button>
-			</div>
-		{/each}
-	</div>
+        <!-- Toast Notification Container -->
+        {#if toast}
+                <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                        <div
+                                class="flex items-center gap-3 px-5 py-3 rounded-full shadow-lg border backdrop-blur-sm"
+                                class:bg-green-50={toast.type === 'success'}
+                                class:border-green-300={toast.type === 'success'}
+                                class:text-green-800={toast.type === 'success'}
+                                class:bg-red-50={toast.type === 'error'}
+                                class:border-red-300={toast.type === 'error'}
+                                class:text-red-800={toast.type === 'error'}
+                        >
+                                {#if toast.type === 'success'}
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                {:else}
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                {/if}
+                                <p class="text-sm font-semibold">{toast.message}</p>
+                        </div>
+                </div>
+        {/if}
 </div>
-
-<style>
-	@keyframes slide-in-right {
-		from {
-			transform: translateX(100%);
-			opacity: 0;
-		}
-		to {
-			transform: translateX(0);
-			opacity: 1;
-		}
-	}
-	
-	.animate-slide-in-right {
-		animation: slide-in-right 0.3s ease-out;
-	}
-</style>
