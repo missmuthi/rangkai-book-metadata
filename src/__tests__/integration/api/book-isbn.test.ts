@@ -29,6 +29,9 @@ vi.mock('$lib/server', () => ({
 	getKV: vi.fn((platform: any) => {
 		return platform?.env?.BOOK_CACHE || null;
 	}),
+	getDB: vi.fn((platform: any) => {
+		return platform?.env?.DB || null;
+	}),
 	CacheKeys: {
 		book: (isbn: string) => `book:${isbn}`
 	},
@@ -50,6 +53,7 @@ vi.mock('$lib/server', () => ({
 		return null; // Cache miss
 	}),
 	cacheSet: vi.fn(async () => undefined),
+	createAnonymousScan: vi.fn(async () => undefined),
 	fetchBookByIsbn: vi.fn(async (isbn: string) => {
 		if (isbn === '9780132350884') {
 			return {

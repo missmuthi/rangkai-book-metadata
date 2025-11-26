@@ -108,7 +108,6 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 	// === STEP 3: Background Tasks (waitUntil Pattern) ===
 	if (platform?.context?.waitUntil) {
 		const db = getDB(platform);
-		const { locals } = platform.context;
 
 		// 1. Cache Write Promise
 		const cacheWritePromise = (async () => {
@@ -122,20 +121,14 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 			}
 		})();
 
-		// 2. Scan Logging Promise
+		// 2. Scan Logging Promise (Anonymous - API endpoints don't have session context)
 		const scanLogPromise = (async () => {
 			try {
-				const userId = locals.session?.user?.id ?? null;
 				const title = responseData.title || 'Unknown Title';
 				const jsonData = JSON.stringify(responseData);
 
-				if (userId) {
-					await createScan(db, userId, isbn, title, jsonData);
-					console.info(`✅ [DB Log] User scan logged for user ${userId}`);
-				} else {
-					await createAnonymousScan(db, isbn, title, jsonData);
-					console.info(`✅ [DB Log] Anonymous scan logged`);
-				}
+				await createAnonymousScan(db, isbn, title, jsonData);
+				console.info(`✅ [DB Log] Anonymous scan logged`);
 			} catch (dbError) {
 				console.error('❌ [DB Write Error]:', dbError);
 			}

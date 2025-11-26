@@ -28,6 +28,7 @@ export {
 	countUserScans,
 	getScanById,
 	createScan,
+	createAnonymousScan,
 	updateScanStatus,
 	deleteScan,
 	getRecentScansGlobal,
