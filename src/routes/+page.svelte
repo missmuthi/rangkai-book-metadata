@@ -1,7 +1,7 @@
 <script lang="ts">
-        import { browser } from '$app/environment';
-        import { onMount, tick } from 'svelte';
-        import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
+		import { browser } from '$app/environment';
+		import { onMount, tick } from 'svelte';
+		import { checkGoogleBooksLimit as _checkGoogleBooksLimit, checkOpenLibraryLimit as _checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
         import { scanHistory } from '$lib/stores/history.svelte';
         import { processAndRenderMergedData } from '$lib/merge';
         import { BookApiService, googleCache, openLibraryCache, locCache } from '$lib/api';
@@ -277,7 +277,7 @@
 
 
 	// --- Home Navigation Function ---
-	function goHome() {
+	function _goHome() {
 		Analytics.track('user_interaction', {
 			action: 'home_navigation'
 		});

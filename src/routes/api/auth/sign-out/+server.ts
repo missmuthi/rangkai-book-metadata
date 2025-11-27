@@ -13,10 +13,10 @@ export const POST: RequestHandler = async ({ platform, cookies }) => {
   if (sessionToken) {
     try {
       await deleteSession(platform.env.DB, sessionToken);
-      console.log(
-        "[Sign Out] ✅ Session deleted from database:",
-        sessionToken.substring(0, 8) + "...",
-      );
+      // console.log(
+      //   "[Sign Out] ✅ Session deleted from database:",
+      //   sessionToken.substring(0, 8) + "...",
+      // );
     } catch (error) {
       console.error(
         "[Sign Out] ❌ Failed to delete session from database:",
@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ platform, cookies }) => {
     sameSite: "lax",
   });
 
-  console.log("[Sign Out] ✅ Session cookie deleted");
+  // console.log("[Sign Out] ✅ Session cookie deleted");
 
   return new Response(JSON.stringify({ success: true }), {
     headers: {

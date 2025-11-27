@@ -8,7 +8,7 @@
 		variant?: 'default' | 'info' | 'success' | 'warning' | 'error';
 		size?: 'sm' | 'md';
 		class?: string;
-		children?: any;
+			   children?: any;
 	}
 	
 	let {

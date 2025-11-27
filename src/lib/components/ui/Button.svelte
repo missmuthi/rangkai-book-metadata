@@ -11,7 +11,7 @@
 		type?: 'button' | 'submit' | 'reset';
 		onclick?: () => void;
 		class?: string;
-		children?: any;
+				children?: any;
 	}
 	
 	let {

@@ -14,7 +14,7 @@
 	
 	function handleShare(platform: string) {
 		// Track share action (optional analytics)
-		console.log(`Shared via ${platform}`);
+		// console.log(`Shared via ${platform}`);
 	}
 </script>
 

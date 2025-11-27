@@ -44,13 +44,13 @@
 
 		try {
 			const cleaned = normalizeISBN(rawIsbn);
-			console.log('[Scanner] Looking up ISBN:', cleaned);
+			// console.log('[Scanner] Looking up ISBN:', cleaned);
 			
 			const result = await BookApiService.fetchFromServerless(cleaned);
 			lastResult = result as MergedBookData;
 			
 			toasts.add(`Found: ${lastResult.title}`, 'success');
-			console.log('[Scanner] ✅ Book fetched successfully');
+			// console.log('[Scanner] ✅ Book fetched successfully');
 		} catch (err: any) {
 			console.error('[Scanner] ❌ Error fetching book:', err);
 			

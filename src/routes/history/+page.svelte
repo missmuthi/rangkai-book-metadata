@@ -3,7 +3,7 @@
         import { Card, Button, EmptyState, Alert, Input } from '$lib/components/ui';
         import BookDetailModal from '$lib/components/BookDetailModal.svelte';
         import type { MergedBookData } from '$lib/types';
-        import { fade, slide } from 'svelte/transition';
+        import { fade, slide as _slide } from 'svelte/transition';
 
         let { data }: { data: PageData } = $props();
         let selectedBook = $state<MergedBookData | null>(null);

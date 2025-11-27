@@ -87,7 +87,7 @@ export const logger = {
    * Info-level logs (normal operations)
    */
   info(event: string, context?: LogContext) {
-    console.log(formatLog("info", event, context));
+    // console.log(formatLog("info", event, context));
   },
 
   /**

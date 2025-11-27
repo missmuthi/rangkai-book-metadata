@@ -11,7 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "../../../routes/api/scan/+server";
-import type { RequestEvent } from "@sveltejs/kit";
+import type { RequestEvent as _RequestEvent } from "@sveltejs/kit";
 
 // Mock dependencies
 vi.mock("$lib/server", () => ({

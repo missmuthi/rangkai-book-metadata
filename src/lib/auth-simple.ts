@@ -50,8 +50,8 @@ export function createGoogleAuth(env: App.Platform["env"]) {
   const redirectUri = `${baseUrl}/api/auth/callback/google`;
 
   // Debug logging for OAuth configuration
-  console.log("[OAuth Config] Base URL:", baseUrl);
-  console.log("[OAuth Config] Redirect URI:", redirectUri);
+  // console.log("[OAuth Config] Base URL:", baseUrl);
+  // console.log("[OAuth Config] Redirect URI:", redirectUri);
 
   return new Google(
     env.GOOGLE_CLIENT_ID,
@@ -101,9 +101,9 @@ export async function createSession(
       )
       .run();
 
-    console.log(
-      `[AUTH] Session created for user ${userId}, expires: ${expiresAt.toISOString()}`,
-    );
+    // console.log(
+    //   `[AUTH] Session created for user ${userId}, expires: ${expiresAt.toISOString()}`,
+    // );
   } catch (error) {
     console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.error("🔴 DATABASE ERROR in createSession");
@@ -186,9 +186,9 @@ export async function upsertUser(
 
     if (existing) {
       // Update existing user
-      console.log(
-        `[AUTH] Updating existing user: ${email} (ID: ${existing.id})`,
-      );
+      // console.log(
+      //   `[AUTH] Updating existing user: ${email} (ID: ${existing.id})`,
+      // );
       await db
         .prepare(
           `UPDATE user SET name = ?, image = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
@@ -200,7 +200,7 @@ export async function upsertUser(
 
     // Create new user
     const userId = crypto.randomUUID();
-    console.log(`[AUTH] Creating new user: ${email} (ID: ${userId})`);
+    // console.log(`[AUTH] Creating new user: ${email} (ID: ${userId})`);
     await db
       .prepare(
         `INSERT INTO user (id, email, name, image, emailVerified, createdAt, updatedAt)

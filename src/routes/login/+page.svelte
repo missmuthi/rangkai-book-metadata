@@ -9,7 +9,7 @@
 	// Auto-redirect logged-in users to root
 	$effect(() => {
 		if (data?.session) {
-			console.log('[Login] User already logged in, redirecting to /');
+			// console.log('[Login] User already logged in, redirecting to /');
 			goto('/', { replaceState: true });
 		}
 	});

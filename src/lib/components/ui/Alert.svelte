@@ -10,7 +10,7 @@
 		dismissible?: boolean;
 		onDismiss?: () => void;
 		class?: string;
-		children?: any;
+			   children?: any;
 	}
 	
 	let {

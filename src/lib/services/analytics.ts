@@ -267,11 +267,11 @@ class AnalyticsService {
     const emoji = this.getEventEmoji(event.name);
     const color = this.getEventColor(event.name);
 
-    console.log(
-      `%c${emoji} [Analytics] ${event.name}`,
-      `color: ${color}; font-weight: bold;`,
-      event.properties,
-    );
+    // console.log(
+    //   `%c${emoji} [Analytics] ${event.name}`,
+    //   `color: ${color}; font-weight: bold;`,
+    //   event.properties,
+    // );
   }
 
   /**

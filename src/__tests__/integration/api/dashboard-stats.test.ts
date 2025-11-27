@@ -12,7 +12,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "../../../routes/api/dashboard/stats/+server";
-import type { RequestEvent } from "@sveltejs/kit";
+import type { RequestEvent as _RequestEvent } from "@sveltejs/kit";
 
 // Mock dependencies
 vi.mock("$lib/server", () => ({

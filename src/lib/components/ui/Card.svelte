@@ -9,7 +9,7 @@
 		padding?: 'sm' | 'md' | 'lg';
 		class?: string;
 		onclick?: () => void;
-		children?: any;
+				children?: any;
 	}
 	
 	let {

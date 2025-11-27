@@ -85,7 +85,7 @@ function createHistoryStore() {
       // Add to top
       items = [book, ...filtered].slice(0, MAX_HISTORY_ITEMS);
 
-      console.log(`[History Store] Added: ${book.title} (${book.isbn13})`);
+      // console.log(`[History Store] Added: ${book.title} (${book.isbn13})`);
     },
 
     /**
@@ -93,7 +93,7 @@ function createHistoryStore() {
      */
     remove(isbn13: string): void {
       items = items.filter((item) => item.isbn13 !== isbn13);
-      console.log(`[History Store] Removed: ${isbn13}`);
+      // console.log(`[History Store] Removed: ${isbn13}`);
     },
 
     /**
@@ -101,7 +101,7 @@ function createHistoryStore() {
      */
     clear(): void {
       items = [];
-      console.log("[History Store] Cleared all history");
+      // console.log("[History Store] Cleared all history");
     },
 
     /**
