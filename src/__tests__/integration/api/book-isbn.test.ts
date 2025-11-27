@@ -54,6 +54,7 @@ vi.mock('$lib/server', () => ({
 	}),
 	cacheSet: vi.fn(async () => undefined),
 	createAnonymousScan: vi.fn(async () => undefined),
+	createScan: vi.fn(async () => 1),
 	fetchBookByIsbn: vi.fn(async (isbn: string) => {
 		if (isbn === '9780132350884') {
 			return {
@@ -85,8 +86,9 @@ function createMockEvent(options: {
 	isbn: string;
 	hasKV?: boolean;
 	hasWaitUntil?: boolean;
+	isAuthenticated?: boolean;
 }): any {
-	const { isbn, hasKV = true, hasWaitUntil = true } = options;
+	const { isbn, hasKV = true, hasWaitUntil = true, isAuthenticated = true } = options;
 	
 	const waitUntilPromises: Promise<any>[] = [];
 	
@@ -94,7 +96,8 @@ function createMockEvent(options: {
 		params: { isbn },
 		platform: {
 			env: {
-				BOOK_CACHE: hasKV ? ({} as any) : undefined
+				BOOK_CACHE: hasKV ? ({} as any) : undefined,
+				DB: ({} as any)
 			},
 			context: hasWaitUntil
 				? {
@@ -104,6 +107,15 @@ function createMockEvent(options: {
 				  }
 				: undefined
 		},
+		locals: {
+			session: isAuthenticated ? { id: 'session-123' } : null,
+			user: isAuthenticated ? { id: 'user-123', email: 'test@example.com' } : null
+		},
+		request: {
+			headers: {
+				get: (key: string) => null
+			}
+		},
 		_waitUntilPromises: waitUntilPromises
 	} as any;
 }
@@ -111,6 +123,14 @@ function createMockEvent(options: {
 describe('GET /api/book/[isbn] - Integration Tests', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('Authentication', () => {
+		it('should return 401 if not authenticated', async () => {
+			const event = createMockEvent({ isbn: '9780132350884', isAuthenticated: false });
+			const response = await GET(event);
+			expect(response.status).toBe(401);
+		});
 	});
 
 	describe('ISBN Validation', () => {

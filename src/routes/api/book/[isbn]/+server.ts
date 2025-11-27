@@ -22,7 +22,7 @@ import {
 	cacheSet,
 	fetchBookByIsbn,
 	getDB,
-	createAnonymousScan
+	createScan
 } from '$lib/server';
 
 // Define the schema for ISBN validation
@@ -53,7 +53,7 @@ async function generateETag(data: unknown): Promise<string> {
 /**
  * GET /api/book/[isbn]
  */
-export const GET: RequestHandler = async ({ params, platform, fetch, request }) => {
+export const GET: RequestHandler = async ({ params, platform, fetch, request, locals }) => {
 	const { isbn } = params;
 	const startTime = performance.now();
 
@@ -63,6 +63,12 @@ export const GET: RequestHandler = async ({ params, platform, fetch, request }) 
 		throw error(400, {
 			message: validation.error.issues[0].message
 		});
+	}
+
+	// === Authorization Check ===
+	// CRITICAL: Ensure user is authenticated before saving to history
+	if (!locals.session || !locals.user) {
+		return json({ error: 'Unauthorized: Please log in to save scans' }, { status: 401 });
 	}
 
 	// === STEP 1: Cache Check (KV) ===
@@ -132,39 +138,37 @@ export const GET: RequestHandler = async ({ params, platform, fetch, request }) 
 			}
 		};
 
-		// === STEP 3: Background Tasks (waitUntil Pattern) ===
-		if (platform?.context?.waitUntil) {
+		// === STEP 3: Save to Database & Cache ===
+		// Note: Database write is now BLOCKING to ensure history is saved reliably
+		if (platform?.env?.DB) {
 			const db = getDB(platform);
 
-			// 1. Cache Write Promise
-			const cacheWritePromise = (async () => {
-				if (kv && responseData) {
+			try {
+				const title = responseData.title || 'Unknown Title';
+				const jsonData = JSON.stringify(responseData);
+
+				// ✅ Use authenticated user ID (Fix for saving to history)
+				await createScan(db, locals.user.id, isbn, title, jsonData);
+				console.info(`✅ [DB Log] Scan saved for user ${locals.user.id}`);
+			} catch (dbError) {
+				console.error('❌ [DB Write Error]:', dbError);
+				// We don't throw here to ensure the user still gets the book data
+				// but we log it for debugging
+			}
+		}
+
+		// KV Cache Write (Background)
+		if (platform?.context?.waitUntil && kv) {
+			platform.context.waitUntil(
+				(async () => {
 					try {
 						await cacheSet(kv, CacheKeys.book(isbn), responseData, CacheTTL.book);
 						console.info(`✅ [KV Write] ${isbn} cached`);
 					} catch (kvError) {
 						console.error('❌ [KV Write Error]:', kvError);
 					}
-				}
-			})();
-
-			// 2. Scan Logging Promise (Anonymous - API endpoints don't have session context)
-			const scanLogPromise = (async () => {
-				try {
-					if (responseData) {
-						const title = responseData.title || 'Unknown Title';
-						const jsonData = JSON.stringify(responseData);
-
-						await createAnonymousScan(db, isbn, title, jsonData);
-						console.info(`✅ [DB Log] Anonymous scan logged`);
-					}
-				} catch (dbError) {
-					console.error('❌ [DB Write Error]:', dbError);
-				}
-			})();
-
-			// Schedule both background tasks
-			platform.context.waitUntil(Promise.allSettled([cacheWritePromise, scanLogPromise]));
+				})()
+			);
 		}
 	}
 
