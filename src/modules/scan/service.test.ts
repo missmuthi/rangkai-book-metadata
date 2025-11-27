@@ -19,9 +19,16 @@ vi.mock("$lib/server/metadata", () => ({
   }),
 }));
 
-vi.mock("$lib/server", () => ({
+// Create mock KV with proper methods
+const mockKV = {
+  get: vi.fn(() => Promise.resolve(null)),
+  put: vi.fn(() => Promise.resolve()),
+  delete: vi.fn(() => Promise.resolve()),
+  list: vi.fn(() => Promise.resolve({ keys: [] })),
+};
+
+vi.mock("$lib/server/db", () => ({
   getDB: vi.fn(() => mockDB),
-  getKV: vi.fn(() => mockKV),
   createScan: vi.fn((_db, _userId, _isbn, _title, _jsonData, _status) => {
     return Promise.resolve(mockScanId);
   }),
@@ -31,6 +38,10 @@ vi.mock("$lib/server", () => ({
   countUserScans: vi.fn((_db, _userId) => {
     return Promise.resolve(mockScans.length);
   }),
+}));
+
+vi.mock("$lib/server/cache", () => ({
+  getKV: vi.fn(() => mockKV),
   CacheKeys: {
     book: (isbn: string) => `book:${isbn}`,
   },
@@ -55,7 +66,6 @@ vi.mock("$lib/server/log", () => ({
 
 // Mock data
 const mockDB = {} as any;
-const mockKV = {} as any;
 const mockScanId = 123;
 const mockMetadata: MergedBookData = {
   title: "Clean Code",

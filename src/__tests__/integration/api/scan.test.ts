@@ -77,7 +77,13 @@ function createMockEvent(options: {
   return {
     request: {
       json: async () => body,
+      headers: new Headers(),
     },
+    cookies: {
+      get: vi.fn(() => null),
+      set: vi.fn(),
+      delete: vi.fn(),
+    } as any,
     locals: authenticated
       ? {
           session: {
@@ -113,7 +119,7 @@ describe("POST /api/scan - Integration Tests", () => {
       });
 
       await expect(POST(event)).rejects.toMatchObject({
-        status: 401,
+        status: 303, // Redirect to login
       });
     });
 

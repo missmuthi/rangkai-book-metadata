@@ -18,21 +18,56 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const cleanedFields = await aiService.cleanMetadata(book);
 
-		// Extract internal changes array if present
-		const changes = (cleanedFields as any)._changes || [];
+		// Extract internal changes array from AI response
+		const aiChanges = (cleanedFields as any)._changes || [];
 		delete (cleanedFields as any)._changes;
 
-		// Create log entry
+		// COMPREHENSIVE CHANGE DETECTION
+		// Track both NEW data (filling gaps) and UPDATED data (fixing errors)
+		const detectedChanges: string[] = [];
+		
+		// Define all fields to monitor
+		const fieldsToCheck = [
+			'title', 'author', 'publisher', 'description', 
+			'ddc', 'lcc', 'classification',
+			'language', 'series', 'edition', 'subjects', 'date'
+		];
+
+		fieldsToCheck.forEach(field => {
+			const oldVal = book[field as keyof MergedBookData];
+			const newVal = cleanedFields[field as keyof typeof cleanedFields];
+
+			// Normalize empty values (treat '-', '', null, undefined as empty)
+			const isOldEmpty = !oldVal || oldVal === '-' || oldVal === '';
+			const isNewFilled = newVal && newVal !== '-' && newVal !== '';
+
+			// Case 1: NEW data (filling a gap) - AI generated missing metadata
+			if (isOldEmpty && isNewFilled) {
+				detectedChanges.push(`Generated ${field}: ${newVal}`);
+			}
+			// Case 2: UPDATED data (fixing existing data) - AI corrected something
+			else if (!isOldEmpty && isNewFilled && oldVal !== newVal) {
+				detectedChanges.push(`Updated ${field}: "${oldVal}" → "${newVal}"`);
+			}
+		});
+
+		// Merge AI-reported changes with our detected changes
+		// Remove duplicates and combine
+		const allChanges = [...new Set([...aiChanges, ...detectedChanges])];
+
+		// Create comprehensive log entry
 		const logEntry = {
 			timestamp: Date.now(),
-			model: 'Gemini 2.0',
-			changes: changes.length > 0 ? changes : []
+			model: 'Gemini 2.0 Flash',
+			changes: allChanges.length > 0 ? allChanges : ['No changes detected']
 		};
 
 		// Merge cleaned fields with original data and append log
 		const cleanedBook = {
 			...book,
 			...cleanedFields,
+			is_ai_enhanced: true,
+			enhanced_at: Date.now(),
 			ai_log: [...(book.ai_log || []), logEntry]
 		};
 

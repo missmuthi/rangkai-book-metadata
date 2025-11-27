@@ -55,12 +55,9 @@ vi.mock("$lib/server/metadata", () => ({
   }),
 }));
 
-vi.mock("$lib/server", () => ({
+vi.mock("$lib/server/cache", () => ({
   getKV: vi.fn((platform: any) => {
     return platform?.env?.BOOK_CACHE || null;
-  }),
-  getDB: vi.fn((platform: any) => {
-    return platform?.env?.DB || null;
   }),
   CacheKeys: {
     book: (isbn: string) => `book:${isbn}`,
@@ -83,9 +80,19 @@ vi.mock("$lib/server", () => ({
     return null; // Cache miss
   }),
   cacheSet: vi.fn(async () => undefined),
+}));
+
+vi.mock("$lib/server/db", () => ({
+  getDB: vi.fn((platform: any) => {
+    return platform?.env?.DB || null;
+  }),
   createAnonymousScan: vi.fn(async () => undefined),
   createScan: vi.fn(async () => 1),
+}));
+
+vi.mock("$lib/server", () => ({
   getSourceStatus: vi.fn(),
+  cacheSet: vi.fn(async () => undefined),
 }));
 
 // Helper to create mock RequestEvent
@@ -201,7 +208,7 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
     });
 
     it("should set cache on cache miss (background)", async () => {
-      const { cacheSet } = await import("$lib/server");
+      const { cacheSet } = await import("$lib/server/cache");
       const event = createMockEvent({ isbn: "9780132350884" });
 
       await GET(event);

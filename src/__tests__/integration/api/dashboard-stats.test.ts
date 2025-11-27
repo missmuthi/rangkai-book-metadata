@@ -105,7 +105,14 @@ function createMockEvent(options: {
 
   return {
     url,
-    request: {} as any,
+    request: {
+      headers: new Headers(),
+    } as any,
+    cookies: {
+      get: vi.fn(() => null),
+      set: vi.fn(),
+      delete: vi.fn(),
+    } as any,
     locals: authenticated
       ? {
           session: {
@@ -138,7 +145,7 @@ describe("GET /api/dashboard/stats - Integration Tests", () => {
       const event = createMockEvent({ authenticated: false });
 
       await expect(GET(event)).rejects.toMatchObject({
-        status: 401,
+        status: 303, // Redirect to login
       });
     });
 
