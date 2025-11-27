@@ -76,8 +76,23 @@ export const aiService = {
       }
       if (object.description) updates.description = object.description;
       if (object.publishedDate) updates.date = object.publishedDate;
-      if (object.ddc) updates.ddc = object.ddc;
-      if (object.lcc) updates.lcc = object.lcc;
+
+      // Handle DDC and LCC - check both direct fields and changes array
+      let ddc = object.ddc;
+      let lcc = object.lcc;
+
+      if (!ddc || !lcc) {
+        const changes = object.changes || [];
+        changes.forEach(change => {
+          const ddcMatch = change.match(/Generated DDC:\s*([0-9.]+)/);
+          const lccMatch = change.match(/Generated LCC:\s*([A-Z0-9.]+)/);
+          if (ddcMatch && !ddc) ddc = ddcMatch[1];
+          if (lccMatch && !lcc) lcc = lccMatch[1];
+        });
+      }
+
+      if (ddc) updates.ddc = ddc;
+      if (lcc) updates.lcc = lcc;
       if (object.classification) updates.classification = object.classification;
       if (object.changes) updates._changes = object.changes;
 
