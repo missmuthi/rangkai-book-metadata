@@ -14,16 +14,9 @@ import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import type { MergedBookData } from "$lib/types";
 import { z } from "zod";
-import {
-  getKV,
-  CacheKeys,
-  CacheTTL,
-  cacheGet,
-  cacheSet,
-  fetchBookByIsbn,
-  getDB,
-  createScan,
-} from "$lib/server";
+import { getKV, CacheKeys, CacheTTL, cacheGet, cacheSet } from "$lib/server/cache";
+import { getDB, createScan } from "$lib/server/db";
+import { fetchBookByIsbn } from "$lib/server/metadata";
 
 // Define the schema for ISBN validation
 const isbnSchema = z.string().refine((val) => {

@@ -29,6 +29,32 @@ vi.mock("$lib/utils", () => ({
   }),
 }));
 
+vi.mock("$lib/server/metadata", () => ({
+  fetchBookByIsbn: vi.fn(async (_platform: any, _fetch: any, isbn: string) => {
+    if (isbn === "9780132350884") {
+      return {
+        isbn,
+        title: "Clean Code",
+        authors: ["Robert C. Martin"],
+        publisher: "Prentice Hall",
+        publishedDate: "2008",
+        dataSource: "google",
+      };
+    }
+    if (isbn === "9781234567897") {
+      throw new Error("Book not found in any provider");
+    }
+    return {
+      isbn,
+      title: "Test Book",
+      authors: ["Test Author"],
+      publisher: "Test Publisher",
+      publishedDate: "2024",
+      dataSource: "openlibrary",
+    };
+  }),
+}));
+
 vi.mock("$lib/server", () => ({
   getKV: vi.fn((platform: any) => {
     return platform?.env?.BOOK_CACHE || null;
@@ -59,29 +85,6 @@ vi.mock("$lib/server", () => ({
   cacheSet: vi.fn(async () => undefined),
   createAnonymousScan: vi.fn(async () => undefined),
   createScan: vi.fn(async () => 1),
-  fetchBookByIsbn: vi.fn(async (isbn: string) => {
-    if (isbn === "9780132350884") {
-      return {
-        isbn,
-        title: "Clean Code",
-        authors: ["Robert C. Martin"],
-        publisher: "Prentice Hall",
-        publishedDate: "2008",
-        dataSource: "google",
-      };
-    }
-    if (isbn === "9781234567897") {
-      throw new Error("Book not found in any provider");
-    }
-    return {
-      isbn,
-      title: "Test Book",
-      authors: ["Test Author"],
-      publisher: "Test Publisher",
-      publishedDate: "2024",
-      dataSource: "openlibrary",
-    };
-  }),
   getSourceStatus: vi.fn(),
 }));
 

@@ -10,6 +10,15 @@ import type { RequestEvent } from "@sveltejs/kit";
 import type { MergedBookData } from "$lib/types";
 
 // Mock dependencies
+vi.mock("$lib/server/metadata", () => ({
+  fetchBookByIsbn: vi.fn((_platform, _fetch, isbn) => {
+    if (isbn === "9780132350884") {
+      return Promise.resolve(mockMetadata);
+    }
+    return Promise.resolve(null);
+  }),
+}));
+
 vi.mock("$lib/server", () => ({
   getDB: vi.fn(() => mockDB),
   getKV: vi.fn(() => mockKV),
@@ -21,12 +30,6 @@ vi.mock("$lib/server", () => ({
   }),
   countUserScans: vi.fn((_db, _userId) => {
     return Promise.resolve(mockScans.length);
-  }),
-  fetchBookByIsbn: vi.fn((_fetch, isbn) => {
-    if (isbn === "9780132350884") {
-      return Promise.resolve(mockMetadata);
-    }
-    return Promise.resolve(null);
   }),
   CacheKeys: {
     book: (isbn: string) => `book:${isbn}`,
@@ -184,7 +187,7 @@ describe("Scan Module - Business Logic", () => {
     });
 
     it("should handle metadata fetch failure gracefully", async () => {
-      const { fetchBookByIsbn } = await import("$lib/server");
+      const { fetchBookByIsbn } = await import("$lib/server/metadata");
       vi.mocked(fetchBookByIsbn).mockRejectedValueOnce(
         new Error("API timeout"),
       );
@@ -291,7 +294,7 @@ describe("Scan Module - Business Logic", () => {
 
   describe("batchCreateScans", () => {
     it("should create multiple scans sequentially", async () => {
-      const { fetchBookByIsbn } = await import("$lib/server");
+      const { fetchBookByIsbn } = await import("$lib/server/metadata");
       // Mock to return metadata for both ISBNs
       vi.mocked(fetchBookByIsbn).mockResolvedValue(mockMetadata);
 
@@ -305,7 +308,7 @@ describe("Scan Module - Business Logic", () => {
     });
 
     it("should continue on individual failures", async () => {
-      const { fetchBookByIsbn } = await import("$lib/server");
+      const { fetchBookByIsbn } = await import("$lib/server/metadata");
       // Mock to return metadata for valid ISBNs
       vi.mocked(fetchBookByIsbn).mockResolvedValue(mockMetadata);
 

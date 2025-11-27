@@ -10,18 +10,9 @@
 
 import type { RequestEvent } from "@sveltejs/kit";
 import { isValidISBN13, isValidISBN10 } from "$lib/utils";
-import {
-  fetchBookByIsbn,
-  getDB,
-  getKV,
-  createScan,
-  getUserScans,
-  countUserScans,
-  CacheKeys,
-  cacheGet,
-  cacheSet,
-  CacheTTL,
-} from "$lib/server";
+import { getDB, createScan, getUserScans, countUserScans } from "$lib/server/db";
+import { getKV, CacheKeys, cacheGet, cacheSet, CacheTTL } from "$lib/server/cache";
+import { fetchBookByIsbn } from "$lib/server/metadata";
 import { logger, LogEvents } from "$lib/server/log";
 import type { Scan } from "$lib/server/types";
 import type { MergedBookData } from "$lib/types";
