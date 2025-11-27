@@ -17,7 +17,7 @@ vi.mock('$lib/server', () => ({
 	countUserScans: vi.fn((_db, _userId) => {
 		return Promise.resolve(mockScans.length);
 	}),
-	fetchBookByIsbn: vi.fn((isbn) => {
+	fetchBookByIsbn: vi.fn((_fetch, isbn) => {
 		if (isbn === '9780132350884') {
 			return Promise.resolve(mockMetadata);
 		}
@@ -101,7 +101,8 @@ function createMockEvent(userId?: string): RequestEvent {
 				DB: mockDB,
 				BOOK_CACHE: mockKV
 			}
-		}
+		},
+		fetch: vi.fn()
 	} as any;
 }
 

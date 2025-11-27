@@ -21,6 +21,7 @@ const DEFAULT_TIMEOUT = 10000; // 10 seconds
  * @returns Google Books API response or null
  */
 export async function fetchGoogleBooks(
+	fetchFn: typeof fetch,
 	query: string,
 	isIsbn: boolean,
 	maxResults = 1
@@ -30,7 +31,7 @@ export async function fetchGoogleBooks(
 	const url = `${GOOGLE_BOOKS_BASE}?q=${encodeURIComponent(q)}&maxResults=${maxResults}`;
 
 	try {
-		const response = await fetch(url);
+		const response = await fetchFn(url);
 		const duration = Math.round(performance.now() - startTime);
 
 		if (!response.ok) {
@@ -76,13 +77,14 @@ export async function fetchGoogleBooks(
  * Fetch with timeout wrapper
  */
 export async function fetchGoogleBooksWithTimeout(
+	fetchFn: typeof fetch,
 	query: string,
 	isIsbn: boolean,
 	maxResults = 1,
 	timeoutMs = DEFAULT_TIMEOUT
 ): Promise<GoogleBooksResponse | null> {
 	return withTimeout(
-		fetchGoogleBooks(query, isIsbn, maxResults),
+		fetchGoogleBooks(fetchFn, query, isIsbn, maxResults),
 		timeoutMs,
 		'Google Books API timeout'
 	);
