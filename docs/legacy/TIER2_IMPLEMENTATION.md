@@ -18,6 +18,7 @@ Tier 2 architectural upgrades have been implemented successfully, building on th
 ### 1. ✅ Module-Based Domain Structure (NEW)
 
 **Created domain modules:**
+
 ```
 src/modules/
 ├── scan/          # Scan domain (ISBN validation, metadata fetching, persistence)
@@ -35,6 +36,7 @@ src/modules/
 **Key Features:**
 
 #### **Scan Module** (`$modules/scan`)
+
 - `createBookScan(event, isbn)` - Orchestrates full scan workflow
   - ISBN validation with detailed feedback
   - KV cache check (sub-100ms if cached)
@@ -46,6 +48,7 @@ src/modules/
 - `batchCreateScans(event, isbns)` - Bulk scan operations with rate limiting
 
 #### **Dashboard Module** (`$modules/dashboard`)
+
 - `getDashboardData(event)` - Comprehensive dashboard statistics
   - Total/published/draft scan counts
   - Recent scans (last 10)
@@ -57,6 +60,7 @@ src/modules/
 - `getScanTrends(event, days)` - Daily scan counts for charting
 
 #### **Auth Module** (`$modules/auth`)
+
 - `getSessionOptional(event)` - Non-blocking auth check (returns null if not logged in)
 - `requireRole(event, role)` - Role-based access control (throws 403 if unauthorized)
 - `requireAdmin(event)` - Admin-only access guard
@@ -70,38 +74,38 @@ src/modules/
 
 ```typescript
 // Scan module - Create a book scan
-import { createBookScan } from '$modules/scan';
+import { createBookScan } from "$modules/scan";
 
 export const POST = async (event) => {
-  const result = await createBookScan(event, '9780134092669');
+  const result = await createBookScan(event, "9780134092669");
   if (result.success) {
-    console.log('Scan created:', result.scan.id);
-    console.log('From cache:', result.cached);
+    console.log("Scan created:", result.scan.id);
+    console.log("From cache:", result.cached);
   }
 };
 ```
 
 ```typescript
 // Dashboard module - Get analytics
-import { getDashboardData, getActivitySummary } from '$modules/dashboard';
+import { getDashboardData, getActivitySummary } from "$modules/dashboard";
 
 export const load = async (event) => {
   const [dashboard, activity] = await Promise.all([
     getDashboardData(event),
-    getActivitySummary(event, 30)
+    getActivitySummary(event, 30),
   ]);
-  
+
   return {
     stats: dashboard,
     activity: activity,
-    mostScanned: activity?.mostScannedISBNs
+    mostScanned: activity?.mostScannedISBNs,
   };
 };
 ```
 
 ```typescript
 // Auth module - Role-based protection
-import { requireAdmin } from '$modules/auth';
+import { requireAdmin } from "$modules/auth";
 
 export const load = async (event) => {
   await requireAdmin(event); // Throws 403 if not admin
@@ -116,32 +120,38 @@ export const load = async (event) => {
 **Routes now delegate to modules instead of implementing logic:**
 
 #### **Dashboard Route** (`/dashboard`)
+
 **Before:**
+
 ```typescript
 const db = getDB(event.platform);
 const [scans, totalScans] = await Promise.all([
   getUserScans(db, userId, 50),
-  countUserScans(db, userId)
+  countUserScans(db, userId),
 ]);
 ```
 
 **After:**
+
 ```typescript
 const dashboardData = await getDashboardData(event);
 // All logic encapsulated in module
 ```
 
 #### **History Route** (`/history`)
+
 **Before:**
+
 ```typescript
 const db = getDB(event.platform);
 const [scans, totalScans] = await Promise.all([
   getUserScans(db, userId),
-  countUserScans(db, userId)
+  countUserScans(db, userId),
 ]);
 ```
 
 **After:**
+
 ```typescript
 const history = await getScanHistory(event, 100);
 // Includes pagination, total count, hasMore flag
@@ -152,9 +162,11 @@ const history = await getScanHistory(event, 100);
 ### 3. ✅ New API Endpoints
 
 #### **POST /api/scan**
+
 Create a new book scan with validation and caching.
 
 **Request:**
+
 ```json
 {
   "isbn": "9780134092669"
@@ -162,6 +174,7 @@ Create a new book scan with validation and caching.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -169,24 +182,30 @@ Create a new book scan with validation and caching.
     "id": 42,
     "isbn": "9780134092669",
     "title": "Clean Code",
-    "metadata": { /* MergedBookData */ }
+    "metadata": {
+      /* MergedBookData */
+    }
   },
   "cached": false
 }
 ```
 
 **Error Handling:**
+
 - 400: Invalid ISBN format (with detailed message)
 - 401: Not authenticated
 - 500: Scan creation failed
 
 #### **GET /api/dashboard/stats**
+
 Get dashboard statistics with optional activity summary.
 
 **Query Parameters:**
+
 - `activity=true` - Include detailed activity analysis
 
 **Response:**
+
 ```json
 {
   "stats": {
@@ -197,7 +216,9 @@ Get dashboard statistics with optional activity summary.
     "thisWeek": 23,
     "thisMonth": 67
   },
-  "recentScans": [ /* Last 10 scans */ ],
+  "recentScans": [
+    /* Last 10 scans */
+  ],
   "activity": {
     "scansToday": 5,
     "scansThisWeek": 23,
@@ -214,6 +235,7 @@ Get dashboard statistics with optional activity summary.
 ### 4. ✅ Path Aliases
 
 **Added `$modules` alias in `svelte.config.js`:**
+
 ```javascript
 alias: {
   $lib: './src/lib',
@@ -222,6 +244,7 @@ alias: {
 ```
 
 **Benefits:**
+
 - Clean imports: `import { createBookScan } from '$modules/scan'`
 - No relative path hell: `../../modules/scan/service`
 - IDE autocomplete works perfectly
@@ -231,11 +254,13 @@ alias: {
 ## Architecture Evolution
 
 ### Tier 1 (Before)
+
 ```
 Routes → lib/server helpers → Infrastructure (D1, KV)
 ```
 
 ### Tier 2 (Now)
+
 ```
 Routes → Domain Modules → lib/server helpers → Infrastructure
    ↓           ↓                  ↓
@@ -243,6 +268,7 @@ Routes → Domain Modules → lib/server helpers → Infrastructure
 ```
 
 **Detailed Flow:**
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Routes Layer                                │
@@ -293,26 +319,31 @@ Routes → Domain Modules → lib/server helpers → Infrastructure
 ## Benefits Achieved
 
 ### 1. **Improved Maintainability**
+
 - **Single responsibility:** Each module handles one domain
 - **Easier testing:** Modules are testable in isolation
 - **Clear boundaries:** Routes never touch infrastructure directly
 
 ### 2. **Code Reusability**
+
 - Scan logic shared between API and UI routes
 - Dashboard analytics reusable in multiple contexts
 - Auth helpers usable across all protected routes
 
 ### 3. **Developer Experience**
+
 - **Intuitive structure:** `$modules/scan` for scan operations
 - **Autocomplete:** IDE suggests module functions
 - **Documentation:** Each module has clear API surface
 
 ### 4. **Future-Proof**
+
 - Easy to add new domains (e.g., `$modules/export`, `$modules/analytics`)
 - Role-based auth ready for future RBAC implementation
 - Module pattern scales well to large teams
 
 ### 5. **Type Safety**
+
 - Full TypeScript coverage maintained
 - Module functions have clear type signatures
 - Return types documented with interfaces
@@ -322,6 +353,7 @@ Routes → Domain Modules → lib/server helpers → Infrastructure
 ## Files Created
 
 ### Domain Modules (7 new files)
+
 1. ✅ `src/modules/scan/service.ts` - Scan business logic (195 lines)
 2. ✅ `src/modules/scan/index.ts` - Scan public API
 3. ✅ `src/modules/dashboard/service.ts` - Dashboard analytics (171 lines)
@@ -331,10 +363,12 @@ Routes → Domain Modules → lib/server helpers → Infrastructure
 7. ✅ `src/modules/index.ts` - Barrel export for all modules
 
 ### New API Routes (2 new routes)
+
 8. ✅ `src/routes/api/scan/+server.ts` - POST scan creation
 9. ✅ `src/routes/api/dashboard/stats/+server.ts` - GET dashboard stats
 
 ### Configuration Updates
+
 10. ✅ `svelte.config.js` - Added `$modules` alias
 
 ---
@@ -342,6 +376,7 @@ Routes → Domain Modules → lib/server helpers → Infrastructure
 ## Files Modified
 
 ### Routes (2 files)
+
 1. ✅ `src/routes/dashboard/+page.server.ts` - Now uses `getDashboardData`
 2. ✅ `src/routes/history/+page.server.ts` - Now uses `getScanHistory`
 
@@ -350,12 +385,14 @@ Routes → Domain Modules → lib/server helpers → Infrastructure
 ## Verification
 
 ### Type Checking
+
 ```bash
 $ npm run check
 ✅ svelte-check found 0 errors and 0 warnings
 ```
 
 ### Build
+
 ```bash
 $ npm run build
 ✅ Built in 11.37s
@@ -363,6 +400,7 @@ $ npm run build
 ```
 
 ### Code Quality Metrics
+
 - ✅ **Lines of code:** +527 (module logic), -50 (routes simplified) = +477 net
 - ✅ **Cyclomatic complexity:** Reduced in routes (logic moved to modules)
 - ✅ **Test coverage:** Modules are unit-testable in isolation
@@ -374,8 +412,9 @@ $ npm run build
 ## Usage Guide for Developers
 
 ### Creating a New Scan (from any route)
+
 ```typescript
-import { createBookScan, validateISBN } from '$modules/scan';
+import { createBookScan, validateISBN } from "$modules/scan";
 
 export const POST = async (event) => {
   // Validate first (optional, createBookScan also validates)
@@ -383,7 +422,7 @@ export const POST = async (event) => {
   if (!validation.valid) {
     return error(400, validation.message);
   }
-  
+
   // Create scan
   const result = await createBookScan(event, isbn);
   return json(result);
@@ -391,21 +430,23 @@ export const POST = async (event) => {
 ```
 
 ### Getting Dashboard Data
+
 ```typescript
-import { getDashboardData, getActivitySummary } from '$modules/dashboard';
+import { getDashboardData, getActivitySummary } from "$modules/dashboard";
 
 export const load = async (event) => {
   const dashboard = await getDashboardData(event);
   return {
     stats: dashboard,
-    recentScans: dashboard?.recentScans || []
+    recentScans: dashboard?.recentScans || [],
   };
 };
 ```
 
 ### Protecting Routes with Roles
+
 ```typescript
-import { requireAdmin } from '$modules/auth';
+import { requireAdmin } from "$modules/auth";
 
 export const load = async (event) => {
   await requireAdmin(event); // Throws 403 if not admin
@@ -414,14 +455,15 @@ export const load = async (event) => {
 ```
 
 ### Optional Authentication
+
 ```typescript
-import { getSessionOptional } from '$modules/auth';
+import { getSessionOptional } from "$modules/auth";
 
 export const load = async (event) => {
   const session = await getSessionOptional(event);
   return {
     isLoggedIn: !!session,
-    user: session?.user || null
+    user: session?.user || null,
   };
 };
 ```
@@ -431,27 +473,32 @@ export const load = async (event) => {
 ## Next Steps (Optional - Tier 3+)
 
 ### 1. **Testing Infrastructure**
+
 - Unit tests for all module functions
 - Integration tests for API endpoints
 - E2E tests for critical user flows
 
 ### 2. **Export Module**
+
 - Create `$modules/export` for SLiMS/MARC21 exports
 - Centralize all export logic (currently in `$lib/export.ts`)
 - Add batch export functionality
 
 ### 3. **Analytics Module**
+
 - Create `$modules/analytics` for event tracking
 - Centralize analytics logic (currently in `$lib/services/analytics.ts`)
 - Add custom event types
 
 ### 4. **Admin Module**
+
 - Create `$modules/admin` for administrative operations
 - Global scan management (view all users' scans)
 - User management
 - System health monitoring
 
 ### 5. **Role System Implementation**
+
 - Add `role` column to `user` table in D1
 - Implement role assignment in auth flow
 - Update `hasRole()` to check database
@@ -463,19 +510,21 @@ export const load = async (event) => {
 ### For Existing Code
 
 **Old pattern (Tier 1):**
+
 ```typescript
-import { getDB, getUserScans, countUserScans } from '$lib/server';
+import { getDB, getUserScans, countUserScans } from "$lib/server";
 
 const db = getDB(event.platform);
 const [scans, total] = await Promise.all([
   getUserScans(db, userId),
-  countUserScans(db, userId)
+  countUserScans(db, userId),
 ]);
 ```
 
 **New pattern (Tier 2):**
+
 ```typescript
-import { getScanHistory } from '$modules/scan';
+import { getScanHistory } from "$modules/scan";
 
 const history = await getScanHistory(event);
 // Already includes scans, total, pagination
@@ -492,6 +541,7 @@ const history = await getScanHistory(event);
 ## Conclusion
 
 ✅ **Tier 2 objectives achieved:**
+
 1. Module-based domain structure - Scan, Dashboard, Auth modules created
 2. Enhanced auth helpers - Role-based access control ready
 3. Thin routes - All business logic moved to modules

@@ -2,19 +2,20 @@
 
 ## Test Environment Matrix
 
-| Platform | Browser | Version | Device Type |
-|----------|---------|---------|-------------|
-| iOS | Safari | 15+ | iPhone/iPad |
-| Android | Chrome | 100+ | Phone/Tablet |
-| Desktop | Chrome | 100+ | Laptop/Desktop with webcam |
-| Desktop | Firefox | 100+ | Laptop/Desktop with webcam |
-| Desktop | Edge | 100+ | Laptop/Desktop with webcam |
+| Platform | Browser | Version | Device Type                |
+| -------- | ------- | ------- | -------------------------- |
+| iOS      | Safari  | 15+     | iPhone/iPad                |
+| Android  | Chrome  | 100+    | Phone/Tablet               |
+| Desktop  | Chrome  | 100+    | Laptop/Desktop with webcam |
+| Desktop  | Firefox | 100+    | Laptop/Desktop with webcam |
+| Desktop  | Edge    | 100+    | Laptop/Desktop with webcam |
 
 ---
 
 ## 1. Browser Compatibility & Device Access
 
 ### 1.1 iOS Safari (Mobile)
+
 **Severity: CRITICAL**
 
 - [ ] Page loads without errors on iOS Safari 15+
@@ -32,6 +33,7 @@
 - [ ] Works on older iPhone models (iPhone 8, X)
 
 ### 1.2 Android Chrome (Mobile)
+
 **Severity: CRITICAL**
 
 - [ ] Page loads without errors on Chrome 100+
@@ -47,6 +49,7 @@
 - [ ] Works on other Android manufacturers
 
 ### 1.3 Desktop Chrome (Webcam)
+
 **Severity: HIGH**
 
 - [ ] Page loads without errors
@@ -62,6 +65,7 @@
 ## 2. Camera Permission Handling
 
 ### 2.1 Initial Permission Request
+
 **Severity: CRITICAL**
 
 - [ ] Permission prompt appears on component mount
@@ -71,6 +75,7 @@
 - [ ] Camera stream starts within 3 seconds of permission grant
 
 ### 2.2 Permission Denied (First Time)
+
 **Severity: CRITICAL**
 
 - [ ] Error message displays: "Camera permission denied" or similar
@@ -81,6 +86,7 @@
 - [ ] Error event is dispatched to parent component
 
 ### 2.3 Permission Permanently Denied/Blocked
+
 **Severity: HIGH**
 
 - [ ] User-friendly error message displays
@@ -90,6 +96,7 @@
 - [ ] Clear messaging about manual permission reset
 
 ### 2.4 Permission Revoked During Session
+
 **Severity: MEDIUM**
 
 - [ ] Scanner stops when permission revoked mid-session
@@ -102,9 +109,11 @@
 ## 3. Barcode Scanning Functionality
 
 ### 3.1 Successful Scanning - Various Conditions
+
 **Severity: CRITICAL**
 
 **Good Lighting:**
+
 - [ ] ISBN-13 barcode scans successfully
 - [ ] ISBN-10 barcode scans successfully
 - [ ] EAN-13 barcode scans successfully
@@ -113,28 +122,33 @@
 - [ ] Scanned text is trimmed (no leading/trailing whitespace)
 
 **Poor Lighting:**
+
 - [ ] Scanner attempts to focus and scan
 - [ ] Error handling for repeated failed scans is graceful
 - [ ] User can improve lighting and retry
 - [ ] No app crash from scan failures
 
 **Tilted Barcode (15-30° angle):**
+
 - [ ] Scanner successfully reads tilted barcodes
 - [ ] Scan time may be longer but succeeds
 - [ ] No false positives
 
 **Partial Barcode (edges cut off):**
+
 - [ ] Scanner does not return partial/incorrect data
 - [ ] No successful scan until full barcode visible
 - [ ] User can adjust camera to include full barcode
 
 **Distance Testing:**
+
 - [ ] Barcode scans from 10cm distance
 - [ ] Barcode scans from 20cm distance
 - [ ] Barcode scans from 30cm distance
 - [ ] Clear feedback if barcode too far/close
 
 ### 3.2 Duplicate Scan Debouncing
+
 **Severity: HIGH**
 
 - [ ] Scanning same barcode within 3 seconds is ignored
@@ -146,6 +160,7 @@
 - [ ] Rapid scanning of different barcodes works correctly
 
 **Test Sequence:**
+
 1. Scan barcode A at T=0s → Should trigger
 2. Scan barcode A at T=1s → Should be ignored
 3. Scan barcode A at T=2s → Should be ignored
@@ -153,6 +168,7 @@
 5. Scan barcode A at T=4s → Should trigger (>3s from T=0)
 
 ### 3.3 QR Box Visibility & UX
+
 **Severity: HIGH**
 
 - [ ] QR scanning box (250x150px) is clearly visible
@@ -163,6 +179,7 @@
 - [ ] Video feed is not obscured by UI elements
 
 ### 3.4 Scanner Lifecycle
+
 **Severity: CRITICAL**
 
 - [ ] Scanner initializes on page mount
@@ -177,6 +194,7 @@
 ## 4. API Integration & Network Behavior
 
 ### 4.1 Successful API Response
+
 **Severity: CRITICAL**
 
 - [ ] Scanned ISBN triggers API call to `/api/book/[isbn]`
@@ -195,6 +213,7 @@
 - [ ] Loading state clears after successful fetch
 
 ### 4.2 API 404 - Book Not Found
+
 **Severity: HIGH**
 
 - [ ] Error message displays: "Book not found" or similar
@@ -205,6 +224,7 @@
 - [ ] Error state clears on next successful scan
 
 ### 4.3 API 500 - Server Error
+
 **Severity: HIGH**
 
 - [ ] Error message displays: "Server error" or similar
@@ -214,6 +234,7 @@
 - [ ] Error state clears on next scan attempt
 
 ### 4.4 Offline Mode / No Internet
+
 **Severity: MEDIUM**
 
 - [ ] Network error displays: "No internet connection" or similar
@@ -224,6 +245,7 @@
 - [ ] Clear error messaging about connectivity
 
 ### 4.5 Rapid Scanning / Request Queueing
+
 **Severity: HIGH**
 
 - [ ] Scanning barcode B while loading barcode A queues B correctly
@@ -234,6 +256,7 @@
 - [ ] UI shows loading state throughout
 
 **Test Sequence:**
+
 1. Scan ISBN A (starts loading)
 2. Scan ISBN B while A is loading (should queue B)
 3. A finishes → B should immediately start loading
@@ -241,6 +264,7 @@
 5. B finishes → C should load
 
 ### 4.6 Slow Network Conditions
+
 **Severity: MEDIUM**
 
 - [ ] Loading state persists for slow responses (5-10s)
@@ -253,9 +277,11 @@
 ## 5. UI/UX Validation
 
 ### 5.1 Page Layout & Responsiveness
+
 **Severity: HIGH**
 
 **Mobile Portrait (375px - 428px width):**
+
 - [ ] Header displays correctly: "Mobile Scan Mode"
 - [ ] Subtitle visible: "Scan ISBN/EAN barcodes to fetch book metadata"
 - [ ] Scanner container fits screen width
@@ -265,21 +291,25 @@
 - [ ] Touch targets are adequate (44x44px minimum)
 
 **Mobile Landscape:**
+
 - [ ] Layout adapts appropriately
 - [ ] Scanner remains usable
 - [ ] Book card displays correctly
 
 **Tablet (768px - 1024px):**
+
 - [ ] Scanner centers on page
 - [ ] Book card centers below scanner
 - [ ] Adequate spacing between elements
 
 **Desktop (1280px+):**
+
 - [ ] Scanner and card centered with max-width
 - [ ] Layout doesn't stretch awkwardly
 - [ ] Maintains mobile-friendly feel
 
 ### 5.2 Loading States
+
 **Severity: HIGH**
 
 - [ ] "Camera starting..." displays on initial load
@@ -289,6 +319,7 @@
 - [ ] Loading state in book card section only (scanner remains visible)
 
 ### 5.3 Error States
+
 **Severity: HIGH**
 
 - [ ] Camera permission error: Red text, clear message
@@ -298,9 +329,11 @@
 - [ ] Error messages are grammatically correct
 
 ### 5.4 Success States - Book Card
+
 **Severity: CRITICAL**
 
 **With All Data Available:**
+
 - [ ] Cover image displays (w-24 h-32)
 - [ ] Cover has rounded corners and shadow
 - [ ] Title displays in bold, large text
@@ -312,6 +345,7 @@
 - [ ] Card has proper spacing and padding
 
 **With Missing Data:**
+
 - [ ] Missing cover: Image section hidden, text fills space
 - [ ] Missing subtitle: No extra space, compact layout
 - [ ] Missing authors: Authors line not displayed
@@ -319,11 +353,13 @@
 - [ ] Fallback title: "Unknown Title" if title missing
 
 **Cover Image Error Handling:**
+
 - [ ] Broken cover URL hides image (display: none)
 - [ ] No broken image icon visible
 - [ ] Layout adjusts gracefully without image
 
 ### 5.5 Empty State
+
 **Severity: MEDIUM**
 
 - [ ] "No book scanned yet" displays initially
@@ -333,6 +369,7 @@
 - [ ] Gray text for empty state (not too prominent)
 
 ### 5.6 Accessibility
+
 **Severity: HIGH**
 
 - [ ] All interactive elements keyboard accessible (if applicable)
@@ -347,6 +384,7 @@
 ## 6. SSR Safety & SvelteKit Compatibility
 
 ### 6.1 Server-Side Rendering
+
 **Severity: CRITICAL**
 
 - [ ] Page renders HTML on server without errors
@@ -358,6 +396,7 @@
 - [ ] Initial HTML includes proper meta tags and title
 
 ### 6.2 Hydration
+
 **Severity: CRITICAL**
 
 - [ ] Page hydrates correctly on client
@@ -367,6 +406,7 @@
 - [ ] No "Cannot read property of undefined" errors
 
 ### 6.3 Client-Side Navigation
+
 **Severity: HIGH**
 
 - [ ] Navigating to `/scan/mobile` from another page works
@@ -377,6 +417,7 @@
 - [ ] SvelteKit's preload doesn't break scanner
 
 ### 6.4 Build & Bundle
+
 **Severity: CRITICAL**
 
 - [ ] `npm run build` completes without errors
@@ -390,6 +431,7 @@
 ## 7. Performance & Resource Management
 
 ### 7.1 Camera Resource Management
+
 **Severity: HIGH**
 
 - [ ] Camera turns on only when needed
@@ -400,6 +442,7 @@
 - [ ] Device doesn't overheat during extended scanning
 
 ### 7.2 Memory Management
+
 **Severity: MEDIUM**
 
 - [ ] No memory leaks in Chrome DevTools memory profiler
@@ -409,6 +452,7 @@
 - [ ] Page can be used for 10+ scans without issues
 
 ### 7.3 Network Efficiency
+
 **Severity: MEDIUM**
 
 - [ ] API calls leverage existing KV cache (check via Network tab)
@@ -421,6 +465,7 @@
 ## 8. Edge Cases & Error Recovery
 
 ### 8.1 Edge Cases
+
 **Severity: MEDIUM**
 
 - [ ] Scanning invalid barcode format (non-ISBN): Handled gracefully
@@ -432,6 +477,7 @@
 - [ ] Multiple cameras available: Correct camera selected
 
 ### 8.2 Component Recovery
+
 **Severity: HIGH**
 
 - [ ] Can recover from camera error and retry
@@ -440,6 +486,7 @@
 - [ ] No stuck states requiring force-refresh
 
 ### 8.3 Concurrent Operations
+
 **Severity: MEDIUM**
 
 - [ ] Scanner works while API call in progress
@@ -451,6 +498,7 @@
 ## 9. Cross-Browser Consistency
 
 ### 9.1 Feature Parity
+
 **Severity: HIGH**
 
 - [ ] All features work identically on iOS Safari
@@ -459,9 +507,11 @@
 - [ ] Audio beep works consistently (or fails gracefully)
 
 ### 9.2 Known Limitations
+
 **Severity: LOW**
 
 Document any browser-specific limitations:
+
 - [ ] iOS Safari: Audio may not play if device muted
 - [ ] Firefox: Camera permission prompt differs
 - [ ] Older browsers: Note minimum versions
@@ -471,6 +521,7 @@ Document any browser-specific limitations:
 ## 10. Security & Privacy
 
 ### 10.1 Data Privacy
+
 **Severity: CRITICAL**
 
 - [ ] Camera stream not recorded or stored
@@ -479,6 +530,7 @@ Document any browser-specific limitations:
 - [ ] Camera stops immediately when not in use
 
 ### 10.2 Input Sanitization
+
 **Severity: HIGH**
 
 - [ ] Scanned barcode text is sanitized before API call
@@ -491,6 +543,7 @@ Document any browser-specific limitations:
 ## Test Execution Summary
 
 ### Priority Levels:
+
 - **CRITICAL**: Must pass before production deployment
 - **HIGH**: Should pass, can be hotfixed if needed
 - **MEDIUM**: Important for UX, can be addressed in next release
@@ -498,30 +551,32 @@ Document any browser-specific limitations:
 
 ### Test Sign-Off:
 
-| Test Category | iOS Safari | Android Chrome | Desktop Chrome | Status |
-|---------------|------------|----------------|----------------|--------|
-| Browser Compatibility | ☐ | ☐ | ☐ | |
-| Permission Handling | ☐ | ☐ | ☐ | |
-| Barcode Scanning | ☐ | ☐ | ☐ | |
-| API Integration | ☐ | ☐ | ☐ | |
-| UI/UX Validation | ☐ | ☐ | ☐ | |
-| SSR Safety | ☐ | ☐ | ☐ | |
-| Performance | ☐ | ☐ | ☐ | |
-| Edge Cases | ☐ | ☐ | ☐ | |
-| Security | ☐ | ☐ | ☐ | |
+| Test Category         | iOS Safari | Android Chrome | Desktop Chrome | Status |
+| --------------------- | ---------- | -------------- | -------------- | ------ |
+| Browser Compatibility | ☐          | ☐              | ☐              |        |
+| Permission Handling   | ☐          | ☐              | ☐              |        |
+| Barcode Scanning      | ☐          | ☐              | ☐              |        |
+| API Integration       | ☐          | ☐              | ☐              |        |
+| UI/UX Validation      | ☐          | ☐              | ☐              |        |
+| SSR Safety            | ☐          | ☐              | ☐              |        |
+| Performance           | ☐          | ☐              | ☐              |        |
+| Edge Cases            | ☐          | ☐              | ☐              |        |
+| Security              | ☐          | ☐              | ☐              |        |
 
 ### Tester Information:
-- **Tester Name:** _______________
-- **Test Date:** _______________
-- **Build Version:** _______________
-- **Environment:** ☐ Staging  ☐ Production
+
+- **Tester Name:** **\*\***\_\_\_**\*\***
+- **Test Date:** **\*\***\_\_\_**\*\***
+- **Build Version:** **\*\***\_\_\_**\*\***
+- **Environment:** ☐ Staging ☐ Production
 
 ### Critical Blockers Found:
+
 _List any critical issues that must be resolved before release_
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ---
 

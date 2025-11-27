@@ -13,24 +13,28 @@ The dropdown menu items in `src/routes/+layout.svelte` had `onclick` handlers th
 **Solution:**  
 Removed the `onclick` handlers from the Dashboard and History menu links. Standard `<a href="...">` navigation now works correctly. The menu automatically closes when navigating away (browser default behavior).
 
-**Changed Lines:**  
+**Changed Lines:**
+
 - `src/routes/+layout.svelte` lines 120-144
 
 ### Problem 2: Duplicate Headers
 
 **Root Cause:**  
 Two headers were rendered:
+
 1. Main header in `+layout.svelte` (lines 66-181) - the canonical header with auth
 2. Duplicate header in `+page.svelte` (lines 742-760) - just branding/logo
 
 This created visual duplication where users saw two stacked headers.
 
-**Solution:**  
+**Solution:**
+
 - Kept the comprehensive header in `+layout.svelte` (single source of truth)
 - Removed the duplicate header from `+page.svelte`
 - The layout header now serves all pages consistently
 
-**Changed Lines:**  
+**Changed Lines:**
+
 - `src/routes/+page.svelte` lines 742-762 (removed duplicate header markup)
 
 ### Problem 3: Outdated Footer Content
@@ -38,13 +42,15 @@ This created visual duplication where users saw two stacked headers.
 **Root Cause:**  
 Footer showed "Rangkai v1.1.0" but `package.json` indicates version 2.0.2. Footer was also minimal and didn't clearly communicate the app's purpose.
 
-**Solution:**  
+**Solution:**
+
 - Updated footer to show correct version (v2.0.2)
 - Improved footer branding: "Rangkai Book Metadata Harvester"
 - Added subtitle: "Built for SLiMS workflows"
 - Improved responsive layout for mobile/desktop
 
-**Changed Lines:**  
+**Changed Lines:**
+
 - `src/routes/+layout.svelte` lines 189-210
 
 ### Problem 4: Marketing-Heavy Features Page
@@ -54,6 +60,7 @@ The features page (`src/routes/features/+page.svelte`) was written as a marketin
 
 **Solution:**  
 Completely rewrote the features page to be:
+
 - **Librarian-first**: Focus on actual workflow (scan → fetch → export)
 - **App-focused**: No marketing fluff, just capabilities
 - **Technical clarity**: Emphasizes:
@@ -64,7 +71,8 @@ Completely rewrote the features page to be:
   - SLiMS/MARCXML export
   - Cloudflare-native architecture
 
-**Changed Lines:**  
+**Changed Lines:**
+
 - `src/routes/features/+page.svelte` (complete rewrite, all 182 lines)
 
 ---
@@ -74,10 +82,10 @@ Completely rewrote the features page to be:
 ### 1. `src/routes/+layout.svelte`
 
 **Changes:**
+
 - **Lines 120-144**: Removed `onclick` handlers from Dashboard and History menu links
   - BEFORE: `onclick={(e) => { closeUserMenu(); }}`
   - AFTER: Plain `<a href="/dashboard">` and `<a href="/history">`
-  
 - **Lines 189-210**: Updated footer
   - Version: v1.1.0 → v2.0.2
   - Branding: Added full app name + "Built for SLiMS workflows"
@@ -90,6 +98,7 @@ Completely rewrote the features page to be:
 ### 2. `src/routes/+page.svelte`
 
 **Changes:**
+
 - **Lines 742-762**: Removed duplicate header section entirely
   - Deleted: Duplicate `<header>` with logo and "Metadata Harvester" subtitle
   - Kept: Only the main content area (search bar, results, etc.)
@@ -101,6 +110,7 @@ Completely rewrote the features page to be:
 ### 3. `src/routes/features/+page.svelte`
 
 **Changes:**
+
 - **Complete rewrite** (all 182 lines)
 - Removed marketing-style content ("Why use Rangkai?", promotional copy)
 - Added app-focused sections:
@@ -121,6 +131,7 @@ Completely rewrote the features page to be:
 ### 1. Authentication & Menu Navigation
 
 **Steps:**
+
 1. ✅ Navigate to the app homepage (`/`)
 2. ✅ Click "Login" button in header
 3. ✅ Complete Google OAuth login flow
@@ -131,6 +142,7 @@ Completely rewrote the features page to be:
 8. ✅ Click your **name** again, then click **"Logout"** → Should sign out and redirect to `/login`
 
 **Expected Results:**
+
 - ✅ All menu items navigate correctly
 - ✅ No console errors
 - ✅ Menu automatically closes when navigating
@@ -138,6 +150,7 @@ Completely rewrote the features page to be:
 ### 2. Single Header Verification
 
 **Steps:**
+
 1. ✅ Visit homepage (`/`)
 2. ✅ Count the number of visible headers
 3. ✅ Verify only ONE header is visible (with logo, "Rangkai", Login/User menu)
@@ -145,12 +158,14 @@ Completely rewrote the features page to be:
 5. ✅ Verify same single header appears on all pages
 
 **Expected Results:**
+
 - ✅ Only ONE header visible across all pages
 - ✅ No visual duplication or stacking
 
 ### 3. Footer Verification
 
 **Steps:**
+
 1. ✅ Scroll to bottom of any page
 2. ✅ Verify footer shows:
    - "Rangkai Book Metadata Harvester"
@@ -159,6 +174,7 @@ Completely rewrote the features page to be:
    - Creator attribution
 
 **Expected Results:**
+
 - ✅ Footer displays correct version (2.0.2)
 - ✅ Footer communicates app purpose clearly
 - ✅ Footer is consistent across all pages
@@ -166,6 +182,7 @@ Completely rewrote the features page to be:
 ### 4. Features Page Content
 
 **Steps:**
+
 1. ✅ Navigate to `/features`
 2. ✅ Verify page title: "Rangkai Book Metadata Harvester"
 3. ✅ Verify sections:
@@ -176,6 +193,7 @@ Completely rewrote the features page to be:
 5. ✅ Verify no marketing fluff or superlatives
 
 **Expected Results:**
+
 - ✅ Content is professional and app-focused
 - ✅ Emphasizes librarian workflow and SLiMS integration
 - ✅ No "Why use Rangkai?" or promotional language
@@ -187,22 +205,26 @@ Completely rewrote the features page to be:
 ### Menu Fix Explanation
 
 The original implementation:
+
 ```svelte
 <a href="/dashboard" onclick={(e) => { closeUserMenu(); }}>Dashboard</a>
 ```
 
 This caused navigation to fail because:
+
 1. The `onclick` handler executed `closeUserMenu()`
 2. The handler didn't call `e.preventDefault()` or return `false`
 3. The browser attempted navigation while the menu was closing
 4. Race condition or event bubbling prevented navigation
 
 The fix:
+
 ```svelte
 <a href="/dashboard">Dashboard</a>
 ```
 
 Now:
+
 - Standard browser navigation works
 - No JavaScript interference
 - Menu closes automatically when page changes (browser default)
@@ -211,6 +233,7 @@ Now:
 ### Architecture Compliance
 
 All changes respect:
+
 - ✅ `RANGKAI_APP_DIRECTION.md` - app-only, no marketing CMS
 - ✅ `MODULE_REFERENCE.md` - no changes to modules
 - ✅ `TIER1_REFACTOR_SUMMARY.md` - UI layer only
@@ -225,6 +248,7 @@ npm run build
 ```
 
 Output:
+
 ```
 ✓ 230 modules transformed (SSR)
 ✓ 174 modules transformed (Client)
@@ -238,29 +262,34 @@ All builds pass successfully. No TypeScript errors, no runtime errors.
 ## Summary
 
 **What was broken:**
+
 1. ❌ Menu items (Dashboard, History, Logout) didn't navigate
 2. ❌ Two headers appeared (layout + page)
 3. ❌ Footer showed wrong version and minimal branding
 4. ❌ Features page was marketing-heavy, not app-focused
 
 **What was fixed:**
+
 1. ✅ Removed interfering `onclick` handlers from menu links
 2. ✅ Removed duplicate header from `+page.svelte`
 3. ✅ Updated footer to v2.0.2 with clear app branding
 4. ✅ Rewrote features page to be librarian-first and app-focused
 
 **Files changed:**
+
 - `src/routes/+layout.svelte` (menu navigation, footer)
 - `src/routes/+page.svelte` (removed duplicate header)
 - `src/routes/features/+page.svelte` (complete rewrite)
 
 **Testing:**
+
 - ✅ Build passes
 - ✅ TypeScript checks pass
 - ✅ No new dependencies
 - ✅ Architecture guidelines respected
 
 **Next steps:**
+
 1. Deploy to staging/production
 2. Manual QA with real user workflows
 3. Monitor for any navigation edge cases

@@ -7,9 +7,11 @@ Rangkai now includes a comprehensive analytics and telemetry system that tracks 
 ## 🎯 Tracked Events
 
 ### 1. **Search Performance** (`search_performed`)
+
 Tracks every search operation with timing and result metrics.
 
 **Properties:**
+
 - `type`: 'isbn' | 'title'
 - `query_length`: number (characters in search query)
 - `duration_ms`: number (total search time in milliseconds)
@@ -17,10 +19,12 @@ Tracks every search operation with timing and result metrics.
 - `timestamp`: ISO 8601 string
 
 **When Triggered:**
+
 - ISBN search completes (successful or failed)
 - Title search completes (successful or failed)
 
 **Example Dev Console Output:**
+
 ```
 🔍 [Analytics] search_performed {
   type: 'isbn',
@@ -34,19 +38,23 @@ Tracks every search operation with timing and result metrics.
 ---
 
 ### 2. **Cache Performance** (`cache_hit`)
+
 Tracks cache hits and misses for all three API sources.
 
 **Properties:**
+
 - `cache_type`: 'google' | 'openlibrary' | 'loc'
 - `key`: string (truncated cache key)
 - `is_isbn`: boolean (whether the query was an ISBN)
 - `timestamp`: ISO 8601 string
 
 **When Triggered:**
+
 - Every time `ApiCache.get()` is called
 - Both cache hits and cache misses are tracked
 
 **Example Dev Console Output:**
+
 ```
 ⚡ [Analytics] cache_hit {
   cache_type: 'google',
@@ -57,6 +65,7 @@ Tracks cache hits and misses for all three API sources.
 ```
 
 **Analytics Insights:**
+
 - High cache hit rate = efficient API quota usage
 - Track which source has better cache performance
 - Identify ISBN patterns that benefit from smart prefetching
@@ -64,9 +73,11 @@ Tracks cache hits and misses for all three API sources.
 ---
 
 ### 3. **Data Source Attribution** (`data_source_used`)
+
 Tracks which combination of API sources provided the final merged data.
 
 **Properties:**
+
 - `source`: 'all-three' | 'google-loc' | 'google-openlibrary' | 'loc-openlibrary' | 'google-only' | 'loc-only' | 'openlibrary-only'
 - `has_google`: boolean
 - `has_openlibrary`: boolean
@@ -75,9 +86,11 @@ Tracks which combination of API sources provided the final merged data.
 - `timestamp`: ISO 8601 string
 
 **When Triggered:**
+
 - After successful ISBN search with merged data
 
 **Example Dev Console Output:**
+
 ```
 📊 [Analytics] data_source_used {
   source: 'all-three',
@@ -90,6 +103,7 @@ Tracks which combination of API sources provided the final merged data.
 ```
 
 **Analytics Insights:**
+
 - Which API sources are most reliable?
 - How often do we get complete data vs partial data?
 - Is Library of Congress consistently slow/unavailable?
@@ -97,9 +111,11 @@ Tracks which combination of API sources provided the final merged data.
 ---
 
 ### 4. **API Timing** (`api_timing`)
+
 Tracks individual API request performance and success rates.
 
 **Properties:**
+
 - `source`: 'google' | 'openlibrary' | 'loc'
 - `endpoint`: 'isbn_search' | 'title_search'
 - `duration_ms`: number (request time in milliseconds)
@@ -107,9 +123,11 @@ Tracks individual API request performance and success rates.
 - `timestamp`: ISO 8601 string
 
 **When Triggered:**
+
 - Every API request to Google Books, OpenLibrary, or Library of Congress
 
 **Example Dev Console Output:**
+
 ```
 ⏱️ [Analytics] api_timing {
   source: 'loc',
@@ -121,6 +139,7 @@ Tracks individual API request performance and success rates.
 ```
 
 **Analytics Insights:**
+
 - Which API is fastest/slowest?
 - Success rate per source (reliability)
 - Identify timeout patterns
@@ -128,21 +147,25 @@ Tracks individual API request performance and success rates.
 ---
 
 ### 5. **Error Tracking** (`error_occurred`)
+
 Tracks all API errors, network failures, and parsing issues.
 
 **Properties:**
+
 - `error_type`: 'api_503' | 'api_timeout' | 'parse_error' | 'network_error' | 'rate_limit' | 'unknown'
 - `source`: 'google' | 'openlibrary' | 'loc' | 'general'
 - `message`: string (optional error details)
 - `timestamp`: ISO 8601 string
 
 **When Triggered:**
+
 - API returns 503 (Service Unavailable)
 - API returns 429 (Rate Limited)
 - Network timeout occurs
 - Parsing JSON fails
 
 **Example Dev Console Output:**
+
 ```
 ❌ [Analytics] error_occurred {
   error_type: 'api_503',
@@ -153,6 +176,7 @@ Tracks all API errors, network failures, and parsing issues.
 ```
 
 **Analytics Insights:**
+
 - Which API is most error-prone?
 - Are we hitting rate limits?
 - Network stability patterns
@@ -160,16 +184,20 @@ Tracks all API errors, network failures, and parsing issues.
 ---
 
 ### 6. **Scanner Mode** (`scanner_mode_toggled`)
+
 Tracks when users enable/disable barcode scanner mode.
 
 **Properties:**
+
 - `enabled`: boolean
 - `timestamp`: ISO 8601 string
 
 **When Triggered:**
+
 - User clicks "Enable Scanner Mode" button
 
 **Example Dev Console Output:**
+
 ```
 📱 [Analytics] scanner_mode_toggled {
   enabled: true,
@@ -178,29 +206,35 @@ Tracks when users enable/disable barcode scanner mode.
 ```
 
 **Analytics Insights:**
+
 - What % of users use scanner mode?
 - Session duration in scanner mode
 
 ---
 
 ### 7. **Export Operations** (`batch_export`, `single_export`)
+
 Tracks CSV and MARCXML exports (both single and batch).
 
 **Batch Export Properties:**
+
 - `count`: number (how many books exported)
 - `format`: 'csv' | 'marcxml'
 - `timestamp`: ISO 8601 string
 
 **Single Export Properties:**
+
 - `format`: 'csv' | 'marcxml'
 - `isbn`: string (optional book identifier)
 - `timestamp`: ISO 8601 string
 
 **When Triggered:**
+
 - User exports batch of scanned books
 - User exports single book metadata
 
 **Example Dev Console Output:**
+
 ```
 📦 [Analytics] batch_export {
   count: 47,
@@ -216,6 +250,7 @@ Tracks CSV and MARCXML exports (both single and batch).
 ```
 
 **Analytics Insights:**
+
 - Which export format is more popular?
 - Average batch size
 - Export frequency
@@ -223,20 +258,24 @@ Tracks CSV and MARCXML exports (both single and batch).
 ---
 
 ### 8. **User Interactions** (`user_interaction`)
+
 Tracks navigation and UI actions.
 
 **Properties:**
+
 - `action`: 'book_selected' | 'back_to_search' | 'home_navigation' | 'view_raw_data'
 - `source`: 'google' | 'openlibrary' (optional, for book selection)
 - `timestamp`: ISO 8601 string
 
 **When Triggered:**
+
 - User selects a book from search results
 - User clicks "Back to Search"
 - User clicks home/logo to reset
 - User views raw API data
 
 **Example Dev Console Output:**
+
 ```
 🖱️ [Analytics] user_interaction {
   action: 'book_selected',
@@ -250,11 +289,13 @@ Tracks navigation and UI actions.
 ## 🎨 Dev Mode vs Production Mode
 
 ### Development Mode (`import.meta.env.DEV === true`)
+
 - Events logged to **browser console** with colors and emojis
 - Distinct colors per event type for easy debugging
 - Full property details visible
 
 **Console Output Example:**
+
 ```
 ⚡ [Analytics] cache_hit  { cache_type: 'google', key: '978...', ... }
 🔍 [Analytics] search_performed  { type: 'isbn', duration_ms: 1234, ... }
@@ -262,11 +303,13 @@ Tracks navigation and UI actions.
 ```
 
 ### Production Mode (`import.meta.env.DEV === false`)
+
 - Events logged to `console.info` with `[Analytics]` prefix
 - Prepared for integration with external analytics services
 - Easy to filter in production logs
 
 **Console Output Example:**
+
 ```
 [Analytics] search_performed { type: 'isbn', duration_ms: 1234, ... }
 [Analytics] cache_hit { cache_type: 'google', key: '978...', ... }
@@ -279,6 +322,7 @@ Tracks navigation and UI actions.
 The system is designed to easily integrate with third-party analytics platforms:
 
 ### Plausible Analytics (Recommended for Privacy)
+
 ```typescript
 // In analytics.ts → logProdMode()
 if (window.plausible) {
@@ -287,14 +331,16 @@ if (window.plausible) {
 ```
 
 ### Google Analytics 4
+
 ```typescript
 // In analytics.ts → logProdMode()
 if (window.gtag) {
-  window.gtag('event', event.name, event.properties);
+  window.gtag("event", event.name, event.properties);
 }
 ```
 
 ### PostHog
+
 ```typescript
 // In analytics.ts → logProdMode()
 if (window.posthog) {
@@ -307,24 +353,28 @@ if (window.posthog) {
 ## 🔍 Key Performance Metrics
 
 ### Cache Effectiveness
+
 ```
 Cache Hit Rate = (cache_hit events) / (total search_performed events)
 Target: >50% for production usage
 ```
 
 ### API Reliability
+
 ```
 API Success Rate = (api_timing.success = true) / (total api_timing events)
 Target: >95% for Google Books, >85% for OpenLibrary, >70% for LoC
 ```
 
 ### Search Performance
+
 ```
 Average Search Duration = average(search_performed.duration_ms)
 Target: <2.5s for ISBN, <3.5s for title
 ```
 
 ### Data Completeness
+
 ```
 Complete Data Rate = (data_source_used.source = 'all-three') / (total data_source_used events)
 Target: >80%
@@ -335,6 +385,7 @@ Target: >80%
 ## 🛠️ Implementation Details
 
 ### File Structure
+
 ```
 src/lib/services/analytics.ts    # Analytics service (singleton)
 src/lib/api.ts                    # API timing + cache tracking
@@ -344,21 +395,25 @@ src/routes/+page.svelte           # UI interaction tracking
 ### Key Design Patterns
 
 #### 1. Singleton Pattern
+
 ```typescript
 export const Analytics = AnalyticsService.getInstance();
 ```
+
 Ensures single analytics instance across the app.
 
 #### 2. Type-Safe Events
+
 ```typescript
-Analytics.track('search_performed', {
-  type: 'isbn',           // ✅ Type-checked
-  duration_ms: 1234,      // ✅ Type-checked
-  invalid_prop: 'test'    // ❌ TypeScript error
+Analytics.track("search_performed", {
+  type: "isbn", // ✅ Type-checked
+  duration_ms: 1234, // ✅ Type-checked
+  invalid_prop: "test", // ❌ TypeScript error
 });
 ```
 
 #### 3. Performance Timing
+
 ```typescript
 const startTime = performance.now();
 // ... do work ...
@@ -371,13 +426,15 @@ Analytics.track('search_performed', { duration_ms: duration, ... });
 ## 📈 Sample Analytics Dashboard Queries
 
 ### Most Common Search Type
+
 ```sql
-SELECT type, COUNT(*) 
-FROM search_performed 
+SELECT type, COUNT(*)
+FROM search_performed
 GROUP BY type
 ```
 
 ### API Slowest Sources
+
 ```sql
 SELECT source, AVG(duration_ms) as avg_ms
 FROM api_timing
@@ -387,6 +444,7 @@ ORDER BY avg_ms DESC
 ```
 
 ### Error Frequency by Source
+
 ```sql
 SELECT source, error_type, COUNT(*) as count
 FROM error_occurred
@@ -395,8 +453,9 @@ ORDER BY count DESC
 ```
 
 ### Cache Hit Rate
+
 ```sql
-SELECT 
+SELECT
   cache_type,
   COUNT(*) FILTER (WHERE key IS NOT NULL) as hits,
   COUNT(*) as total,
@@ -440,30 +499,33 @@ GROUP BY cache_type
 ## 📝 Usage Examples
 
 ### Track Custom Event
+
 ```typescript
-import { Analytics } from '$lib/services/analytics';
+import { Analytics } from "$lib/services/analytics";
 
 // In any component or service
-Analytics.track('search_performed', {
-  type: 'isbn',
+Analytics.track("search_performed", {
+  type: "isbn",
   query_length: 13,
   duration_ms: 1234,
-  result_count: 1
+  result_count: 1,
 });
 ```
 
 ### Disable Analytics
+
 ```typescript
-import { Analytics } from '$lib/services/analytics';
+import { Analytics } from "$lib/services/analytics";
 
 Analytics.setEnabled(false); // Stop tracking
-Analytics.setEnabled(true);  // Resume tracking
+Analytics.setEnabled(true); // Resume tracking
 ```
 
 ### Check Status
+
 ```typescript
 if (Analytics.isEnabled()) {
-  console.log('Analytics is active');
+  console.log("Analytics is active");
 }
 ```
 
@@ -471,17 +533,17 @@ if (Analytics.isEnabled()) {
 
 ## 📖 Event Reference Summary
 
-| Event Name | Category | Key Metrics | Frequency |
-|------------|----------|-------------|-----------|
-| `search_performed` | Performance | duration_ms, result_count | Per search |
-| `cache_hit` | Performance | cache_type, is_isbn | Per cache access |
-| `data_source_used` | Reliability | source, is_partial | Per ISBN result |
-| `api_timing` | Performance | duration_ms, success | Per API call |
-| `error_occurred` | Reliability | error_type, source | Per error |
-| `scanner_mode_toggled` | Usage | enabled | Per toggle |
-| `batch_export` | Usage | count, format | Per batch export |
-| `single_export` | Usage | format, isbn | Per single export |
-| `user_interaction` | Usage | action, source | Per click |
+| Event Name             | Category    | Key Metrics               | Frequency         |
+| ---------------------- | ----------- | ------------------------- | ----------------- |
+| `search_performed`     | Performance | duration_ms, result_count | Per search        |
+| `cache_hit`            | Performance | cache_type, is_isbn       | Per cache access  |
+| `data_source_used`     | Reliability | source, is_partial        | Per ISBN result   |
+| `api_timing`           | Performance | duration_ms, success      | Per API call      |
+| `error_occurred`       | Reliability | error_type, source        | Per error         |
+| `scanner_mode_toggled` | Usage       | enabled                   | Per toggle        |
+| `batch_export`         | Usage       | count, format             | Per batch export  |
+| `single_export`        | Usage       | format, isbn              | Per single export |
+| `user_interaction`     | Usage       | action, source            | Per click         |
 
 ---
 

@@ -74,20 +74,23 @@ Rangkai follows a **3-tier serverless architecture**:
 #### `/src/routes/+page.svelte` - Main Search Interface
 
 **Responsibilities:**
+
 - Render search form (ISBN or title input)
 - Display merged book metadata
 - Handle user interactions (copy field, export to SLiMS)
 - Manage scanner mode state (auto-clear input)
 
 **Key State:**
+
 ```typescript
-let searchQuery = $state('');
+let searchQuery = $state("");
 let mergedData = $state<MergedBookData | null>(null);
 let loading = $state(false);
 let error = $state<string | null>(null);
 ```
 
 **Critical Logic:**
+
 - **Debouncing:** Title input debounced 500ms, ISBN instant
 - **Scanner Loop:** `finally` block ensures input always clears + refocuses
 - **Cache Check:** Calls `/api/book/[isbn]` which handles KV cache
@@ -95,12 +98,14 @@ let error = $state<string | null>(null);
 #### `/src/routes/scan/mobile/+page.svelte` - Mobile Scanner
 
 **Responsibilities:**
+
 - Initialize camera via `html5-qrcode` library
 - Extract ISBN from barcode (EAN-13, UPC-A)
 - Display real-time scan results
 - Provide camera controls (pause/resume, switch camera)
 
 **Why Separate Route?**
+
 - Desktop uses keyboard/USB scanner input
 - Mobile uses camera-based barcode detection
 - Different UX patterns (camera permissions, viewfinder)
@@ -108,12 +113,14 @@ let error = $state<string | null>(null);
 #### `/src/lib/components/CameraScanner.svelte` - Reusable Scanner
 
 **Responsibilities:**
+
 - Wrapper around `html5-qrcode` library
 - SSR-safe initialization (browser-only)
 - Emit `scan` events to parent
 - Handle camera permissions errors gracefully
 
 **Lifecycle:**
+
 ```typescript
 onMount(() => {
   // Initialize scanner (browser-only)
@@ -137,40 +144,43 @@ onDestroy(() => {
 **Purpose:** Single source of truth for book metadata fetching.
 
 **Flow:**
+
 ```typescript
 export async function GET({ params, platform }) {
   const isbn = params.isbn;
-  
+
   // 1. Validate ISBN format
-  if (!isValidISBN(isbn)) return json({ error: 'Invalid ISBN' }, 400);
-  
+  if (!isValidISBN(isbn)) return json({ error: "Invalid ISBN" }, 400);
+
   // 2. Check KV cache (24-hour TTL)
   const cached = await platform.env.BOOK_CACHE.get(isbn);
-  if (cached) return json(JSON.parse(cached), { headers: { 'X-Cache': 'HIT' } });
-  
+  if (cached)
+    return json(JSON.parse(cached), { headers: { "X-Cache": "HIT" } });
+
   // 3. Fetch from 3 APIs in parallel
   const [google, openlib, loc] = await Promise.allSettled([
     fetchGoogleBooks(isbn),
     fetchOpenLibrary(isbn),
-    fetchLibraryOfCongress(isbn)
+    fetchLibraryOfCongress(isbn),
   ]);
-  
+
   // 4. Merge using waterfall strategy
   const merged = mergeBookData(google, openlib, loc);
-  
+
   // 5. Store in KV cache
-  await platform.env.BOOK_CACHE.put(isbn, JSON.stringify(merged), { expirationTtl: 86400 });
-  
+  await platform.env.BOOK_CACHE.put(isbn, JSON.stringify(merged), {
+    expirationTtl: 86400,
+  });
+
   // 6. Background: Save to D1 audit log
-  platform.context.waitUntil(
-    saveToDatabase(platform.env.DB, merged)
-  );
-  
+  platform.context.waitUntil(saveToDatabase(platform.env.DB, merged));
+
   return json(merged);
 }
 ```
 
 **Why This Pattern?**
+
 - **Separation of concerns:** Frontend doesn't know about caching/merging
 - **Testability:** Can mock `platform.env` in tests
 - **Reusability:** Other routes can import this logic
@@ -179,29 +189,30 @@ export async function GET({ params, platform }) {
 #### `/src/lib/api.ts` - External API Service
 
 **Responsibilities:**
+
 - Fetch from Google Books, OpenLibrary, Library of Congress
 - Retry logic (3 attempts with exponential backoff)
 - Timeout enforcement (10s for Google/OL, 5s for LoC)
 - Error normalization
 
 **Example: Google Books Fetcher**
+
 ```typescript
 async function fetchGoogleBooks(isbn: string): Promise<GoogleBookData | null> {
   const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${API_KEY}`;
-  
+
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
-      
+
       const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
-      
+
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
+
       const data = await response.json();
       return transformGoogleBooksResponse(data); // Normalize shape
-      
     } catch (error) {
       if (attempt === 3) return null; // Give up after 3 tries
       await sleep(Math.pow(2, attempt) * 100); // Exponential backoff
@@ -211,6 +222,7 @@ async function fetchGoogleBooks(isbn: string): Promise<GoogleBookData | null> {
 ```
 
 **Why Retry Logic?**
+
 - External APIs occasionally timeout or return 500s
 - Retries increase success rate from ~85% to ~98%
 - Exponential backoff prevents hammering failing services
@@ -220,40 +232,44 @@ async function fetchGoogleBooks(isbn: string): Promise<GoogleBookData | null> {
 **Purpose:** Combine data from 3 sources using waterfall prioritization.
 
 **Waterfall Strategy:**
+
 ```typescript
 function mergeBookData(
   google: GoogleBookData | null,
   openlib: OpenLibraryData | null,
-  loc: LoCBookData | null
+  loc: LoCBookData | null,
 ): MergedBookData {
   return {
     // Priority: Google > OpenLibrary > LoC
-    title: google?.title || openlib?.title || loc?.title || 'Unknown',
-    
+    title: google?.title || openlib?.title || loc?.title || "Unknown",
+
     // Priority: Google > OpenLibrary > LoC
     authors: google?.authors || openlib?.authors || loc?.authors || [],
-    
+
     // Exclusive sources
-    ddc: openlib?.ddc || null,  // Only OpenLibrary has DDC
-    lcc: loc?.lcc || openlib?.lcc || null,  // LoC is authoritative
-    
+    ddc: openlib?.ddc || null, // Only OpenLibrary has DDC
+    lcc: loc?.lcc || openlib?.lcc || null, // LoC is authoritative
+
     // Best available cover
-    cover: google?.cover || openlib?.cover || null,  // LoC has no covers
-    
+    cover: google?.cover || openlib?.cover || null, // LoC has no covers
+
     // Merge and deduplicate subjects
-    subjects: [...new Set([
-      ...(google?.subjects || []),
-      ...(openlib?.subjects || []),
-      ...(loc?.subjects || [])
-    ])],
-    
+    subjects: [
+      ...new Set([
+        ...(google?.subjects || []),
+        ...(openlib?.subjects || []),
+        ...(loc?.subjects || []),
+      ]),
+    ],
+
     // Data source tracking for UI
-    dataSource: getSourceIndicator(google, openlib, loc)
+    dataSource: getSourceIndicator(google, openlib, loc),
   };
 }
 ```
 
 **Why Waterfall?**
+
 - Each source has strengths/weaknesses
 - Google Books has best covers/descriptions
 - OpenLibrary has DDC classifications (exclusive)
@@ -261,6 +277,7 @@ function mergeBookData(
 - No single source is complete
 
 **Conflict Resolution:**
+
 - Title: Prefer Google (cleanest formatting)
 - Classifications: Prefer authoritative source (LoC for LCC)
 - Subjects: Combine all sources (more is better)
@@ -272,6 +289,7 @@ function mergeBookData(
 #### D1 Database (SQLite on Cloudflare)
 
 **Schema Overview:**
+
 ```sql
 -- Better Auth tables
 user (id, email, name, emailVerified, createdAt, updatedAt)
@@ -283,30 +301,33 @@ scan_history (id, userId, isbn, bookTitle, scannedAt)
 ```
 
 **Access Pattern:**
+
 ```typescript
-import { Kysely } from 'kysely';
-import { D1Dialect } from 'kysely-d1';
+import { Kysely } from "kysely";
+import { D1Dialect } from "kysely-d1";
 
 const db = new Kysely({
-  dialect: new D1Dialect({ database: platform.env.DB })
+  dialect: new D1Dialect({ database: platform.env.DB }),
 });
 
 // Type-safe query
 const scans = await db
-  .selectFrom('scan_history')
-  .where('userId', '=', userId)
-  .orderBy('scannedAt', 'desc')
+  .selectFrom("scan_history")
+  .where("userId", "=", userId)
+  .orderBy("scannedAt", "desc")
   .limit(100)
   .execute();
 ```
 
 **Why D1?**
+
 - Serverless SQL (no connection pooling needed)
 - Integrated with Cloudflare Workers
 - Kysely provides type-safe query builder
 - Good for relational data (users, scans)
 
 **Limitations:**
+
 - Max 100,000 rows per query (not an issue for this app)
 - Write latency ~50-100ms (acceptable for audit logs)
 
@@ -315,6 +336,7 @@ const scans = await db
 **Purpose:** Cache external API responses to reduce quota usage.
 
 **Data Model:**
+
 ```typescript
 Key: `book:${isbn}` (e.g., "book:9786235516981")
 Value: JSON.stringify(MergedBookData)
@@ -322,29 +344,30 @@ TTL: 86400 seconds (24 hours)
 ```
 
 **Access Pattern:**
+
 ```typescript
 // Read
 const cached = await env.BOOK_CACHE.get(`book:${isbn}`);
 if (cached) return JSON.parse(cached);
 
 // Write
-await env.BOOK_CACHE.put(
-  `book:${isbn}`,
-  JSON.stringify(data),
-  { expirationTtl: 86400 }
-);
+await env.BOOK_CACHE.put(`book:${isbn}`, JSON.stringify(data), {
+  expirationTtl: 86400,
+});
 
 // Delete (manual cache invalidation)
 await env.BOOK_CACHE.delete(`book:${isbn}`);
 ```
 
 **Why KV?**
+
 - Extremely low latency (<100ms globally)
 - Automatic replication to all Cloudflare PoPs
 - Cheap ($0.50 per million reads)
 - Perfect for read-heavy cache
 
 **Limitations:**
+
 - Eventually consistent (writes take ~60s to propagate)
 - No transactions (not needed for cache)
 - Max value size 25MB (books are ~10KB)
@@ -432,17 +455,18 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 
 ### What Belongs Where?
 
-| Concern | Layer | Files |
-|---------|-------|-------|
-| **UI Rendering** | Presentation | `src/routes/*.svelte` |
-| **Form Validation** | Presentation | `src/routes/*.svelte` |
-| **API Calls** | Application | `src/lib/api.ts` |
-| **Data Merging** | Application | `src/lib/merge.ts` |
-| **Caching Strategy** | Application | `src/routes/api/**/*.ts` |
-| **Database Queries** | Data | `src/lib/server/*.ts` |
-| **External API Contracts** | Data | `src/lib/types.ts` |
+| Concern                    | Layer        | Files                    |
+| -------------------------- | ------------ | ------------------------ |
+| **UI Rendering**           | Presentation | `src/routes/*.svelte`    |
+| **Form Validation**        | Presentation | `src/routes/*.svelte`    |
+| **API Calls**              | Application  | `src/lib/api.ts`         |
+| **Data Merging**           | Application  | `src/lib/merge.ts`       |
+| **Caching Strategy**       | Application  | `src/routes/api/**/*.ts` |
+| **Database Queries**       | Data         | `src/lib/server/*.ts`    |
+| **External API Contracts** | Data         | `src/lib/types.ts`       |
 
 **Rule of Thumb:**
+
 - If it touches the DOM → Presentation Layer
 - If it transforms data → Application Layer
 - If it persists data → Data Layer
@@ -456,12 +480,14 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 **Decision:** Use Cloudflare Workers (serverless) instead of Node.js server.
 
 **Rationale:**
+
 - **Auto-scaling:** No capacity planning needed
 - **Global edge:** <50ms latency worldwide
 - **No ops:** No server maintenance, OS patching, etc.
 - **Cost:** Pay-per-request (~$5/month for 1M requests)
 
 **Tradeoffs:**
+
 - Limited runtime (10s CPU time per request)
 - No long-running background jobs (use Durable Objects or Queues)
 - Cold start latency (~5-10ms, acceptable)
@@ -471,12 +497,14 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 **Decision:** Aggregate Google Books + OpenLibrary + Library of Congress.
 
 **Rationale:**
+
 - No single source has complete metadata
 - DDC classifications only in OpenLibrary
 - Authoritative LCC only in Library of Congress
 - Best covers/descriptions in Google Books
 
 **Tradeoffs:**
+
 - Increased complexity (3 API contracts to maintain)
 - Slower response time (1200ms vs 400ms for single source)
 - More failure modes (any API can fail)
@@ -488,12 +516,14 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 **Decision:** Use Cloudflare KV (distributed) instead of Worker memory.
 
 **Rationale:**
+
 - Workers are stateless (each request may hit different instance)
 - KV cache shared globally across all Workers
 - Persists across deployments
 - Lower API quota usage (70% cache hit rate)
 
 **Tradeoffs:**
+
 - Slight latency increase (~50ms KV read vs ~1ms memory)
 - Eventual consistency (60s propagation delay)
 
@@ -504,11 +534,13 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 **Decision:** Use Kysely type-safe query builder for D1.
 
 **Rationale:**
+
 - Type safety (autocomplete for table/column names)
 - Prevents SQL injection (parameterized queries)
 - Better refactoring (TypeScript catches breaking changes)
 
 **Tradeoffs:**
+
 - Slight learning curve (DSL syntax)
 - Marginal runtime overhead (~1-2ms per query)
 
@@ -522,7 +554,6 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 
 1. **External API latency** (1200ms)
    - **Mitigation:** KV cache reduces to <100ms for 70% of requests
-   
 2. **Parallel API timeout handling** (5-10s worst case)
    - **Mitigation:** Fail-fast with 5s timeout for LoC
 
@@ -542,15 +573,15 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 
 ### Threat Model
 
-| Threat | Mitigation | Status |
-|--------|-----------|--------|
-| **SSRF (Server-Side Request Forgery)** | Whitelist image domains | ✅ Implemented |
-| **SQL Injection** | Kysely parameterized queries | ✅ Implemented |
-| **XSS (Cross-Site Scripting)** | Svelte auto-escaping | ✅ Built-in |
-| **Session Hijacking** | HttpOnly cookies, SameSite | ✅ Implemented |
-| **API Key Leakage** | Server-side env vars only | ✅ Implemented |
-| **DDoS** | Cloudflare rate limiting | ⚠️ Default only |
-| **Brute Force Login** | Rate limiting | ❌ Not implemented |
+| Threat                                 | Mitigation                   | Status             |
+| -------------------------------------- | ---------------------------- | ------------------ |
+| **SSRF (Server-Side Request Forgery)** | Whitelist image domains      | ✅ Implemented     |
+| **SQL Injection**                      | Kysely parameterized queries | ✅ Implemented     |
+| **XSS (Cross-Site Scripting)**         | Svelte auto-escaping         | ✅ Built-in        |
+| **Session Hijacking**                  | HttpOnly cookies, SameSite   | ✅ Implemented     |
+| **API Key Leakage**                    | Server-side env vars only    | ✅ Implemented     |
+| **DDoS**                               | Cloudflare rate limiting     | ⚠️ Default only    |
+| **Brute Force Login**                  | Rate limiting                | ❌ Not implemented |
 
 ### Authentication Flow
 
@@ -571,6 +602,7 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 ```
 
 **Session Lifecycle:**
+
 - Created on login (30-day expiry)
 - Refreshed on each request (extends expiry)
 - Deleted on logout or expiry
@@ -605,6 +637,7 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 ```
 
 **Key Points:**
+
 - Static assets cached globally (CDN)
 - Workers execute at nearest PoP to user
 - KV reads are local (fast)
@@ -616,25 +649,28 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 
 ### Current Limits
 
-| Resource | Current Usage | Limit | Headroom |
-|----------|---------------|-------|----------|
-| **Workers Requests** | ~1,000/day | 100,000/day (free) | 100x |
-| **D1 Rows** | ~500 | 100,000 (free) | 200x |
-| **KV Reads** | ~700/day | 100,000/day (free) | 142x |
-| **KV Writes** | ~300/day | 1,000/day (free) | 3x |
+| Resource             | Current Usage | Limit              | Headroom |
+| -------------------- | ------------- | ------------------ | -------- |
+| **Workers Requests** | ~1,000/day    | 100,000/day (free) | 100x     |
+| **D1 Rows**          | ~500          | 100,000 (free)     | 200x     |
+| **KV Reads**         | ~700/day      | 100,000/day (free) | 142x     |
+| **KV Writes**        | ~300/day      | 1,000/day (free)   | 3x       |
 
 ### Scaling Strategy
 
 **0-10K users:**
+
 - Current architecture handles easily
 - No changes needed
 
 **10K-100K users:**
+
 - Upgrade to Cloudflare paid plan ($5-20/month)
 - Add Redis cache for faster reads
 - Optimize D1 queries (add indexes)
 
 **100K+ users:**
+
 - Migrate D1 to PostgreSQL (better scaling)
 - Add background job queue (Cloudflare Queues)
 - Implement CDN caching for API responses
@@ -659,16 +695,19 @@ await env.BOOK_CACHE.delete(`book:${isbn}`);
 ```
 
 **Unit Tests:** `src/lib/__tests__/*.test.ts`
+
 - Pure functions (ISBN validation, data transformers)
 - Mock external APIs
 - Fast (<1s total runtime)
 
 **Integration Tests:** `src/routes/api/__tests__/*.test.ts`
+
 - Test full API routes with real D1/KV (dev bindings)
 - Mock external APIs only
 - Medium speed (~5-10s total)
 
 **E2E Tests:** `tests/e2e/*.spec.ts`
+
 - Full user flows (search → view → export)
 - Real browser automation (Playwright)
 - Slow (~30-60s total)

@@ -5,10 +5,10 @@ const config: Config = {
   content: ["./src/**/*.{html,js,svelte,ts}"],
 
   theme: {
-    extend: {}
+    extend: {},
   },
 
-  plugins: [typography]
+  plugins: [typography],
 };
 
 export default config;

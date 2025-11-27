@@ -1,6 +1,7 @@
 # 🚀 Quick Fix: Scan History Not Working
 
 ## Problem
+
 Books scanned via QR/ISBN not appearing in history after Google login.
 
 ## Solution (3 Steps)
@@ -16,10 +17,12 @@ npm run dev:wrangler
 ```
 
 ## Why?
+
 - `npm run dev` = No database ❌
 - `npm run dev:wrangler` = With database ✅
 
 ## Alternative (One Command)
+
 ```bash
 npm run dev:full
 ```
@@ -36,11 +39,13 @@ This builds and starts the server automatically.
 ## First Time Setup?
 
 Initialize the database:
+
 ```bash
 npm run db:migrate:local
 ```
 
 ## More Help?
+
 - Full guide: `SOLUTION.md`
 - Diagnostics: `./test-scan-history.sh`
 - Technical details: `diagnose-scan-history.md`

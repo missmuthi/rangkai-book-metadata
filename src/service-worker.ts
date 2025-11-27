@@ -1,4 +1,4 @@
-import { build, files, version } from '$service-worker';
+import { build, files, version } from "$service-worker";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -9,118 +9,121 @@ const OFFLINE_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"
 
 const ASSETS = [...build, ...files];
 
-self.addEventListener('install', (event) => {
-        event.waitUntil(
-                caches.open(STATIC_CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
-        );
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(STATIC_CACHE)
+      .then((cache) => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting()),
+  );
 });
 
-self.addEventListener('activate', (event) => {
-        event.waitUntil(
-                caches
-                        .keys()
-                        .then((keys) =>
-                                Promise.all(
-                                        keys
-                                                .filter((key) => key !== STATIC_CACHE && key !== RUNTIME_CACHE)
-                                                .map((key) => caches.delete(key))
-                                )
-                        )
-                        .then(() => self.clients.claim())
-        );
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== STATIC_CACHE && key !== RUNTIME_CACHE)
+            .map((key) => caches.delete(key)),
+        ),
+      )
+      .then(() => self.clients.claim()),
+  );
 });
 
-self.addEventListener('fetch', (event) => {
-        const request = event.request;
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
 
-        if (request.method !== 'GET') {
-                return;
-        }
+  if (request.method !== "GET") {
+    return;
+  }
 
-        const url = new URL(request.url);
+  const url = new URL(request.url);
 
-        if (url.origin === self.location.origin && ASSETS.includes(url.pathname)) {
-                event.respondWith(cacheFirst(request));
-                return;
-        }
+  if (url.origin === self.location.origin && ASSETS.includes(url.pathname)) {
+    event.respondWith(cacheFirst(request));
+    return;
+  }
 
-        if (url.pathname.startsWith('/api/')) {
-                event.respondWith(networkFirst(request));
-                return;
-        }
+  if (url.pathname.startsWith("/api/")) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
 
-        if (request.mode === 'navigate') {
-                event.respondWith(handleNavigation(event));
-                return;
-        }
+  if (request.mode === "navigate") {
+    event.respondWith(handleNavigation(event));
+    return;
+  }
 
-        if (url.origin === self.location.origin) {
-                event.respondWith(cacheFirst(request));
-        }
+  if (url.origin === self.location.origin) {
+    event.respondWith(cacheFirst(request));
+  }
 });
 
 async function cacheFirst(request: Request): Promise<Response> {
-        const cache = await caches.open(STATIC_CACHE);
-        const cached = await cache.match(request);
+  const cache = await caches.open(STATIC_CACHE);
+  const cached = await cache.match(request);
 
-        if (cached) {
-                return cached;
-        }
+  if (cached) {
+    return cached;
+  }
 
-        const response = await fetch(request);
-        cache.put(request, response.clone());
-        return response;
+  const response = await fetch(request);
+  cache.put(request, response.clone());
+  return response;
 }
 
 async function networkFirst(request: Request): Promise<Response> {
-        const cache = await caches.open(RUNTIME_CACHE);
+  const cache = await caches.open(RUNTIME_CACHE);
 
-        try {
-                const response = await fetch(request);
-                cache.put(request, response.clone());
-                return response;
-        } catch (error) {
-                const cached = await cache.match(request);
-                if (cached) {
-                        return cached;
-                }
+  try {
+    const response = await fetch(request);
+    cache.put(request, response.clone());
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request);
+    if (cached) {
+      return cached;
+    }
 
-                return new Response(OFFLINE_HTML, {
-                        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-                        status: 503
-                });
-        }
+    return new Response(OFFLINE_HTML, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+      status: 503,
+    });
+  }
 }
 
 async function handleNavigation(event: FetchEvent): Promise<Response> {
-        const { request } = event;
+  const { request } = event;
 
-        try {
-                const preloadResponse = await event.preloadResponse;
-                if (preloadResponse) {
-                        return preloadResponse;
-                }
+  try {
+    const preloadResponse = await event.preloadResponse;
+    if (preloadResponse) {
+      return preloadResponse;
+    }
 
-                const networkResponse = await fetch(request);
-                const cache = await caches.open(RUNTIME_CACHE);
-                cache.put(request, networkResponse.clone());
-                return networkResponse;
-        } catch (error) {
-                const cache = await caches.open(STATIC_CACHE);
-                const cachedPage = await cache.match(request);
+    const networkResponse = await fetch(request);
+    const cache = await caches.open(RUNTIME_CACHE);
+    cache.put(request, networkResponse.clone());
+    return networkResponse;
+  } catch (error) {
+    const cache = await caches.open(STATIC_CACHE);
+    const cachedPage = await cache.match(request);
 
-                if (cachedPage) {
-                        return cachedPage;
-                }
+    if (cachedPage) {
+      return cachedPage;
+    }
 
-                const root = await cache.match('/');
-                if (root) {
-                        return root;
-                }
+    const root = await cache.match("/");
+    if (root) {
+      return root;
+    }
 
-                return new Response(OFFLINE_HTML, {
-                        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-                        status: 503
-                });
-        }
+    return new Response(OFFLINE_HTML, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+      status: 503,
+    });
+  }
 }

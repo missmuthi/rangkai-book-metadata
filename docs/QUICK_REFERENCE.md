@@ -105,35 +105,35 @@ wrangler pages deployment tail --method POST
 
 ### Source Code
 
-| Path | What It Does |
-|------|--------------|
-| `src/routes/+page.svelte` | Main search interface |
+| Path                                    | What It Does            |
+| --------------------------------------- | ----------------------- |
+| `src/routes/+page.svelte`               | Main search interface   |
 | `src/routes/api/book/[isbn]/+server.ts` | Serverless metadata API |
-| `src/lib/api.ts` | External API fetchers |
-| `src/lib/merge.ts` | Data merging logic |
-| `src/lib/cutter.ts` | Call number generation |
-| `src/lib/auth-simple.ts` | Better Auth config |
+| `src/lib/api.ts`                        | External API fetchers   |
+| `src/lib/merge.ts`                      | Data merging logic      |
+| `src/lib/cutter.ts`                     | Call number generation  |
+| `src/lib/auth-simple.ts`                | Better Auth config      |
 
 ### Configuration
 
-| File | Purpose |
-|------|---------|
-| `wrangler.toml` | Cloudflare bindings (D1, KV) |
-| `svelte.config.js` | SvelteKit config |
-| `tailwind.config.ts` | Tailwind customization |
-| `tsconfig.json` | TypeScript settings |
-| `schema.sql` | D1 database schema |
-| `.env.local` | Local environment variables |
+| File                 | Purpose                      |
+| -------------------- | ---------------------------- |
+| `wrangler.toml`      | Cloudflare bindings (D1, KV) |
+| `svelte.config.js`   | SvelteKit config             |
+| `tailwind.config.ts` | Tailwind customization       |
+| `tsconfig.json`      | TypeScript settings          |
+| `schema.sql`         | D1 database schema           |
+| `.env.local`         | Local environment variables  |
 
 ### Documentation
 
-| File | Content |
-|------|---------|
-| `docs/SYSTEM_OVERVIEW.md` | Architecture overview |
-| `docs/GETTING_STARTED.md` | Setup guide |
-| `docs/API_INTEGRATION_GUIDE.md` | API integration |
-| `docs/DEPLOYMENT_GUIDE.md` | Deployment steps |
-| `docs/README.md` | Documentation index |
+| File                            | Content               |
+| ------------------------------- | --------------------- |
+| `docs/SYSTEM_OVERVIEW.md`       | Architecture overview |
+| `docs/GETTING_STARTED.md`       | Setup guide           |
+| `docs/API_INTEGRATION_GUIDE.md` | API integration       |
+| `docs/DEPLOYMENT_GUIDE.md`      | Deployment steps      |
+| `docs/README.md`                | Documentation index   |
 
 ---
 
@@ -164,10 +164,10 @@ git push origin feature/your-feature-name
 
 ```typescript
 // Add console logs in src/routes/api/book/[isbn]/+server.ts
-console.log('Google Books response:', googleData);
-console.log('OpenLibrary response:', openlibData);
-console.log('LoC response:', locData);
-console.log('Merged result:', merged);
+console.log("Google Books response:", googleData);
+console.log("OpenLibrary response:", openlibData);
+console.log("LoC response:", locData);
+console.log("Merged result:", merged);
 
 // Check browser Network tab → inspect API calls
 // Check Wrangler logs: wrangler pages deployment tail
@@ -244,6 +244,7 @@ npm run dev -- --port 3000      # Use different port
 ### Google Books API 403
 
 Check `.env.local` has correct API key:
+
 ```bash
 VITE_GOOGLE_BOOKS_API_KEY=AIzaSy...
 ```
@@ -251,6 +252,7 @@ VITE_GOOGLE_BOOKS_API_KEY=AIzaSy...
 ### Cloudflare Binding Not Found
 
 Check `wrangler.toml` has correct IDs:
+
 ```toml
 [[d1_databases]]
 binding = "DB"
@@ -261,16 +263,16 @@ database_id = "your-actual-id"
 
 ## 📊 Data Merging Priorities
 
-| Field | Priority Order |
-|-------|----------------|
-| Title | Google → OL → LoC |
-| Authors | Merge all (deduplicated) |
-| Publisher | Google → OL |
-| DDC | **OpenLibrary only** |
-| LCC | **LoC → OL** |
-| Cover | Google → OL |
-| Subjects | **Merge all** |
-| Description | Google → OL |
+| Field       | Priority Order           |
+| ----------- | ------------------------ |
+| Title       | Google → OL → LoC        |
+| Authors     | Merge all (deduplicated) |
+| Publisher   | Google → OL              |
+| DDC         | **OpenLibrary only**     |
+| LCC         | **LoC → OL**             |
+| Cover       | Google → OL              |
+| Subjects    | **Merge all**            |
+| Description | Google → OL              |
 
 ---
 
@@ -306,18 +308,18 @@ GOOGLE_CLIENT_SECRET=<prod-oauth-secret>
 
 ```typescript
 // src/lib/__tests__/merge.test.ts
-import { describe, test, expect } from 'vitest';
-import { mergeBookData } from '../merge';
+import { describe, test, expect } from "vitest";
+import { mergeBookData } from "../merge";
 
-describe('mergeBookData', () => {
-  test('prefers Google title over OpenLibrary', () => {
+describe("mergeBookData", () => {
+  test("prefers Google title over OpenLibrary", () => {
     const result = mergeBookData(
-      { title: 'Google Title' },  // Google
-      { title: 'OL Title' },      // OpenLibrary
-      null                        // LoC
+      { title: "Google Title" }, // Google
+      { title: "OL Title" }, // OpenLibrary
+      null, // LoC
     );
-    
-    expect(result.title).toBe('Google Title');
+
+    expect(result.title).toBe("Google Title");
   });
 });
 ```
@@ -326,15 +328,15 @@ describe('mergeBookData', () => {
 
 ```typescript
 // src/routes/api/book/__tests__/isbn.test.ts
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect } from "vitest";
 
-describe('GET /api/book/[isbn]', () => {
-  test('returns book data for valid ISBN', async () => {
+describe("GET /api/book/[isbn]", () => {
+  test("returns book data for valid ISBN", async () => {
     const response = await GET({
-      params: { isbn: '9786235516981' },
-      platform: mockPlatform
+      params: { isbn: "9786235516981" },
+      platform: mockPlatform,
     });
-    
+
     const data = await response.json();
     expect(data.title).toBeDefined();
   });
@@ -345,15 +347,15 @@ describe('GET /api/book/[isbn]', () => {
 
 ## 📦 Key Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `svelte` | 5.x | UI framework |
-| `@sveltejs/kit` | 2.x | SSR, routing |
-| `typescript` | 5.x | Type safety |
-| `tailwindcss` | 3.x | Styling |
-| `kysely` | 0.28.x | Type-safe SQL |
-| `html5-qrcode` | 2.x | Barcode scanning |
-| `arctic` | 3.x | OAuth (Better Auth) |
+| Package         | Version | Purpose             |
+| --------------- | ------- | ------------------- |
+| `svelte`        | 5.x     | UI framework        |
+| `@sveltejs/kit` | 2.x     | SSR, routing        |
+| `typescript`    | 5.x     | Type safety         |
+| `tailwindcss`   | 3.x     | Styling             |
+| `kysely`        | 0.28.x  | Type-safe SQL       |
+| `html5-qrcode`  | 2.x     | Barcode scanning    |
+| `arctic`        | 3.x     | OAuth (Better Auth) |
 
 ---
 
@@ -390,9 +392,9 @@ $: doubled = count * 2;
 ```html
 <!-- ✅ Good: Utility classes -->
 <div class="flex items-center gap-4 p-6 bg-white rounded-lg shadow-md">
-
-<!-- ❌ Bad: Custom CSS -->
-<div class="my-custom-card">
+  <!-- ❌ Bad: Custom CSS -->
+  <div class="my-custom-card"></div>
+</div>
 ```
 
 ---
@@ -425,17 +427,20 @@ docs/api-guide
 ## 📞 Getting Help
 
 **Documentation:**
+
 - Start: `docs/GETTING_STARTED.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - APIs: `docs/API_INTEGRATION_GUIDE.md`
 - Deploy: `docs/DEPLOYMENT_GUIDE.md`
 
 **Code Issues:**
+
 - Check existing GitHub Issues
 - Review related test files
 - Add console logs and inspect behavior
 
 **Deployment Issues:**
+
 - Check Cloudflare Pages logs
 - Verify environment variables
 - Review `wrangler.toml` bindings

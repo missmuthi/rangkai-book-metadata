@@ -9,9 +9,10 @@
 ## 🐛 Bug Description
 
 After successful Google OAuth login, clicking on the user avatar opens a dropdown menu with:
+
 - User name + email
 - Dashboard link
-- History link  
+- History link
 - Sign Out button
 
 **Problem:** Clicking any of these menu items appeared to do nothing - no navigation, no logout.
@@ -23,6 +24,7 @@ After successful Google OAuth login, clicking on the user avatar opens a dropdow
 ### Step 1: Initial Investigation
 
 The menu items were correctly implemented as:
+
 ```svelte
 <a href="/dashboard">Dashboard</a>
 <a href="/history">History</a>
@@ -36,6 +38,7 @@ These were clean anchor tags with no interfering `onclick` handlers (already fix
 The **actual problem** was a z-index stacking issue with the backdrop overlay:
 
 **Lines 56-62** (BEFORE FIX):
+
 ```svelte
 {#if showUserMenu}
 	<button
@@ -47,6 +50,7 @@ The **actual problem** was a z-index stacking issue with the backdrop overlay:
 ```
 
 **Lines 112** (dropdown container):
+
 ```svelte
 <div class="... z-50">
   <!-- Menu items here -->
@@ -54,11 +58,13 @@ The **actual problem** was a z-index stacking issue with the backdrop overlay:
 ```
 
 **The Problem:**
+
 1. Backdrop overlay was `z-40` (full-screen invisible button)
 2. Dropdown menu was `z-50` on the container
 3. Header was `z-30`
 
 **Why it failed:**
+
 - The backdrop `button` at `z-40` was positioned `fixed inset-0` (covers entire viewport)
 - Even though the dropdown container was `z-50`, **the links inside it didn't inherit a higher stacking context**
 - Clicks on menu items hit the backdrop button FIRST, which called `closeUserMenu()`, closing the menu before navigation could occur
@@ -71,6 +77,7 @@ The **actual problem** was a z-index stacking issue with the backdrop overlay:
 ### Changed Z-Index Hierarchy
 
 **New layering (bottom to top):**
+
 1. `z-20` - Backdrop overlay (LOWEST)
 2. `z-50` - Header (sticky, above backdrop)
 3. `z-[100]` - Dropdown menu (HIGHEST, above everything)
@@ -78,6 +85,7 @@ The **actual problem** was a z-index stacking issue with the backdrop overlay:
 ### Code Changes
 
 **1. Backdrop overlay** (lines 55-63):
+
 ```svelte
 <!-- BEFORE -->
 {#if showUserMenu}
@@ -101,11 +109,13 @@ The **actual problem** was a z-index stacking issue with the backdrop overlay:
 ```
 
 **Changes:**
+
 - ✅ Changed `<button>` to `<div>` (semantic - not a real button)
 - ✅ Reduced z-index from `z-40` to `z-20` (now BELOW header and dropdown)
 - ✅ Added `role="button"` and `tabindex="-1"` for accessibility
 
 **2. Header** (line 66):
+
 ```svelte
 <!-- BEFORE -->
 <header class="... z-30 ...">
@@ -115,9 +125,11 @@ The **actual problem** was a z-index stacking issue with the backdrop overlay:
 ```
 
 **Changes:**
+
 - ✅ Increased from `z-30` to `z-50` (above backdrop)
 
 **3. Dropdown menu** (line 112):
+
 ```svelte
 <!-- BEFORE -->
 <div class="... z-50">
@@ -127,6 +139,7 @@ The **actual problem** was a z-index stacking issue with the backdrop overlay:
 ```
 
 **Changes:**
+
 - ✅ Increased from `z-50` to `z-[100]` (highest layer, ensures clicks work)
 
 ---
@@ -212,6 +225,7 @@ npm run build
 ```
 
 **Result:**
+
 ```
 ✓ 230 modules transformed (SSR)
 ✓ 174 modules transformed (Client)
@@ -227,14 +241,17 @@ npm run build
 ### `src/routes/+layout.svelte`
 
 **Line 56-62:** Backdrop overlay
+
 - Changed `<button>` to `<div>`
 - Changed `z-40` → `z-20`
 - Added `role="button"` and `tabindex="-1"`
 
 **Line 66:** Header
+
 - Changed `z-30` → `z-50`
 
 **Line 112:** Dropdown menu container
+
 - Changed `z-50` → `z-[100]`
 
 **Total changes:** 3 lines modified
@@ -253,15 +270,18 @@ npm run build
 ### Best Practices Applied
 
 ✅ **Semantic HTML:**
+
 - Backdrop changed from `<button>` to `<div>` (not a real interactive button)
 - Added proper ARIA attributes for accessibility
 
 ✅ **Z-Index Strategy:**
+
 - Clear hierarchy: backdrop (lowest) → header → dropdown (highest)
 - Use explicit z-index values that make sense
 - Avoid z-index wars by planning the stack
 
 ✅ **Event Handling:**
+
 - Let native browser navigation work (`<a href>`)
 - Don't intercept clicks unnecessarily
 - Close menu via backdrop, not on menu item clicks
@@ -280,6 +300,7 @@ npm run build
 ### After Deploying
 
 Monitor for:
+
 - Any z-index conflicts with other UI elements
 - Mobile viewport behavior
 - Touch event handling on mobile devices
@@ -291,13 +312,15 @@ Monitor for:
 **Problem:** Backdrop overlay at `z-40` blocked clicks on menu items in dropdown at `z-50`.
 
 **Solution:** Restructured z-index hierarchy:
+
 - Backdrop: `z-20` (lowest)
-- Header: `z-50` (middle)  
+- Header: `z-50` (middle)
 - Dropdown: `z-[100]` (highest)
 
 **Result:** Menu navigation now works correctly in production.
 
 **Architecture compliance:**
+
 - ✅ No auth changes
 - ✅ No new dependencies
 - ✅ Minimal code changes (3 lines)

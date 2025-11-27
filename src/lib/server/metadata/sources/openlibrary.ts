@@ -1,15 +1,18 @@
 /**
  * OpenLibrary API adapter
- * 
+ *
  * Handles all interactions with OpenLibrary API via proxy.
  * Part of the metadata engine's source adapters.
  */
 
-import type { OpenLibraryBookData, OpenLibrarySearchResponse } from '$lib/types';
-import { Analytics } from '$lib/services/analytics';
-import { logger, LogEvents } from '$lib/server/log';
-import { CircuitBreaker, withTimeout } from '$lib/server/utils/resilience';
-import { getKV } from '$lib/server';
+import type {
+  OpenLibraryBookData,
+  OpenLibrarySearchResponse,
+} from "$lib/types";
+import { Analytics } from "$lib/services/analytics";
+import { logger, LogEvents } from "$lib/server/log";
+import { CircuitBreaker, withTimeout } from "$lib/server/utils/resilience";
+import { getKV } from "$lib/server";
 
 // Platform object is needed to get KV, so we need to inject it or handle it in the caller.
 // The current fetchOpenLibrary doesn't take platform.
@@ -27,7 +30,7 @@ import { getKV } from '$lib/server';
 // For this step, I will assume I can modify the signature of `fetchOpenLibraryWithTimeout` to accept KV.
 // But first I need to check `src/lib/server/metadata/index.ts`.
 
-const OPENLIBRARY_PROXY = '/api/openlibrary';
+const OPENLIBRARY_PROXY = "/api/openlibrary";
 const DEFAULT_TIMEOUT = 3000; // 3 seconds (fail fast, secondary source)
 
 /**
@@ -35,118 +38,130 @@ const DEFAULT_TIMEOUT = 3000; // 3 seconds (fail fast, secondary source)
  * Gracefully handles rate limiting and service unavailability
  */
 export async function fetchOpenLibrary(
-	query: string,
-	isIsbn: boolean,
-	limit = 1
+  query: string,
+  isIsbn: boolean,
+  limit = 1,
 ): Promise<OpenLibraryBookData | OpenLibrarySearchResponse | null> {
-	const startTime = performance.now();
-	const url = `${OPENLIBRARY_PROXY}?q=${encodeURIComponent(query)}&isbn=${isIsbn}&limit=${limit}`;
+  const startTime = performance.now();
+  const url = `${OPENLIBRARY_PROXY}?q=${encodeURIComponent(query)}&isbn=${isIsbn}&limit=${limit}`;
 
-	try {
-		const response = await fetch(url);
-		const duration = Math.round(performance.now() - startTime);
-		
-		if (!response.ok) {
-			const errorType = response.status === 503 ? 'api_503' : response.status === 429 ? 'rate_limit' : 'unknown';
-			Analytics.track('error_occurred', {
-				error_type: errorType,
-				source: 'openlibrary',
-				message: `${response.status} ${response.statusText}`
-			});
+  try {
+    const response = await fetch(url);
+    const duration = Math.round(performance.now() - startTime);
 
-			if (response.status === 503 || response.status === 429) {
-				logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
-					provider: 'openlibrary',
-					status: response.status,
-					fallback: 'google_books'
-				});
-				// We should throw to trigger circuit breaker failure counting
-				throw new Error(`OpenLibrary API error: ${response.status} ${response.statusText}`);
-			}
-			throw new Error(`OpenLibrary API error: ${response.status} ${response.statusText}`);
-		}
+    if (!response.ok) {
+      const errorType =
+        response.status === 503
+          ? "api_503"
+          : response.status === 429
+            ? "rate_limit"
+            : "unknown";
+      Analytics.track("error_occurred", {
+        error_type: errorType,
+        source: "openlibrary",
+        message: `${response.status} ${response.statusText}`,
+      });
 
-		const data = await response.json();
+      if (response.status === 503 || response.status === 429) {
+        logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
+          provider: "openlibrary",
+          status: response.status,
+          fallback: "google_books",
+        });
+        // We should throw to trigger circuit breaker failure counting
+        throw new Error(
+          `OpenLibrary API error: ${response.status} ${response.statusText}`,
+        );
+      }
+      throw new Error(
+        `OpenLibrary API error: ${response.status} ${response.statusText}`,
+      );
+    }
 
-		if (data.error) {
-			if (data.error.includes('temporarily unavailable') || data.error.includes('rate limit')) {
-				Analytics.track('error_occurred', {
-					error_type: 'rate_limit',
-					source: 'openlibrary',
-					message: data.error
-				});
-				logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
-					provider: 'openlibrary',
-					reason: 'temporarily_unavailable',
-					fallback: 'google_books'
-				});
-				throw new Error(data.error);
-			}
-			throw new Error(data.error);
-		}
+    const data = await response.json();
 
-		Analytics.track('api_timing', {
-			source: 'openlibrary',
-			endpoint: isIsbn ? 'isbn_search' : 'title_search',
-			duration_ms: duration,
-			success: true
-		});
+    if (data.error) {
+      if (
+        data.error.includes("temporarily unavailable") ||
+        data.error.includes("rate limit")
+      ) {
+        Analytics.track("error_occurred", {
+          error_type: "rate_limit",
+          source: "openlibrary",
+          message: data.error,
+        });
+        logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
+          provider: "openlibrary",
+          reason: "temporarily_unavailable",
+          fallback: "google_books",
+        });
+        throw new Error(data.error);
+      }
+      throw new Error(data.error);
+    }
 
-		if (isIsbn) {
-			const key = `ISBN:${query}`;
-			return data[key] || null;
-		}
+    Analytics.track("api_timing", {
+      source: "openlibrary",
+      endpoint: isIsbn ? "isbn_search" : "title_search",
+      duration_ms: duration,
+      success: true,
+    });
 
-		return data;
-	} catch (error) {
-		const duration = Math.round(performance.now() - startTime);
-		Analytics.track('api_timing', {
-			source: 'openlibrary',
-			endpoint: isIsbn ? 'isbn_search' : 'title_search',
-			duration_ms: duration,
-			success: false
-		});
-		logger.error(LogEvents.METADATA_FETCH_FAILED, {
-			provider: 'openlibrary',
-			query,
-			isIsbn,
-			error: error instanceof Error ? error.message : 'Unknown error'
-		});
-		throw error;
-	}
+    if (isIsbn) {
+      const key = `ISBN:${query}`;
+      return data[key] || null;
+    }
+
+    return data;
+  } catch (error) {
+    const duration = Math.round(performance.now() - startTime);
+    Analytics.track("api_timing", {
+      source: "openlibrary",
+      endpoint: isIsbn ? "isbn_search" : "title_search",
+      duration_ms: duration,
+      success: false,
+    });
+    logger.error(LogEvents.METADATA_FETCH_FAILED, {
+      provider: "openlibrary",
+      query,
+      isIsbn,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+    throw error;
+  }
 }
 
 /**
  * Fetch with timeout wrapper and circuit breaker
  */
 export async function fetchOpenLibraryWithTimeout(
-	platform: App.Platform | undefined, // Added platform
-	query: string,
-	isIsbn: boolean,
-	limit = 1,
-	timeoutMs = DEFAULT_TIMEOUT
+  platform: App.Platform | undefined, // Added platform
+  query: string,
+  isIsbn: boolean,
+  limit = 1,
+  timeoutMs = DEFAULT_TIMEOUT,
 ): Promise<OpenLibraryBookData | OpenLibrarySearchResponse | null> {
-	const kv = getKV(platform);
-	const breaker = new CircuitBreaker(kv, 'openlibrary');
+  const kv = getKV(platform);
+  const breaker = new CircuitBreaker(kv, "openlibrary");
 
-	if (await breaker.isOpen()) {
-		console.warn('[OpenLibrary] Circuit open, skipping request');
-		return null;
-	}
+  if (await breaker.isOpen()) {
+    console.warn("[OpenLibrary] Circuit open, skipping request");
+    return null;
+  }
 
-	try {
-		const result = await withTimeout(
-			fetchOpenLibrary(query, isIsbn, limit),
-			timeoutMs,
-			'OpenLibrary API timeout'
-		);
-		await breaker.success();
-		return result;
-	} catch (error) {
-		await breaker.failure();
-		// Return null on failure instead of throwing, to allow other sources to succeed
-		// But log the error
-		console.error('[OpenLibrary] Request failed:', error);
-		return null;
-	}
+  try {
+    const result = await withTimeout(
+      fetchOpenLibrary(query, isIsbn, limit),
+      timeoutMs,
+      "OpenLibrary API timeout",
+    );
+    await breaker.success();
+    return result;
+  } catch (error) {
+    await breaker.failure();
+    // Return null on failure instead of throwing, to allow other sources to succeed
+    // But log the error
+    console.error("[OpenLibrary] Request failed:", error);
+    return null;
+  }
 }

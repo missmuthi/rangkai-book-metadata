@@ -88,5 +88,12 @@ export interface MergedBookData {
   infoLink: string;
   cover: string;
   isPartialData?: boolean; // True when one or more sources failed
-  dataSource?: 'all-three' | 'google-loc' | 'google-openlibrary' | 'loc-openlibrary' | 'google-only' | 'loc-only' | 'openlibrary-only';
+  dataSource?:
+    | "all-three"
+    | "google-loc"
+    | "google-openlibrary"
+    | "loc-openlibrary"
+    | "google-only"
+    | "loc-only"
+    | "openlibrary-only";
 }

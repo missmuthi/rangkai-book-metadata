@@ -28,6 +28,7 @@ If you believe content (blog/docs) is needed, **assume it will live in another r
 3. Suggest turning the app into a generic page-builder or CMS.
 
 When you think migration or new frameworks might be helpful, **default to improving the existing stack first**:
+
 - Better auth implementation
 - Stronger data layer
 - Clearer domains/modules
@@ -84,7 +85,8 @@ When you propose or generate code, **prioritize**:
      - **Domain/application logic** (`src/modules/**`)
      - **Infrastructure** (`src/lib/server/**`)
 
-When you add new features, always think:  
+When you add new features, always think:
+
 > “Where does this belong in UI / module / infra layers so that future changes stay easy?”
 
 ---
@@ -176,7 +178,7 @@ When proposing new files, refactors, or examples, prefer these conventions:
 
 When generating or editing code:
 
-1. **Respect Svelte 5 runes**  
+1. **Respect Svelte 5 runes**
    - Use `$state`, `$derived`, `$effect`, `$props` as in the Svelte 5 Architect guidelines.
    - Avoid legacy store patterns unless they already exist and are clearly intended.
 

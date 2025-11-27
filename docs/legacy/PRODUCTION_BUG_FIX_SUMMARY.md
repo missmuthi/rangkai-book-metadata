@@ -16,19 +16,22 @@ User menu navigation was non-functional in production. Clicking Dashboard, Histo
 ## Bug Report
 
 ### Symptoms
+
 - User clicks on name/avatar → dropdown menu opens ✅
 - User clicks "Dashboard" → nothing happens ❌
-- User clicks "History" → nothing happens ❌  
+- User clicks "History" → nothing happens ❌
 - User clicks "Sign Out" → nothing happens ❌
 - Console shows no JavaScript errors
 - Menu items are visible and hoverable
 
 ### Expected Behavior
+
 - Click "Dashboard" → Navigate to `/dashboard`
 - Click "History" → Navigate to `/history`
 - Click "Sign Out" → Logout, redirect to `/login`
 
 ### Actual Behavior
+
 - All menu item clicks are silently ignored
 - No navigation occurs
 - No logout occurs
@@ -50,7 +53,7 @@ User menu navigation was non-functional in production. Clicking Dashboard, Histo
    - ❌ Checked: No event listeners preventing default
 
 3. **Third hypothesis (CORRECT):** Z-index stacking
-   - ✅ Found: Backdrop overlay at `z-40` 
+   - ✅ Found: Backdrop overlay at `z-40`
    - ✅ Found: Header at `z-30` (lower than backdrop!)
    - ✅ Found: Dropdown at `z-50` (container only)
    - ✅ **Root cause:** Backdrop intercepted all clicks
@@ -58,6 +61,7 @@ User menu navigation was non-functional in production. Clicking Dashboard, Histo
 ### Technical Details
 
 **The Problem:**
+
 ```
 Z-Index Stack (BEFORE):
 - Backdrop: z-40 (full-screen invisible button)
@@ -66,6 +70,7 @@ Z-Index Stack (BEFORE):
 ```
 
 **Why clicks failed:**
+
 1. User clicks "Dashboard" link
 2. Click event travels through DOM
 3. Backdrop at `z-40` receives event FIRST (even though dropdown is z-50)
@@ -85,18 +90,21 @@ The dropdown container had `z-50`, but the `<a>` tags inside didn't create their
 **File:** `src/routes/+layout.svelte`
 
 **Change 1: Backdrop** (Line 58)
+
 ```diff
 - <button class="fixed inset-0 z-40" onclick={closeUserMenu}>
 + <div class="fixed inset-0 z-20" onclick={closeUserMenu} role="button" tabindex="-1">
 ```
 
 **Change 2: Header** (Line 68)
+
 ```diff
 - <header class="... z-30 ...">
 + <header class="... z-50 ...">
 ```
 
 **Change 3: Dropdown** (Line 114)
+
 ```diff
 - <div class="... z-50">
 + <div class="... z-[100]">
@@ -130,11 +138,12 @@ z-20:    Backdrop (LOWEST - catches outside clicks only)
 ✅ Outside click closes menu  
 ✅ Mobile viewport works  
 ✅ Keyboard navigation works  
-✅ Screen reader accessible  
+✅ Screen reader accessible
 
 ### Post-Deployment Verification
 
 **Required Tests:**
+
 1. Login flow
 2. Open menu → Click Dashboard → Verify navigation
 3. Open menu → Click History → Verify navigation
@@ -148,12 +157,14 @@ z-20:    Backdrop (LOWEST - catches outside clicks only)
 ## Impact
 
 ### User Impact
+
 - **Before:** Menu completely non-functional (critical bug)
 - **After:** Menu works as expected (fixed)
 - **Affected users:** All logged-in users
 - **Workaround (before fix):** None - menu navigation was impossible
 
 ### Code Impact
+
 - **Lines changed:** 3
 - **Files modified:** 1 (`src/routes/+layout.svelte`)
 - **Risk level:** LOW (minimal change, visual-only fix)
@@ -201,16 +212,16 @@ z-20:    Backdrop (LOWEST - catches outside clicks only)
 
 ## Timeline
 
-| Time | Event |
-|------|-------|
-| T+0 | Bug reported by user |
-| T+10min | Initial investigation (click handlers) |
+| Time    | Event                                    |
+| ------- | ---------------------------------------- |
+| T+0     | Bug reported by user                     |
+| T+10min | Initial investigation (click handlers)   |
 | T+20min | Root cause identified (z-index stacking) |
-| T+25min | Fix implemented |
-| T+30min | Local testing completed |
-| T+35min | Build verified |
-| T+40min | Documentation created |
-| T+45min | Ready for deployment |
+| T+25min | Fix implemented                          |
+| T+30min | Local testing completed                  |
+| T+35min | Build verified                           |
+| T+40min | Documentation created                    |
+| T+45min | Ready for deployment                     |
 
 **Total resolution time:** ~45 minutes from report to fix
 
@@ -222,7 +233,7 @@ z-20:    Backdrop (LOWEST - catches outside clicks only)
 **Tests:** ✅ Completed  
 **Documentation:** ✅ Created  
 **Risk:** LOW  
-**Rollback:** Available  
+**Rollback:** Available
 
 **Ready for production deployment.**
 
@@ -232,25 +243,28 @@ z-20:    Backdrop (LOWEST - catches outside clicks only)
 
 **Investigated by:** Senior SvelteKit UX Engineer  
 **Fixed by:** Senior SvelteKit UX Engineer  
-**Reviewed by:** _____________  
-**Approved for deployment:** _____________  
+**Reviewed by:** **\*\***\_**\*\***  
+**Approved for deployment:** **\*\***\_**\*\***
 
-**Deployment Date:** _____________  
-**Deployed by:** _____________  
-**Verified in production:** _____________  
+**Deployment Date:** **\*\***\_**\*\***  
+**Deployed by:** **\*\***\_**\*\***  
+**Verified in production:** **\*\***\_**\*\***
 
 ---
 
 ## Appendix
 
 ### Related Issues
+
 - UX_NAVIGATION_FIXES.md (previous onclick handler fix)
 - BEFORE_AFTER_UX_FIXES.md (initial navigation improvements)
 
 ### Reference Links
+
 - MDN: CSS Stacking Context
 - MDN: z-index
 - SvelteKit: Layout documentation
 
 ### Keywords
+
 z-index, stacking context, dropdown, menu, navigation, backdrop, overlay, click event, event propagation, production bug, CSS layout

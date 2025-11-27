@@ -35,6 +35,7 @@ Rangkai Book Metadata Harvester intelligently combines data from **3 authoritati
 ## 📋 Version History
 
 ### v1.3.0 (November 21, 2025) - **Serverless Architecture** 🚀
+
 - ⚡ **Serverless API**: Frontend now uses `/api/book/[isbn]` endpoint (96% faster for repeated scans)
 - 📊 **Edge Optimization**: Cloudflare Workers handle all data fetching and merging
 - 💾 **KV-First Caching**: 24-hour TTL eliminates redundant API calls (<100ms cache hits)
@@ -45,6 +46,7 @@ Rangkai Book Metadata Harvester intelligently combines data from **3 authoritati
 - 📚 **See SERVERLESS_ARCHITECTURE.md** for full migration guide and performance benchmarks
 
 ### v1.2.1 (November 21, 2025) - **Production Ready** 🎉
+
 - 🛡️ **SSRF Protection**: Whitelist-based image proxy prevents Server-Side Request Forgery attacks
 - 🖼️ **wsrv.nl Image Proxy**: 70% smaller images (WebP), 68% faster load times, privacy-preserving
 - ⚡ **Background Writes**: `waitUntil` pattern for non-blocking D1/KV writes (40% faster responses)
@@ -55,6 +57,7 @@ Rangkai Book Metadata Harvester intelligently combines data from **3 authoritati
 - ✅ **Security Audit PASSED**: Zombie promise prevention, cost optimization, SSRF protection verified
 
 ### v1.1.0 (November 20, 2025)
+
 - 🔒 **Fixed CORS errors**: Removed `crossorigin="anonymous"` from images (Google Books doesn't support CORS)
 - 🔐 **Image security**: HTTPS enforcement via `getSecureImageUrl()` utility
 - 🛡️ **Privacy protection**: `referrerpolicy="no-referrer"` prevents tracking
@@ -64,6 +67,7 @@ Rangkai Book Metadata Harvester intelligently combines data from **3 authoritati
 - 🚀 **Input optimization**: Debouncing for manual typing, instant for ISBN/scanner
 
 ### v0.0.1 (Initial Release)
+
 - 🔍 Triple-source search (Google Books + OpenLibrary + Library of Congress)
 - 🧠 Intelligent data merging with "Waterfall of Data" strategy
 - 📊 Authoritative classifications (DDC + LCC)
@@ -114,13 +118,13 @@ npm run deploy
 
 ### Core Documentation (`/docs`)
 
-| Document | Purpose | Read When |
-|----------|---------|-----------|
-| **[System Overview](docs/SYSTEM_OVERVIEW.md)** | High-level architecture, tech stack, core concepts | First time reading the codebase |
-| **[Getting Started](docs/GETTING_STARTED.md)** | Quick setup guide (0 to running in 10 minutes) | Setting up local environment |
-| **[Architecture](docs/ARCHITECTURE.md)** | Detailed technical architecture, data flow, component boundaries | Planning major changes |
-| **[API Integration Guide](docs/API_INTEGRATION_GUIDE.md)** | External APIs (Google Books, OpenLibrary, LoC), caching, merging logic | Working with API layer |
-| **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** | Production deployment, environment setup, CI/CD | Deploying to Cloudflare Pages |
+| Document                                                   | Purpose                                                                | Read When                       |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------- |
+| **[System Overview](docs/SYSTEM_OVERVIEW.md)**             | High-level architecture, tech stack, core concepts                     | First time reading the codebase |
+| **[Getting Started](docs/GETTING_STARTED.md)**             | Quick setup guide (0 to running in 10 minutes)                         | Setting up local environment    |
+| **[Architecture](docs/ARCHITECTURE.md)**                   | Detailed technical architecture, data flow, component boundaries       | Planning major changes          |
+| **[API Integration Guide](docs/API_INTEGRATION_GUIDE.md)** | External APIs (Google Books, OpenLibrary, LoC), caching, merging logic | Working with API layer          |
+| **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)**           | Production deployment, environment setup, CI/CD                        | Deploying to Cloudflare Pages   |
 
 ### Legacy Documentation (Root Directory)
 
@@ -136,6 +140,7 @@ These documents are being migrated to `/docs` but still contain valuable informa
 - `agents.md` - AI agents & automation documentation
 
 **Quick Reference:**
+
 - Need to add a feature? → Read [Architecture](docs/ARCHITECTURE.md) + [System Overview](docs/SYSTEM_OVERVIEW.md)
 - API not working? → Read [API Integration Guide](docs/API_INTEGRATION_GUIDE.md)
 - Deployment failing? → Read [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
@@ -172,14 +177,14 @@ Title: "The Pragmatic Programmer"
 
 ### Tech Stack
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Framework** | SvelteKit | SSR, routing, server functions |
-| **Language** | TypeScript (Strict) | Type safety, IDE support |
-| **Styling** | Tailwind CSS | Utility-first styling |
-| **APIs** | Google Books + OpenLibrary + **Library of Congress** | Triple-source metadata |
-| **Deployment** | Cloudflare Pages | Edge computing, CDN |
-| **Testing** | Vitest + Playwright | Unit & E2E tests |
+| Layer          | Technology                                           | Purpose                        |
+| -------------- | ---------------------------------------------------- | ------------------------------ |
+| **Framework**  | SvelteKit                                            | SSR, routing, server functions |
+| **Language**   | TypeScript (Strict)                                  | Type safety, IDE support       |
+| **Styling**    | Tailwind CSS                                         | Utility-first styling          |
+| **APIs**       | Google Books + OpenLibrary + **Library of Congress** | Triple-source metadata         |
+| **Deployment** | Cloudflare Pages                                     | Edge computing, CDN            |
+| **Testing**    | Vitest + Playwright                                  | Unit & E2E tests               |
 
 ### Project Structure
 
@@ -223,18 +228,21 @@ rangkai-book-metadata/
 The system employs multiple specialized agents for data harvesting and processing from **3 authoritative sources**:
 
 #### 1. **Google Books API Agent**
+
 - Fetches metadata from Google Books
 - Handles ISBN and title searches
 - Extracts: title, authors, publisher, dates, ISBNs, descriptions, cover images
 - **Priority**: Base metadata (title, cover, description)
 
-#### 2. **OpenLibrary API Agent** 
+#### 2. **OpenLibrary API Agent**
+
 - Server-side proxy at `/api/openlibrary` (eliminates CORS)
 - Fetches classifications (DDC, LCC as fallback)
 - Extracts: subjects, languages, series, alternate titles
 - **Priority**: DDC classifications (exclusive source)
 
 #### 3. **Library of Congress (LoC) API Agent** 🆕
+
 - Direct connection to `https://www.loc.gov/books/`
 - No API key required (free, authoritative government source)
 - Fetches authoritative LCC call numbers
@@ -243,7 +251,9 @@ The system employs multiple specialized agents for data harvesting and processin
 - **Timeout**: 5 seconds (fail-fast strategy for performance)
 
 #### 4. **Data Merge Agent** (`processAndRenderMergedData`)
+
 **"Waterfall of Data" prioritization strategy:**
+
 ```typescript
 Title       → Google Books > OpenLibrary > LoC (cleanest formatting)
 Authors     → Google Books > OpenLibrary > LoC (most reliable)
@@ -258,7 +268,9 @@ Language    → Google > OpenLibrary > LoC (mapped from ISO codes)
 ```
 
 #### 5. **Metadata Enrichment Agent**
+
 Generates SLiMS-compatible fields:
+
 - **Call Numbers**: `DDC/LCC + Cutter-Sanborn + TitleInitial + Year`
 - **GMD**: General Material Designation from print type
 - **Collation**: Page count formatting
@@ -266,6 +278,7 @@ Generates SLiMS-compatible fields:
 - **Subject Mapping**: Categories → DDC classifications (fallback)
 
 #### 6. **Error Handling & Graceful Degradation Agent**
+
 - Catches network failures gracefully
 - **Partial Data Support**: Works with 1, 2, or 3 sources
 - **Data Source Tracking**: Shows which sources succeeded
@@ -275,7 +288,9 @@ Generates SLiMS-compatible fields:
 - **Analytics Integration**: Tracks all errors for monitoring
 
 #### 7. **Analytics & Telemetry Agent** 🆕
+
 Comprehensive event tracking system for performance monitoring:
+
 - **Search Performance**: Tracks timing, result counts, ISBN vs title searches
 - **Cache Analytics**: Monitors hit rates, effectiveness per source
 - **API Reliability**: Measures success rates, response times per source
@@ -291,31 +306,31 @@ See [`ANALYTICS_TELEMETRY.md`](ANALYTICS_TELEMETRY.md) for complete documentatio
 
 The UI displays real-time badges showing which sources are available:
 
-| Status | Badge Color | Meaning |
-|--------|------------|---------|
-| **All 3 Sources** | 🟢 Green | Google + OpenLibrary + LoC (Complete data) |
-| **Google + LoC** | 🔵 Blue | Authoritative LCC, DDC may be incomplete |
-| **Google + OpenLibrary** | 🟡 Amber | LCC from OpenLibrary (less authoritative) |
-| **Single Source** | 🔴 Red | Limited data, classification incomplete |
+| Status                   | Badge Color | Meaning                                    |
+| ------------------------ | ----------- | ------------------------------------------ |
+| **All 3 Sources**        | 🟢 Green    | Google + OpenLibrary + LoC (Complete data) |
+| **Google + LoC**         | 🔵 Blue     | Authoritative LCC, DDC may be incomplete   |
+| **Google + OpenLibrary** | 🟡 Amber    | LCC from OpenLibrary (less authoritative)  |
+| **Single Source**        | 🔴 Red      | Limited data, classification incomplete    |
 
 ### Field Mapping Reference
 
-| SLiMS Field | Data Source | Priority (Waterfall) |
-|-------------|------------|---------------------|
-| Title | All 3 | Google > OpenLibrary > LoC |
-| Authors | All 3 | Google > OpenLibrary > LoC |
-| Publisher | Google + OL | Google > OpenLibrary |
-| Publication Date | All 3 | Google > OpenLibrary > LoC |
-| Pages/Collation | Google + OL | Google > OpenLibrary |
-| ISBN-13 | Google + OL | Google > OpenLibrary |
-| ISBN-10 | Google + OL | Google > OpenLibrary |
-| **DDC** | **OpenLibrary** | **Exclusive** |
-| **LCC** | **LoC + OL** | **LoC > OpenLibrary** 🏛️ |
-| Call Number | **Generated** | Cutter-Sanborn system |
-| Language | All 3 | Google > OpenLibrary > LoC (ISO mapped) |
-| Subjects | All 3 | **Combined & deduplicated** |
-| Cover Image | Google + OL | Google > OpenLibrary > Placeholder |
-| GMD | Google | From print type |
+| SLiMS Field      | Data Source     | Priority (Waterfall)                    |
+| ---------------- | --------------- | --------------------------------------- |
+| Title            | All 3           | Google > OpenLibrary > LoC              |
+| Authors          | All 3           | Google > OpenLibrary > LoC              |
+| Publisher        | Google + OL     | Google > OpenLibrary                    |
+| Publication Date | All 3           | Google > OpenLibrary > LoC              |
+| Pages/Collation  | Google + OL     | Google > OpenLibrary                    |
+| ISBN-13          | Google + OL     | Google > OpenLibrary                    |
+| ISBN-10          | Google + OL     | Google > OpenLibrary                    |
+| **DDC**          | **OpenLibrary** | **Exclusive**                           |
+| **LCC**          | **LoC + OL**    | **LoC > OpenLibrary** 🏛️                |
+| Call Number      | **Generated**   | Cutter-Sanborn system                   |
+| Language         | All 3           | Google > OpenLibrary > LoC (ISO mapped) |
+| Subjects         | All 3           | **Combined & deduplicated**             |
+| Cover Image      | Google + OL     | Google > OpenLibrary > Placeholder      |
+| GMD              | Google          | From print type                         |
 
 ### Subject-to-DDC Auto-Classification
 
@@ -369,11 +384,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#your-brand-color'
-      }
-    }
-  }
-}
+        primary: "#your-brand-color",
+      },
+    },
+  },
+};
 ```
 
 ## 🧪 Testing
@@ -432,8 +447,9 @@ See [`PERFORMANCE_ANALYSIS.md`](PERFORMANCE_ANALYSIS.md) for detailed benchmarks
 ### SvelteKit Patterns
 
 **Always use generated types:**
+
 ```typescript
-import type { PageData, PageServerLoad } from './$types';
+import type { PageData, PageServerLoad } from "./$types";
 
 export const load = (async ({ fetch, params }) => {
   const data = await fetchData(params.id);
@@ -442,27 +458,29 @@ export const load = (async ({ fetch, params }) => {
 ```
 
 **Form actions in `+page.server.ts`:**
+
 ```typescript
-import { fail } from '@sveltejs/kit';
-import type { Actions } from './$types';
+import { fail } from "@sveltejs/kit";
+import type { Actions } from "./$types";
 
 export const actions = {
   search: async ({ request }) => {
     const formData = await request.formData();
-    const isbn = formData.get('isbn');
-    
+    const isbn = formData.get("isbn");
+
     if (!isbn) {
-      return fail(400, { error: 'ISBN required' });
+      return fail(400, { error: "ISBN required" });
     }
-    
+
     return { success: true, data: await searchBook(isbn) };
-  }
+  },
 } satisfies Actions;
 ```
 
 ### Tailwind CSS Guidelines
 
 **Class ordering** (enforced):
+
 1. Layout (`flex`, `grid`, `relative`)
 2. Sizing (`w-full`, `h-screen`)
 3. Spacing (`p-4`, `m-2`, `gap-6`)
@@ -477,6 +495,7 @@ export const actions = {
 ### HTML Semantic Rules
 
 ✅ **Use semantic elements:**
+
 ```html
 <main class="container">
   <header class="mb-8">
@@ -489,6 +508,7 @@ export const actions = {
 ```
 
 ❌ **Avoid generic divs:**
+
 ```html
 <div class="container">
   <div class="header">Search Books</div>
@@ -501,27 +521,32 @@ export const actions = {
 ### Common Issues
 
 **CORS errors when fetching OpenLibrary:**
+
 - ✅ **Fixed**: Use `/api/openlibrary` proxy endpoint (server-side)
 - Server-side proxy eliminates browser CORS restrictions
 
 **`processAndRenderMergedData is not defined`:**
+
 - ✅ **Fixed**: Import from `$lib/merge`:
   ```typescript
-  import { processAndRenderMergedData } from '$lib/merge';
+  import { processAndRenderMergedData } from "$lib/merge";
   ```
 
 **ISBN not found:**
+
 - Try without hyphens: `9786235516981` instead of `978-623-5516-98-1`
 - Verify ISBN is correct (check digit validation)
 - Try title search as fallback
 
 **Missing cover images:**
+
 - System automatically uses placeholder image
 - All images loaded via HTTPS with privacy protection
 - Check browser console for image load errors
 - Verify Google Books/OpenLibrary have the cover
 
 **TypeScript errors during build:**
+
 - Run `npm run check` to see all type errors
 - Ensure strict mode compliance
 - Import types from `./$types` for SvelteKit routes
@@ -563,12 +588,14 @@ git push origin feature/your-feature
 ### High-Performance Data Fetching
 
 **Parallel API Calls (No Waterfalls)**
+
 - Google Books + OpenLibrary + Library of Congress APIs fetch simultaneously
 - Eliminates sequential bottlenecks
 - Average response time: ~1200ms for triple-source queries
 - **Analytics Tracking**: Every API call is timed and logged
 
 **Smart Caching System**
+
 - **LRU Cache** with TTL (5 minutes) and size limits (100 items)
 - **Separate caches** for Google Books, OpenLibrary, and Library of Congress
 - **Cache hit rates**: 60-80% for repeated searches (tracked via analytics)
@@ -576,6 +603,7 @@ git push origin feature/your-feature
 - **Analytics Integration**: Cache hits/misses logged for optimization insights
 
 **Resilient Error Handling**
+
 - **Retry Logic**: 3 attempts with exponential backoff
 - **Circuit Breakers**: Rate limiting prevents API exhaustion
 - **Graceful Degradation**: Continues with available data sources
@@ -585,6 +613,7 @@ git push origin feature/your-feature
 ### Scanner Mode: Mouse-Free Batch Processing
 
 **Unjammable Scanner Loop**
+
 ```typescript
 // Critical: This logic MUST be preserved
 async function handleSearch() {
@@ -592,7 +621,7 @@ async function handleSearch() {
     // API calls, data processing...
   } finally {
     // ALWAYS executes - regardless of success/failure/cache
-    searchQuery = '';
+    searchQuery = "";
     await tick();
     input.focus(); // Ready for next barcode scan
   }
@@ -600,6 +629,7 @@ async function handleSearch() {
 ```
 
 **Key Features:**
+
 - **Debounced title search** (500ms) for typing, instant ISBN processing
 - **Instant ISBN processing** (bypasses debounce for scanners)
 - **Persistent scan history** with localStorage
@@ -629,6 +659,7 @@ async function handleSearch() {
 ```
 
 **Service Layer Benefits:**
+
 - **Separation of Concerns**: UI logic separate from API logic
 - **Testability**: API service can be unit tested independently
 - **Reusability**: API logic can be used across components
@@ -647,6 +678,7 @@ Real-time analytics tracking provides insights into:
 - **Data Completeness**: How often all 3 sources provide data vs partial results
 
 **Dev Mode Console:**
+
 ```
 ⚡ [Analytics] cache_hit { cache_type: 'google', is_isbn: true, ... }
 🔍 [Analytics] search_performed { type: 'isbn', duration_ms: 1234, ... }
@@ -683,7 +715,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/missmuthi/rangkai-book-metadata/issues)
-- **Documentation**: 
+- **Documentation**:
   - Architecture & AI Agents: `agents.md`
   - Performance Benchmarks: `PERFORMANCE_ANALYSIS.md`
   - Analytics & Monitoring: `ANALYTICS_TELEMETRY.md`
@@ -694,4 +726,4 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 **Built with ❤️ for Indonesian libraries and catalogers**
 
-*Version 2.0.1 - Last updated: November 21, 2025*
+_Version 2.0.1 - Last updated: November 21, 2025_

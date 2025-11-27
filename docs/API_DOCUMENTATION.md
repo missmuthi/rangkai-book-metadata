@@ -1,6 +1,7 @@
 # Book API Route Documentation
 
 ## Overview
+
 High-performance REST API endpoint for fetching book metadata with intelligent caching and background persistence.
 
 **Endpoint:** `GET /api/book/[isbn]`
@@ -8,6 +9,7 @@ High-performance REST API endpoint for fetching book metadata with intelligent c
 ## Architecture Pattern: `waitUntil`
 
 ### Why waitUntil?
+
 The `waitUntil` pattern is critical for Cloudflare Workers to prevent **data loss** and **latency**:
 
 1. **Response sent IMMEDIATELY** after data is fetched and merged
@@ -17,11 +19,11 @@ The `waitUntil` pattern is critical for Cloudflare Workers to prevent **data los
 
 ### Performance Comparison
 
-| Pattern | Response Time | Data Loss Risk | User Experience |
-|---------|---------------|----------------|-----------------|
-| **Sequential (await DB)** | ~3.5s | Low | ❌ Slow |
-| **No persistence** | ~2.5s | High | ⚠️ Fast but data lost |
-| **waitUntil (recommended)** | ~2.5s | None | ✅ Fast + Safe |
+| Pattern                     | Response Time | Data Loss Risk | User Experience       |
+| --------------------------- | ------------- | -------------- | --------------------- |
+| **Sequential (await DB)**   | ~3.5s         | Low            | ❌ Slow               |
+| **No persistence**          | ~2.5s         | High           | ⚠️ Fast but data lost |
+| **waitUntil (recommended)** | ~2.5s         | None           | ✅ Fast + Safe        |
 
 ## Request Flow
 
@@ -97,16 +99,17 @@ The `waitUntil` pattern is critical for Cloudflare Workers to prevent **data los
 
 ### Response Headers
 
-| Header | Description | Example |
-|--------|-------------|---------|
-| `Cache-Control` | Browser cache policy | `public, max-age=86400` |
-| `X-Cache` | Cache hit/miss status | `HIT` or `MISS` |
-| `X-Response-Time` | Total processing time | `2456ms` |
-| `X-Sources` | Data sources used | `{"google":true,"openlibrary":true,"loc":true}` |
+| Header            | Description           | Example                                         |
+| ----------------- | --------------------- | ----------------------------------------------- |
+| `Cache-Control`   | Browser cache policy  | `public, max-age=86400`                         |
+| `X-Cache`         | Cache hit/miss status | `HIT` or `MISS`                                 |
+| `X-Response-Time` | Total processing time | `2456ms`                                        |
+| `X-Sources`       | Data sources used     | `{"google":true,"openlibrary":true,"loc":true}` |
 
 ### Error Responses
 
 #### 400 Bad Request - Invalid ISBN
+
 ```json
 {
   "message": "Invalid ISBN format. Must be valid ISBN-10 or ISBN-13."
@@ -114,6 +117,7 @@ The `waitUntil` pattern is critical for Cloudflare Workers to prevent **data los
 ```
 
 #### 404 Not Found - Book Not Found
+
 ```json
 {
   "message": "Book not found. Google: timeout; OpenLibrary: 503; LoC: No results"
@@ -173,19 +177,19 @@ CREATE INDEX idx_scans_created_at ON scans(created_at DESC);
 
 ```sql
 -- Get scan history for ISBN
-SELECT * FROM scans 
-WHERE isbn = '9780134685991' 
-ORDER BY created_at DESC 
+SELECT * FROM scans
+WHERE isbn = '9780134685991'
+ORDER BY created_at DESC
 LIMIT 10;
 
 -- Get recent scans (last 24 hours)
-SELECT isbn, title, created_at 
-FROM scans 
+SELECT isbn, title, created_at
+FROM scans
 WHERE created_at > datetime('now', '-1 day')
 ORDER BY created_at DESC;
 
 -- Count unique books scanned
-SELECT COUNT(DISTINCT isbn) as unique_books 
+SELECT COUNT(DISTINCT isbn) as unique_books
 FROM scans;
 ```
 
@@ -193,15 +197,15 @@ FROM scans;
 
 ### Target Metrics (v1.2)
 
-| Metric | Target | Actual (Avg) | Status |
-|--------|--------|--------------|--------|
-| **Cache Hit Response** | <100ms | 87ms | ✅ |
-| **Cache Miss (3 APIs)** | <2.5s | 2.1s | ✅ |
-| **Google Books Only** | <1.5s | 1.2s | ✅ |
-| **OpenLibrary Timeout** | <3s | 2.8s | ✅ |
-| **LoC Timeout** | <5s | 4.9s | ✅ |
-| **D1 Write (background)** | N/A | 156ms | ✅ |
-| **KV Write (background)** | N/A | 89ms | ✅ |
+| Metric                    | Target | Actual (Avg) | Status |
+| ------------------------- | ------ | ------------ | ------ |
+| **Cache Hit Response**    | <100ms | 87ms         | ✅     |
+| **Cache Miss (3 APIs)**   | <2.5s  | 2.1s         | ✅     |
+| **Google Books Only**     | <1.5s  | 1.2s         | ✅     |
+| **OpenLibrary Timeout**   | <3s    | 2.8s         | ✅     |
+| **LoC Timeout**           | <5s    | 4.9s         | ✅     |
+| **D1 Write (background)** | N/A    | 156ms        | ✅     |
+| **KV Write (background)** | N/A    | 89ms         | ✅     |
 
 ### Load Testing Results
 
@@ -249,8 +253,9 @@ curl -i https://your-app.pages.dev/api/book/9780134685991
 ### Key Metrics to Track
 
 1. **Cache Hit Rate**
+
    ```sql
-   SELECT 
+   SELECT
      COUNT(*) as total_requests,
      SUM(CASE WHEN cached = 1 THEN 1 ELSE 0 END) as cache_hits,
      (SUM(CASE WHEN cached = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as hit_rate
@@ -288,13 +293,14 @@ npx wrangler pages deployment tail | grep "9780134685991"
 **Symptoms:** Every request shows `X-Cache: MISS`
 
 **Solutions:**
+
 1. Verify KV namespace is bound in `wrangler.toml`
 2. Check KV namespace ID matches deployed environment
 3. Ensure `platform.env.BOOK_CACHE` is accessible
 
 ```typescript
 // Debug in +server.ts
-console.log('KV Available:', !!platform?.env?.BOOK_CACHE);
+console.log("KV Available:", !!platform?.env?.BOOK_CACHE);
 ```
 
 ### Issue: Background Writes Not Persisting
@@ -302,6 +308,7 @@ console.log('KV Available:', !!platform?.env?.BOOK_CACHE);
 **Symptoms:** No data in D1 database despite successful responses
 
 **Solutions:**
+
 1. Verify `waitUntil` is available: `!!platform?.context?.waitUntil`
 2. Check D1 database ID in `wrangler.toml`
 3. Review worker logs for DB errors
@@ -317,6 +324,7 @@ npx wrangler d1 execute rangkai-scans --remote \
 **Symptoms:** Responses take >5s
 
 **Solutions:**
+
 1. Check if all 3 APIs are timing out (network issue)
 2. Reduce timeout values in `BookApiService.fetchAll()`
 3. Implement circuit breaker pattern for failing APIs
@@ -328,7 +336,7 @@ npx wrangler d1 execute rangkai-scans --remote \
 
 ```typescript
 // Fetch book data
-const response = await fetch('/api/book/9780134685991');
+const response = await fetch("/api/book/9780134685991");
 const book = await response.json();
 
 console.log(book.title); // "Effective Java"

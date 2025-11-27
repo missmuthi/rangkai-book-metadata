@@ -1,6 +1,7 @@
 # Image Proxy Security Implementation
 
 ## Overview
+
 Implemented secure image proxying with SSRF (Server-Side Request Forgery) protection using `wsrv.nl` CDN service.
 
 ## Security Features
@@ -10,15 +11,17 @@ Implemented secure image proxying with SSRF (Server-Side Request Forgery) protec
 The `getSecureProxyUrl()` function prevents attackers from using the proxy to access internal resources or malicious external sites.
 
 **Whitelist Implementation:**
+
 ```typescript
 const ALLOWED_DOMAINS = [
-  'books.google.com',
-  'books.googleusercontent.com',
-  'covers.openlibrary.org'
+  "books.google.com",
+  "books.googleusercontent.com",
+  "covers.openlibrary.org",
 ];
 ```
 
 **Attack Prevention:**
+
 - ❌ **Blocked**: `http://localhost:6379/admin` (Internal service access)
 - ❌ **Blocked**: `http://169.254.169.254/metadata` (AWS metadata endpoint)
 - ❌ **Blocked**: `https://evil.com/malware.jpg` (Untrusted domain)
@@ -28,28 +31,33 @@ const ALLOWED_DOMAINS = [
 ### 2. **Image Optimization via wsrv.nl**
 
 **Proxy URL Format:**
+
 ```
 https://wsrv.nl/?url={encodedImageUrl}&w=300&q=80&output=webp
 ```
 
 **Parameters:**
+
 - `w=300`: Maximum width 300px (responsive, bandwidth-efficient)
 - `q=80`: Quality 80% (balance between size and clarity)
 - `output=webp`: Modern WebP format (30-50% smaller than JPEG)
 
 **Performance Impact:**
+
 - Original JPEG: ~150KB → Proxied WebP: ~45KB (**70% reduction**)
 - Faster page loads, especially on mobile networks
 
 ### 3. **Privacy Benefits**
 
 **Before (Direct Loading):**
+
 ```html
 <img src="https://books.google.com/covers/xyz.jpg" />
 <!-- ⚠️ Leaks user IP to Google on every image load -->
 ```
 
 **After (Proxied):**
+
 ```html
 <img src="https://wsrv.nl/?url=...&w=300&q=80&output=webp" />
 <!-- ✅ Only wsrv.nl sees user IP, not original image host -->
@@ -64,7 +72,7 @@ All images are loaded via HTTPS through wsrv.nl, preventing mixed content warnin
 ### Function Signature
 
 ```typescript
-function getSecureProxyUrl(url: string | null | undefined): string
+function getSecureProxyUrl(url: string | null | undefined): string;
 ```
 
 ### Validation Flow
@@ -114,9 +122,9 @@ function getSecureProxyUrl(url: string | null | undefined): string
   {@const title = info.title || 'No Title'}
   {@const cover = info.imageLinks?.smallThumbnail || FALLBACK_COVER}
   {@const secureProxiedCover = getSecureProxyUrl(cover)}
-  
+
   <button onclick={() => handleBookSelection(index)}>
-    <img 
+    <img
       src={secureProxiedCover}
       alt="{title} book cover"
       loading="lazy"
@@ -129,6 +137,7 @@ function getSecureProxyUrl(url: string | null | undefined): string
 ```
 
 **Benefits of `{@const}`:**
+
 - Computed once per item (Svelte 5 optimization)
 - Reactive to changes in `cover` variable
 - Clean separation of logic and rendering
@@ -139,7 +148,7 @@ function getSecureProxyUrl(url: string | null | undefined): string
 
 ```typescript
 // Input
-const maliciousUrl = 'http://localhost:8080/admin';
+const maliciousUrl = "http://localhost:8080/admin";
 
 // Output
 getSecureProxyUrl(maliciousUrl);
@@ -153,7 +162,7 @@ getSecureProxyUrl(maliciousUrl);
 
 ```typescript
 // Input
-const awsMetadata = 'http://169.254.169.254/latest/meta-data/';
+const awsMetadata = "http://169.254.169.254/latest/meta-data/";
 
 // Output
 getSecureProxyUrl(awsMetadata);
@@ -164,7 +173,8 @@ getSecureProxyUrl(awsMetadata);
 
 ```typescript
 // Input
-const googleCover = 'https://books.google.com/books/content?id=abc&printsec=frontcover&img=1';
+const googleCover =
+  "https://books.google.com/books/content?id=abc&printsec=frontcover&img=1";
 
 // Output
 getSecureProxyUrl(googleCover);
@@ -175,7 +185,7 @@ getSecureProxyUrl(googleCover);
 
 ```typescript
 // Input
-const olCover = 'https://covers.openlibrary.org/b/id/12345-L.jpg';
+const olCover = "https://covers.openlibrary.org/b/id/12345-L.jpg";
 
 // Output
 getSecureProxyUrl(olCover);
@@ -186,17 +196,17 @@ getSecureProxyUrl(olCover);
 
 ```typescript
 // Inputs
-getSecureProxyUrl(null);      // => FALLBACK_COVER
+getSecureProxyUrl(null); // => FALLBACK_COVER
 getSecureProxyUrl(undefined); // => FALLBACK_COVER
-getSecureProxyUrl('');         // => FALLBACK_COVER
-getSecureProxyUrl('-');        // => FALLBACK_COVER
+getSecureProxyUrl(""); // => FALLBACK_COVER
+getSecureProxyUrl("-"); // => FALLBACK_COVER
 ```
 
 ### Test 6: SVG Data URI (Fallback Cover)
 
 ```typescript
 // Input
-const svgFallback = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAw...';
+const svgFallback = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAw...";
 
 // Output
 getSecureProxyUrl(svgFallback);
@@ -207,22 +217,22 @@ getSecureProxyUrl(svgFallback);
 
 ### Before (Direct Loading)
 
-| Metric | Value |
-|--------|-------|
-| Image Size (JPEG) | 150KB |
-| Load Time (3G) | 2.5s |
-| Browser Cache | No (dynamic URLs) |
-| Privacy | ❌ IP leaked to Google |
+| Metric            | Value                  |
+| ----------------- | ---------------------- |
+| Image Size (JPEG) | 150KB                  |
+| Load Time (3G)    | 2.5s                   |
+| Browser Cache     | No (dynamic URLs)      |
+| Privacy           | ❌ IP leaked to Google |
 
 ### After (wsrv.nl Proxy)
 
-| Metric | Value |
-|--------|-------|
-| Image Size (WebP) | 45KB (**70% smaller**) |
-| Load Time (3G) | 0.8s (**68% faster**) |
-| Browser Cache | Yes (wsrv.nl caches) |
-| Privacy | ✅ IP hidden from source |
-| SSRF Protection | ✅ Whitelist enforced |
+| Metric            | Value                    |
+| ----------------- | ------------------------ |
+| Image Size (WebP) | 45KB (**70% smaller**)   |
+| Load Time (3G)    | 0.8s (**68% faster**)    |
+| Browser Cache     | Yes (wsrv.nl caches)     |
+| Privacy           | ✅ IP hidden from source |
+| SSRF Protection   | ✅ Whitelist enforced    |
 
 ## Accessibility Improvements
 
@@ -233,6 +243,7 @@ getSecureProxyUrl(svgFallback);
 ```
 
 **Benefits:**
+
 - Images only load when scrolled into viewport
 - Reduces initial page load by ~60%
 - `decoding="async"` prevents blocking main thread
@@ -248,6 +259,7 @@ getSecureProxyUrl(svgFallback);
 ```
 
 **Impact:**
+
 - Screen readers announce book title
 - Better SEO (image alt text indexed)
 - WCAG AA compliance

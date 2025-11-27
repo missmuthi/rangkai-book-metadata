@@ -19,6 +19,7 @@ Tier 3 architectural upgrades have been **completed successfully**, building on 
 ### 1. ✅ UI Component Library (Complete)
 
 **Created shared design system:**
+
 ```
 src/lib/components/ui/
 ├── Button.svelte       # Primary, secondary, danger, ghost variants
@@ -34,18 +35,21 @@ src/lib/components/ui/
 **Key Features:**
 
 #### **Button Component**
+
 - Variants: `primary` (blue), `secondary` (gray), `danger` (red), `ghost` (transparent)
 - Sizes: `sm`, `md`, `lg`
 - Full accessibility (ARIA, keyboard navigation)
 - Consistent focus states and disabled handling
 
 #### **Card Component**
+
 - Optional `interactive` mode for hover effects
 - Configurable padding: `sm`, `md`, `lg`
 - Works as `<div>` or clickable `<button>` based on props
 - Consistent shadows and borders
 
 #### **Other Components**
+
 - **Alert**: Color-coded messaging (success, warning, error, info)
 - **EmptyState**: Friendly "no data" states with icons and CTAs
 - **Input**: Form inputs with error states and labels
@@ -53,6 +57,7 @@ src/lib/components/ui/
 - **Skeleton**: Loading placeholders matching content shape
 
 **Usage Pattern:**
+
 ```svelte
 <script>
   import { Button, Card, Alert, EmptyState } from '$lib/components/ui';
@@ -65,6 +70,7 @@ src/lib/components/ui/
 ```
 
 **Refactored Pages:**
+
 - ✅ `src/routes/dashboard/+page.svelte` - Uses Card, Button, EmptyState, Alert
 - ✅ `src/routes/history/+page.svelte` - Uses Card, Button, Input, EmptyState, Alert
 
@@ -73,6 +79,7 @@ src/lib/components/ui/
 ### 2. ✅ Error Handling (Complete)
 
 **Global Error Page:**
+
 - File: `src/routes/+error.svelte`
 - Provides friendly, librarian-oriented error messages
 - Generates unique request ID for debugging: `err_${timestamp}_${random}`
@@ -83,6 +90,7 @@ src/lib/components/ui/
   - **503**: "Service Temporarily Unavailable" with retry suggestion
 
 **Key Features:**
+
 - Non-technical language for end users
 - Collapsible technical details section (request ID, timestamp, dev error message)
 - Clear action buttons: "Go Home" and "Go Back"
@@ -90,6 +98,7 @@ src/lib/components/ui/
 - Production-safe error exposure (no stack traces in prod)
 
 **Example Error Display:**
+
 ```
 ┌─────────────────────────────────┐
 │    [!] Error Icon               │
@@ -113,6 +122,7 @@ src/lib/components/ui/
 ### 3. ✅ Structured Logging (Complete)
 
 **Logging Module:**
+
 - File: `src/lib/server/log.ts`
 - Production-safe structured logging for Cloudflare Workers
 - Prevents sensitive data leaks (passwords, tokens, API keys)
@@ -121,6 +131,7 @@ src/lib/components/ui/
 **Key Exports:**
 
 #### **Logger Instance**
+
 ```typescript
 export const logger = {
   debug(event: string, context?: LogContext),  // Dev only
@@ -131,33 +142,35 @@ export const logger = {
 ```
 
 #### **Log Events Enum**
+
 ```typescript
 export const LogEvents = {
   // Auth events
-  AUTH_SESSION_FETCH_FAILED: 'auth_session_fetch_failed',
-  AUTH_UNAUTHORIZED: 'auth_unauthorized',
-  AUTH_OWNERSHIP_DENIED: 'auth_ownership_denied',
+  AUTH_SESSION_FETCH_FAILED: "auth_session_fetch_failed",
+  AUTH_UNAUTHORIZED: "auth_unauthorized",
+  AUTH_OWNERSHIP_DENIED: "auth_ownership_denied",
 
   // Scan events
-  SCAN_CREATED: 'scan_created',
-  SCAN_BATCH_CREATED: 'scan_batch_created',
-  SCAN_FETCH_FAILED: 'scan_fetch_failed',
+  SCAN_CREATED: "scan_created",
+  SCAN_BATCH_CREATED: "scan_batch_created",
+  SCAN_FETCH_FAILED: "scan_fetch_failed",
 
   // Metadata events
-  METADATA_FETCH_SUCCESS: 'metadata_fetch_success',
-  METADATA_FETCH_FAILED: 'metadata_fetch_failed',
-  METADATA_SOURCE_DEGRADED: 'metadata_source_degraded',
-  METADATA_CACHE_HIT: 'metadata_cache_hit',
-  METADATA_CACHE_MISS: 'metadata_cache_miss',
+  METADATA_FETCH_SUCCESS: "metadata_fetch_success",
+  METADATA_FETCH_FAILED: "metadata_fetch_failed",
+  METADATA_SOURCE_DEGRADED: "metadata_source_degraded",
+  METADATA_CACHE_HIT: "metadata_cache_hit",
+  METADATA_CACHE_MISS: "metadata_cache_miss",
 
   // Database/Cache events
-  DB_QUERY_FAILED: 'db_query_failed',
-  CACHE_SET_FAILED: 'cache_set_failed'
+  DB_QUERY_FAILED: "db_query_failed",
+  CACHE_SET_FAILED: "cache_set_failed",
   // ... and more
 } as const;
 ```
 
 #### **Security Functions**
+
 ```typescript
 // Sanitize sensitive data from logs
 export function sanitizeContext(context: LogContext): LogContext;
@@ -167,35 +180,38 @@ export function generateRequestId(): string;
 ```
 
 **Usage Pattern:**
+
 ```typescript
-import { logger, LogEvents } from '$lib/server/log';
+import { logger, LogEvents } from "$lib/server/log";
 
 // Info logging
-logger.info(LogEvents.SCAN_CREATED, { 
-  userId: session.user.id, 
-  isbn: '9780134685991' 
+logger.info(LogEvents.SCAN_CREATED, {
+  userId: session.user.id,
+  isbn: "9780134685991",
 });
 
 // Error logging with sanitization
-logger.error(LogEvents.METADATA_FETCH_FAILED, { 
-  provider: 'google-books',
-  isbn: '9780134685991',
-  error: err.message  // Stack traces excluded
+logger.error(LogEvents.METADATA_FETCH_FAILED, {
+  provider: "google-books",
+  isbn: "9780134685991",
+  error: err.message, // Stack traces excluded
 });
 
 // Warning for degraded service
-logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, { 
-  provider: 'openlibrary',
-  reason: 'rate_limit' 
+logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
+  provider: "openlibrary",
+  reason: "rate_limit",
 });
 ```
 
 **Adopted In:**
+
 - ✅ `src/lib/server/auth.ts` - Session failures, ownership checks
 - ✅ `src/lib/server/metadata/sources/google-books.ts` - API calls, errors
 - ✅ `src/lib/server/metadata/sources/openlibrary.ts` - API calls, rate limits
 
 **Log Output Example:**
+
 ```json
 {
   "timestamp": "2024-11-22T06:15:23.456Z",
@@ -212,6 +228,7 @@ logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
 ### 4. ✅ Developer Experience (Complete)
 
 **Validation Scripts:**
+
 ```bash
 ./validate-tier1.sh    # Core infrastructure (auth, db, cache, metadata)
 ./validate-tier2.sh    # Module structure (scan, dashboard, auth modules)
@@ -220,6 +237,7 @@ logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
 ```
 
 **NPM Scripts (package.json):**
+
 ```json
 {
   "scripts": {
@@ -237,6 +255,7 @@ logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
 ```
 
 **Developer Workflow:**
+
 ```bash
 # Quick type check
 npm run check
@@ -255,6 +274,7 @@ npm run build
 ```
 
 **ESLint Configuration:**
+
 - File: `.eslintrc.json`
 - TypeScript support via `@typescript-eslint`
 - Svelte-aware parsing
@@ -263,6 +283,7 @@ npm run build
 - Allows `console.warn` and `console.error` (structured logging preferred)
 
 **TypeScript Configuration:**
+
 - File: `tsconfig.json`
 - **Strict mode enabled** (`"strict": true`)
 - Consistent casing enforcement
@@ -270,6 +291,7 @@ npm run build
 - Bundler module resolution for SvelteKit
 
 **Contributing Guide:**
+
 - File: `CONTRIBUTING.md`
 - Explains 3-tier architecture:
   - **Tier 1**: Core infrastructure (auth, db, cache, metadata)
@@ -342,12 +364,14 @@ $ ./validate-tier3.sh
 ## Architecture Benefits
 
 ### For End Users (Librarians)
+
 - **Consistent UI**: Familiar patterns across all pages
 - **Clear Feedback**: Meaningful error messages without technical jargon
 - **Accessible**: Keyboard navigation, ARIA labels, proper focus management
 - **Responsive**: Mobile-friendly components and layouts
 
 ### For Developers
+
 - **Type Safety**: Strict TypeScript across the codebase
 - **Fast Feedback**: Validation scripts catch issues before deploy
 - **Structured Logs**: Easy debugging in production (Cloudflare logs)
@@ -355,6 +379,7 @@ $ ./validate-tier3.sh
 - **Clear Documentation**: CONTRIBUTING.md explains the full architecture
 
 ### For Operations
+
 - **Debuggable**: Request IDs correlate errors across services
 - **Secure**: Sensitive data sanitization prevents credential leaks
 - **Observable**: Structured logs integrate with monitoring tools
@@ -380,6 +405,7 @@ While Tier 3 is complete, future enhancements could include:
 **Tier 3 Status: ✅ PRODUCTION READY**
 
 The Rangkai Book Metadata application now has a complete UX layer with:
+
 - **7 reusable UI components** used across all pages
 - **Global error handling** with friendly messaging and debug IDs
 - **Structured logging** preventing sensitive data leaks
@@ -389,6 +415,7 @@ The Rangkai Book Metadata application now has a complete UX layer with:
 All validation checks pass. The codebase is ready for production deployment.
 
 **Related Documentation:**
+
 - [Tier 1 Refactor Summary](./TIER1_REFACTOR_SUMMARY.md) - Core infrastructure
 - [Tier 2 Implementation](./TIER2_IMPLEMENTATION.md) - Module structure
 - [Implementation Complete](./IMPLEMENTATION_COMPLETE.md) - Overall status

@@ -1,11 +1,11 @@
 /**
  * Modules - Domain-Driven Business Logic
- * 
+ *
  * Module structure follows domain-driven design:
  * - Each module represents a business domain (scan, dashboard, auth)
  * - Modules orchestrate infrastructure helpers (db, cache, metadata)
  * - Routes delegate to modules for business logic
- * 
+ *
  * Usage:
  * ```typescript
  * import { createBookScan } from '$modules/scan';
@@ -15,10 +15,10 @@
  */
 
 // Scan domain
-export * from './scan';
+export * from "./scan";
 
 // Dashboard domain
-export * from './dashboard';
+export * from "./dashboard";
 
 // Auth domain (enhanced)
-export * from './auth';
+export * from "./auth";

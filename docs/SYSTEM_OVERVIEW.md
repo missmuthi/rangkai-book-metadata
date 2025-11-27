@@ -42,11 +42,11 @@ Library catalogers in Indonesia waste hours manually entering book metadata into
 
 We query **3 authoritative APIs in parallel**:
 
-| Source | What We Get | Priority |
-|--------|-------------|----------|
-| **Google Books** | Title, authors, publisher, dates, covers, descriptions | Primary for basic metadata |
-| **OpenLibrary** | DDC classifications, subjects, alternate titles | Exclusive source for DDC |
-| **Library of Congress** | LCC call numbers (authoritative), LCCN, subjects | Authoritative for LCC |
+| Source                  | What We Get                                            | Priority                   |
+| ----------------------- | ------------------------------------------------------ | -------------------------- |
+| **Google Books**        | Title, authors, publisher, dates, covers, descriptions | Primary for basic metadata |
+| **OpenLibrary**         | DDC classifications, subjects, alternate titles        | Exclusive source for DDC   |
+| **Library of Congress** | LCC call numbers (authoritative), LCCN, subjects       | Authoritative for LCC      |
 
 **Key Insight:** No single source has complete data. We merge results using a "waterfall prioritization" strategy (see `DATA_MERGING_LOGIC.md`).
 
@@ -96,29 +96,29 @@ Library staff scan barcodes with USB scanners or mobile cameras. The system:
 
 ### Frontend
 
-| Layer | Technology | Why We Chose It |
-|-------|-----------|-----------------|
-| **Framework** | SvelteKit 2 | SSR, file-based routing, form actions, edge compatibility |
-| **Language** | TypeScript (strict mode) | Type safety, IDE autocomplete, refactoring confidence |
-| **Styling** | Tailwind CSS | Rapid prototyping, design consistency, mobile-first |
-| **State Management** | Svelte 5 Runes | Built-in reactivity, no external state library needed |
+| Layer                | Technology               | Why We Chose It                                           |
+| -------------------- | ------------------------ | --------------------------------------------------------- |
+| **Framework**        | SvelteKit 2              | SSR, file-based routing, form actions, edge compatibility |
+| **Language**         | TypeScript (strict mode) | Type safety, IDE autocomplete, refactoring confidence     |
+| **Styling**          | Tailwind CSS             | Rapid prototyping, design consistency, mobile-first       |
+| **State Management** | Svelte 5 Runes           | Built-in reactivity, no external state library needed     |
 
 ### Backend
 
-| Layer | Technology | Why We Chose It |
-|-------|-----------|-----------------|
-| **Runtime** | Cloudflare Workers | Edge computing, auto-scaling, V8 isolates (fast cold starts) |
-| **Database** | Cloudflare D1 (SQLite) | Serverless SQL, Kysely ORM, schema migrations |
-| **Cache** | Cloudflare KV | Distributed key-value store, 24-hour TTL, <100ms reads |
-| **Auth** | Better Auth | OAuth providers, session management, type-safe APIs |
+| Layer        | Technology             | Why We Chose It                                              |
+| ------------ | ---------------------- | ------------------------------------------------------------ |
+| **Runtime**  | Cloudflare Workers     | Edge computing, auto-scaling, V8 isolates (fast cold starts) |
+| **Database** | Cloudflare D1 (SQLite) | Serverless SQL, Kysely ORM, schema migrations                |
+| **Cache**    | Cloudflare KV          | Distributed key-value store, 24-hour TTL, <100ms reads       |
+| **Auth**     | Better Auth            | OAuth providers, session management, type-safe APIs          |
 
 ### External APIs
 
-| Service | Purpose | Rate Limits | Fallback Strategy |
-|---------|---------|-------------|-------------------|
-| **Google Books** | Primary metadata, covers | 1000 req/day (free tier) | Use cache + OpenLibrary fallback |
-| **OpenLibrary** | DDC classifications | No official limit (be respectful) | 5-second timeout, fail gracefully |
-| **Library of Congress** | LCC call numbers | No API key needed | 5-second timeout, fallback to OpenLibrary LCC |
+| Service                 | Purpose                  | Rate Limits                       | Fallback Strategy                             |
+| ----------------------- | ------------------------ | --------------------------------- | --------------------------------------------- |
+| **Google Books**        | Primary metadata, covers | 1000 req/day (free tier)          | Use cache + OpenLibrary fallback              |
+| **OpenLibrary**         | DDC classifications      | No official limit (be respectful) | 5-second timeout, fail gracefully             |
+| **Library of Congress** | LCC call numbers         | No API key needed                 | 5-second timeout, fallback to OpenLibrary LCC |
 
 ---
 
@@ -126,28 +126,28 @@ Library staff scan barcodes with USB scanners or mobile cameras. The system:
 
 ### `/src/lib` - Shared Libraries
 
-| File/Folder | Responsibility | Critical? |
-|------------|---------------|-----------|
-| `api.ts` | External API calls (Google, OL, LoC), retry logic, caching | ⚠️ YES |
-| `merge.ts` | Data merging logic (waterfall prioritization) | ⚠️ YES |
-| `cutter.ts` | Cutter-Sanborn call number generation | ⚠️ YES |
-| `export.ts` | SLiMS CSV/MARC XML export | ⚠️ YES |
-| `auth-simple.ts` | Better Auth configuration | ⚠️ YES |
-| `isbn-helpers.ts` | ISBN validation, normalization, extraction | Medium |
-| `services/analytics.ts` | Telemetry, performance tracking | Low |
-| `components/` | Reusable UI components (CameraScanner, etc.) | Medium |
+| File/Folder             | Responsibility                                             | Critical? |
+| ----------------------- | ---------------------------------------------------------- | --------- |
+| `api.ts`                | External API calls (Google, OL, LoC), retry logic, caching | ⚠️ YES    |
+| `merge.ts`              | Data merging logic (waterfall prioritization)              | ⚠️ YES    |
+| `cutter.ts`             | Cutter-Sanborn call number generation                      | ⚠️ YES    |
+| `export.ts`             | SLiMS CSV/MARC XML export                                  | ⚠️ YES    |
+| `auth-simple.ts`        | Better Auth configuration                                  | ⚠️ YES    |
+| `isbn-helpers.ts`       | ISBN validation, normalization, extraction                 | Medium    |
+| `services/analytics.ts` | Telemetry, performance tracking                            | Low       |
+| `components/`           | Reusable UI components (CameraScanner, etc.)               | Medium    |
 
 ### `/src/routes` - SvelteKit Pages & API Routes
 
-| Route | Purpose | Auth Required? |
-|-------|---------|----------------|
-| `/` (homepage) | Main search interface | No |
-| `/scan/mobile` | Mobile barcode scanner | No |
-| `/dashboard` | User scan history, analytics | Yes |
-| `/login` | OAuth login page | No |
-| `/api/book/[isbn]` | Serverless metadata endpoint | No (public API) |
-| `/api/auth/[...all]` | Better Auth endpoints | Varies |
-| `/api/scan` | Save scan to D1 database | Yes |
+| Route                | Purpose                      | Auth Required?  |
+| -------------------- | ---------------------------- | --------------- |
+| `/` (homepage)       | Main search interface        | No              |
+| `/scan/mobile`       | Mobile barcode scanner       | No              |
+| `/dashboard`         | User scan history, analytics | Yes             |
+| `/login`             | OAuth login page             | No              |
+| `/api/book/[isbn]`   | Serverless metadata endpoint | No (public API) |
+| `/api/auth/[...all]` | Better Auth endpoints        | Varies          |
+| `/api/scan`          | Save scan to D1 database     | Yes             |
 
 ### `/docs` - Documentation (You Are Here)
 
@@ -176,6 +176,7 @@ Centralized documentation for developers, not scattered in code comments.
 ### Degraded Mode: Single Source Available
 
 If Google Books fails but OpenLibrary succeeds:
+
 - System still returns partial data (no cover, but has DDC)
 - UI shows trust badge: "⚠️ Limited Data - OpenLibrary Only"
 - User can still export (with warnings about missing fields)
@@ -242,13 +243,13 @@ npm run deploy  # Wrangler pushes to Cloudflare
 
 ## Performance Characteristics
 
-| Metric | Value | Notes |
-|--------|-------|-------|
-| **First Load (Cold Cache)** | 1200-1800ms | Parallel API calls + data merge |
-| **Cache Hit** | <100ms | KV lookup only |
-| **Scanner Mode Loop** | <50ms | Input clear + focus time |
-| **Bundle Size** | ~85KB (gzipped) | SvelteKit + Tailwind + minimal deps |
-| **Lighthouse Score** | 95+ | Performance, Accessibility, SEO |
+| Metric                      | Value           | Notes                               |
+| --------------------------- | --------------- | ----------------------------------- |
+| **First Load (Cold Cache)** | 1200-1800ms     | Parallel API calls + data merge     |
+| **Cache Hit**               | <100ms          | KV lookup only                      |
+| **Scanner Mode Loop**       | <50ms           | Input clear + focus time            |
+| **Bundle Size**             | ~85KB (gzipped) | SvelteKit + Tailwind + minimal deps |
+| **Lighthouse Score**        | 95+             | Performance, Accessibility, SEO     |
 
 **Bottleneck:** External API response times (not under our control).
 

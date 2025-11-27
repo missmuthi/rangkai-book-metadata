@@ -28,6 +28,7 @@ User clicks "Dashboard"
 ```
 
 **Why it fails:**
+
 1. Click event propagates through DOM layers
 2. Backdrop at `z-40` is above header at `z-30`
 3. Even though dropdown is `z-50`, the backdrop's click handler fires
@@ -65,8 +66,9 @@ User clicks "Dashboard"
 ```
 
 **Why it works:**
+
 1. Dropdown at `z-[100]` is HIGHEST layer
-2. Header at `z-50` is MIDDLE layer  
+2. Header at `z-50` is MIDDLE layer
 3. Backdrop at `z-20` is LOWEST layer
 4. Click on "Dashboard" hits the `<a>` tag first
 5. Browser performs standard navigation
@@ -188,6 +190,7 @@ Page changes, menu auto-closes ✅
 ## Mobile Considerations
 
 On mobile devices:
+
 - Touch events work the same as mouse clicks
 - Z-index stacking is identical
 - Dropdown may need position adjustments for viewport
@@ -198,6 +201,7 @@ On mobile devices:
 ## Accessibility
 
 The fix maintains accessibility:
+
 - ✅ Backdrop has `role="button"` and `tabindex="-1"`
 - ✅ Avatar button has `aria-expanded` and `aria-label`
 - ✅ Menu items are focusable links

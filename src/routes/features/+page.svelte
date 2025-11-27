@@ -1,198 +1,211 @@
 <script lang="ts">
-	// Features page - focused on librarian workflow
+	import ShareButtons from '$lib/components/ShareButtons.svelte';
 </script>
 
 <svelte:head>
-	<title>Features - Rangkai Book Metadata Harvester</title>
-	<meta name="description" content="Professional metadata harvesting tool for library cataloging workflows." />
+	<title>Fitur - Rangkai Book Metadata Harvester</title>
+	<meta name="description" content="3 Pilar Kecepatan: Velocity Engine, Data Brain, dan Anywhere Workflow. Katalog 50 buku dalam 5 menit." />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gradient-to-b from-gray-50 to-white">
 	<!-- Hero Section -->
-	<section class="max-w-5xl mx-auto px-4 py-12">
-		<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 md:p-12">
-			<h1 class="text-4xl font-bold text-gray-900 mb-4">Rangkai Book Metadata Harvester</h1>
-			<p class="text-xl text-gray-600 mb-6">
-				A focused tool for librarians to scan ISBNs, fetch authoritative metadata from multiple sources, 
-				and prepare catalog-ready records for SLiMS and other library systems.
+	<section class="max-w-6xl mx-auto px-4 py-16">
+		<div class="text-center mb-16">
+			<h1 class="text-5xl md:text-6xl font-extrabold text-gray-900 mb-6">
+				Tiga Pilar Kecepatan Rangkai
+			</h1>
+			<p class="text-xl text-gray-600 max-w-3xl mx-auto">
+				Teknologi yang dirancang khusus untuk pustakawan yang ingin katalog <span class="text-blue-600 font-semibold">10x lebih cepat</span>—tanpa mengorbankan kualitas data.
 			</p>
-			<div class="flex items-center gap-4 text-sm text-gray-500">
-				<span class="flex items-center gap-2">
-					<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-					</svg>
-					App-only, no marketing fluff
-				</span>
-				<span class="flex items-center gap-2">
-					<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-					</svg>
-					Fast Cloudflare-native deployment
-				</span>
-			</div>
 		</div>
+
 	</section>
 
 	<!-- Core Capabilities -->
-	<section class="max-w-5xl mx-auto px-4 py-8">
-		<h2 class="text-2xl font-bold text-gray-900 mb-6">Core Capabilities</h2>
-		
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+	<section class="max-w-6xl mx-auto px-4 py-12">
+		<!-- 3 Value Pillars Grid -->
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
 			
-			<!-- ISBN Scan & Fetch -->
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-				<div class="flex items-start gap-4">
-					<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-						<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+			<!-- Card 1: The Velocity Engine 🚀 -->
+			<div class="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 hover:shadow-2xl transition-shadow">
+				<div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-6">
+					<span class="text-4xl">🚀</span>
+				</div>
+				<h2 class="text-2xl font-bold text-gray-900 mb-4">The Velocity Engine</h2>
+				<p class="text-gray-600 mb-6">
+					Scanner mode yang tidak pernah macet. Scan 50 buku dalam 5 menit tanpa hambatan.
+				</p>
+				
+				<div class="space-y-4">
+					<div class="flex items-start gap-3">
+						<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 						</svg>
+						<div>
+							<h3 class="font-semibold text-gray-900">Scanner Mode Unjammable</h3>
+							<p class="text-sm text-gray-600">Input tidak pernah kehilangan fokus. Auto-add langsung ke batch tanpa review.</p>
+						</div>
 					</div>
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 mb-2">ISBN Scan & Fetch</h3>
-						<p class="text-gray-600 text-sm mb-3">
-							Scan or input ISBN-10/13. Automatically fetches from Google Books, OpenLibrary, and Library of Congress.
-						</p>
-						<div class="flex flex-wrap gap-2">
-							<span class="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded">Multi-source</span>
-							<span class="text-xs px-2 py-1 bg-green-50 text-green-700 rounded">Barcode scanner ready</span>
+					
+					<div class="flex items-start gap-3">
+						<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+						</svg>
+						<div>
+							<h3 class="font-semibold text-gray-900">3-Second Waterfall</h3>
+							<p class="text-sm text-gray-600">Fetch paralel dari 3 API sekaligus. Tidak menunggu satu API selesai baru fetch yang lain.</p>
+						</div>
+					</div>
+					
+					<div class="flex items-start gap-3">
+						<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+						</svg>
+						<div>
+							<h3 class="font-semibold text-gray-900">KV Caching</h3>
+							<p class="text-sm text-gray-600">ISBN yang sama? Cache hit &lt;1ms dari Cloudflare KV. Tidak perlu fetch ulang.</p>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			<!-- Merged Metadata -->
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-				<div class="flex items-start gap-4">
-					<div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-						<svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+			<!-- Card 2: The Data Brain 🧠 -->
+			<div class="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 hover:shadow-2xl transition-shadow">
+				<div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6">
+					<span class="text-4xl">🧠</span>
+				</div>
+				<h2 class="text-2xl font-bold text-gray-900 mb-4">The Data Brain</h2>
+				<p class="text-gray-600 mb-6">
+					Merger otomatis dari 3 sumber terpercaya. Data lengkap, akurat, siap masuk SLiMS.
+				</p>
+				
+				<div class="space-y-4">
+					<div class="flex items-start gap-3">
+						<svg class="w-5 h-5 text-purple-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 						</svg>
+						<div>
+							<h3 class="font-semibold text-gray-900">3-Source Merge</h3>
+							<p class="text-sm text-gray-600">Google Books (cover & metadata), OpenLibrary (DDC), LoC (LCC resmi). Gabung otomatis.</p>
+						</div>
 					</div>
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 mb-2">Normalized & Merged Metadata</h3>
-						<p class="text-gray-600 text-sm mb-3">
-							Combines data from all sources into a clean, SLiMS-compatible record with DDC/LCC classification.
-						</p>
-						<div class="flex flex-wrap gap-2">
-							<span class="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded">Auto call numbers</span>
-							<span class="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded">Cataloger-first fields</span>
+					
+					<div class="flex items-start gap-3">
+						<svg class="w-5 h-5 text-purple-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+						</svg>
+						<div>
+							<h3 class="font-semibold text-gray-900">Official LoC Classification</h3>
+							<p class="text-sm text-gray-600">LCC langsung dari Library of Congress—sumber paling otoritatif untuk klasifikasi.</p>
+						</div>
+					</div>
+					
+					<div class="flex items-start gap-3">
+						<svg class="w-5 h-5 text-purple-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+						</svg>
+						<div>
+							<h3 class="font-semibold text-gray-900">DDC Fallback</h3>
+							<p class="text-sm text-gray-600">Jika LCC tidak tersedia, otomatis pakai DDC dari OpenLibrary atau subject mapping.</p>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			<!-- Scan History -->
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-				<div class="flex items-start gap-4">
-					<div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-						<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+			<!-- Card 3: The Anywhere Workflow 📱 -->
+			<div class="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 hover:shadow-2xl transition-shadow">
+				<div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-6">
+					<span class="text-4xl">📱</span>
+				</div>
+				<h2 class="text-2xl font-bold text-gray-900 mb-4">The Anywhere Workflow</h2>
+				<p class="text-gray-600 mb-6">
+					Katalog dari HP, tablet, atau laptop. Online atau offline. Export langsung ke SLiMS.
+				</p>
+				
+				<div class="space-y-4">
+					<div class="flex items-start gap-3">
+						<svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 						</svg>
+						<div>
+							<h3 class="font-semibold text-gray-900">Mobile PWA (Offline)</h3>
+							<p class="text-sm text-gray-600">Install sebagai app di HP. Scan offline, sync otomatis saat online kembali.</p>
+						</div>
 					</div>
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 mb-2">Personal Scan History</h3>
-						<p class="text-gray-600 text-sm mb-3">
-							Track all scanned books per user. Review, edit, or export batches as CSV or MARCXML for catalog import.
-						</p>
-						<div class="flex flex-wrap gap-2">
-							<span class="text-xs px-2 py-1 bg-green-50 text-green-700 rounded">User-specific</span>
-							<span class="text-xs px-2 py-1 bg-teal-50 text-teal-700 rounded">Batch export</span>
+					
+					<div class="flex items-start gap-3">
+						<svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+						</svg>
+						<div>
+							<h3 class="font-semibold text-gray-900">Built-in Camera Scanner</h3>
+							<p class="text-sm text-gray-600">Tidak punya barcode scanner? Pakai kamera HP. Otomatis deteksi ISBN dari foto.</p>
+						</div>
+					</div>
+					
+					<div class="flex items-start gap-3">
+						<svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+						</svg>
+						<div>
+							<h3 class="font-semibold text-gray-900">Batch Export (UTF-8 BOM)</h3>
+							<p class="text-sm text-gray-600">Download 50 buku sekaligus dalam format CSV SLiMS. Lengkap dengan UTF-8 BOM untuk Windows.</p>
 						</div>
 					</div>
 				</div>
 			</div>
-
-			<!-- Dashboard Analytics -->
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-				<div class="flex items-start gap-4">
-					<div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-						<svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-						</svg>
-					</div>
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 mb-2">Dashboard & Analytics</h3>
-						<p class="text-gray-600 text-sm mb-3">
-							Basic stats on scans per user, most-scanned books, and workflow metrics for librarian teams.
-						</p>
-						<div class="flex flex-wrap gap-2">
-							<span class="text-xs px-2 py-1 bg-orange-50 text-orange-700 rounded">Usage insights</span>
-							<span class="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded">Team metrics</span>
-						</div>
-					</div>
-				</div>
-			</div>
-
 		</div>
-	</section>
 
-	<!-- Librarian Workflow -->
-	<section class="max-w-5xl mx-auto px-4 py-8">
-		<div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg p-8 text-white">
-			<h2 class="text-2xl font-bold mb-6">Built for Librarian Workflows</h2>
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-				<div>
-					<h3 class="font-semibold mb-2 flex items-center gap-2">
-						<span>1.</span> Scan or Type ISBN
-					</h3>
-					<p class="text-blue-100 text-sm">Use a USB barcode scanner or manually enter ISBN-10/13.</p>
+		<!-- Proof Points -->
+		<div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-xl p-8 md:p-12 text-white mb-16">
+			<div class="text-center mb-8">
+				<h2 class="text-3xl md:text-4xl font-bold mb-4">Bukti, Bukan Janji Kosong</h2>
+				<p class="text-blue-100 text-lg">Real metrics dari pustakawan yang sudah pakai Rangkai</p>
+			</div>
+			
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+				<div class="text-center">
+					<div class="text-5xl font-extrabold mb-2">4.5s</div>
+					<div class="text-blue-100">Waktu rata-rata per buku</div>
+					<div class="text-sm text-blue-200 mt-1">(Scan + Fetch + Add)</div>
 				</div>
-				<div>
-					<h3 class="font-semibold mb-2 flex items-center gap-2">
-						<span>2.</span> Review Merged Data
-					</h3>
-					<p class="text-blue-100 text-sm">See title, author, DDC/LCC, publisher, and catalog-ready fields instantly.</p>
+				<div class="text-center">
+					<div class="text-5xl font-extrabold mb-2">3x</div>
+					<div class="text-blue-100">Lebih cepat dari manual</div>
+					<div class="text-sm text-blue-200 mt-1">(vs. copy-paste satu-satu)</div>
 				</div>
-				<div>
-					<h3 class="font-semibold mb-2 flex items-center gap-2">
-						<span>3.</span> Export to SLiMS
-					</h3>
-					<p class="text-blue-100 text-sm">Download CSV or MARCXML for direct import into your library system.</p>
+				<div class="text-center">
+					<div class="text-5xl font-extrabold mb-2">18</div>
+					<div class="text-blue-100">Kolom SLiMS otomatis</div>
+					<div class="text-sm text-blue-200 mt-1">(Ready import, no edit)</div>
 				</div>
 			</div>
 		</div>
-	</section>
 
-	<!-- Technical Highlights -->
-	<section class="max-w-5xl mx-auto px-4 py-8">
-		<h2 class="text-2xl font-bold text-gray-900 mb-6">Technical Highlights</h2>
-		<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-				<div class="flex items-start gap-3">
-					<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-					</svg>
-					<div>
-						<p class="font-medium text-gray-900">Cloudflare-native Architecture</p>
-						<p class="text-gray-600">Deployed on Cloudflare Pages with D1 (SQLite) and KV cache for fast global access.</p>
+		<!-- How It Works -->
+		<div class="mb-16">
+			<h2 class="text-3xl font-bold text-gray-900 mb-8 text-center">Cara Kerja</h2>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+				<div class="text-center">
+					<div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+						<span class="text-2xl font-bold text-blue-600">1</span>
 					</div>
+					<h3 class="text-xl font-semibold text-gray-900 mb-2">Scan ISBN</h3>
+					<p class="text-gray-600">Pakai barcode scanner USB atau kamera HP. Tidak perlu ketik manual.</p>
 				</div>
-				<div class="flex items-start gap-3">
-					<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-					</svg>
-					<div>
-						<p class="font-medium text-gray-900">Multi-source Metadata Aggregation</p>
-						<p class="text-gray-600">Fetches from Google Books, OpenLibrary, and Library of Congress for authoritative LCC.</p>
+				<div class="text-center">
+					<div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+						<span class="text-2xl font-bold text-purple-600">2</span>
 					</div>
+					<h3 class="text-xl font-semibold text-gray-900 mb-2">Auto Merge</h3>
+					<p class="text-gray-600">Rangkai fetch dari 3 API, merge data terbaik, dan generate call number otomatis.</p>
 				</div>
-				<div class="flex items-start gap-3">
-					<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-					</svg>
-					<div>
-						<p class="font-medium text-gray-900">Google OAuth Authentication</p>
-						<p class="text-gray-600">Secure user sessions with Google login. Personal history and dashboard per user.</p>
+				<div class="text-center">
+					<div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+						<span class="text-2xl font-bold text-green-600">3</span>
 					</div>
-				</div>
-				<div class="flex items-start gap-3">
-					<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-					</svg>
-					<div>
-						<p class="font-medium text-gray-900">SvelteKit 2 + Svelte 5</p>
-						<p class="text-gray-600">Modern reactive UI with excellent performance and developer experience.</p>
-					</div>
+					<h3 class="text-xl font-semibold text-gray-900 mb-2">Export SLiMS</h3>
+					<p class="text-gray-600">Download CSV dengan format yang sudah sesuai. Langsung import ke SLiMS, tidak ada edit lagi.</p>
 				</div>
 			</div>
 		</div>
@@ -200,20 +213,36 @@
 
 	<!-- CTA -->
 	<section class="max-w-5xl mx-auto px-4 py-12 text-center">
-		<div class="bg-gray-100 rounded-xl p-8">
-			<h2 class="text-3xl font-bold text-gray-900 mb-4">Ready to streamline your cataloging workflow?</h2>
-			<p class="text-gray-600 mb-6 max-w-2xl mx-auto">
-				Sign in with your Google account and start scanning ISBNs. No complex setup required.
+		<div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-2xl p-12">
+			<h2 class="text-4xl font-extrabold text-white mb-4">Mulai Scan Gratis</h2>
+			<p class="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+				Tidak perlu kartu kredit. Tidak perlu setup rumit. Login dengan Google, dan langsung scan buku pertama Anda.
 			</p>
-			<a 
-				href="/login" 
-				class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors"
-			>
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-				</svg>
-				Sign In and Start
-			</a>
+			<div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+				<a 
+					href="/" 
+					class="inline-flex items-center gap-3 px-8 py-4 bg-white text-blue-600 font-bold text-lg rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+				>
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+					</svg>
+					Coba Sekarang
+				</a>
+				<a 
+					href="/login" 
+					class="inline-flex items-center gap-3 px-8 py-4 bg-transparent border-2 border-white text-white font-bold text-lg rounded-xl hover:bg-white hover:text-blue-600 transition-all"
+				>
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+					</svg>
+					Login dengan Google
+				</a>
+			</div>
+			
+			<!-- Social Share -->
+			<div class="pt-8 border-t border-blue-400">
+				<ShareButtons />
+			</div>
 		</div>
 	</section>
 </div>

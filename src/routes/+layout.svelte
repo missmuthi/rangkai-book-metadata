@@ -3,12 +3,17 @@ import "../app.css";
 import favicon from '$lib/assets/favicon.svg';
 import ErrorBoundary from '$lib/ErrorBoundary.svelte';
 import Toast from '$lib/components/Toast.svelte';
+import ShareButtons from '$lib/components/ShareButtons.svelte';
 import { onMount } from 'svelte';
 
 let { children, data } = $props();
 
 // User menu state
 let showUserMenu = $state(false);
+
+// PWA Install prompt state
+let deferredPrompt: any = null;
+let showInstallButton = $state(false);
 
 function toggleUserMenu() {
 	showUserMenu = !showUserMenu;
@@ -24,7 +29,43 @@ onMount(() => {
                         .register('/service-worker.js')
                         .catch((err) => console.error('Service worker registration failed', err));
         }
+	
+	// PWA Install Prompt Logic (Hero Feature)
+	window.addEventListener('beforeinstallprompt', (e) => {
+		// Prevent the default prompt
+		e.preventDefault();
+		// Store the event for later use
+		deferredPrompt = e;
+		// Show the custom install button
+		showInstallButton = true;
+		console.log('[PWA] Install prompt available');
+	});
+	
+	// Track PWA installation
+	window.addEventListener('appinstalled', () => {
+		console.log('[PWA] App installed successfully');
+		showInstallButton = false;
+		deferredPrompt = null;
+	});
 });
+
+async function handleInstallApp() {
+	if (!deferredPrompt) {
+		console.warn('[PWA] No install prompt available');
+		return;
+	}
+	
+	// Show the install prompt
+	deferredPrompt.prompt();
+	
+	// Wait for the user's response
+	const { outcome } = await deferredPrompt.userChoice;
+	console.log(`[PWA] User response: ${outcome}`);
+	
+	// Clear the deferred prompt
+	deferredPrompt = null;
+	showInstallButton = false;
+}
 
 async function onSignOut() {
 	closeUserMenu();
@@ -107,6 +148,21 @@ async function onSignOut() {
 
 				<!-- Auth Section -->
 				<div class="flex items-center gap-4">
+					<!-- PWA Install Button (Hero Feature) -->
+					{#if showInstallButton}
+						<button
+							onclick={handleInstallApp}
+							class="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-300 rounded-lg hover:bg-blue-100 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors shadow-sm"
+							title="Install Rangkai as an app for offline access"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+							</svg>
+							<span class="hidden md:inline">Install App</span>
+							<span class="md:hidden">Install</span>
+						</button>
+					{/if}
+					
 					{#if data?.session}
 						<!-- User Menu (Authenticated) -->
 						<div class="relative">
@@ -214,7 +270,12 @@ async function onSignOut() {
 	</ErrorBoundary>
 
 	<footer class="bg-white border-t border-gray-200 mt-auto">
-		<div class="max-w-7xl mx-auto px-4 py-6">
+		<div class="max-w-7xl mx-auto px-4 py-8">
+			<!-- Social Share Section -->
+			<div class="mb-6 pb-6 border-b border-gray-200">
+				<ShareButtons />
+			</div>
+			
 			<div class="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-600">
 				<!-- Left: Branding -->
 				<div class="text-center md:text-left">

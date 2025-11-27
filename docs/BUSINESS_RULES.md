@@ -14,7 +14,7 @@ Rangkai is an **app-only** project.
   - Marketing site / landing page
   - General-purpose CMS
 
-If a blog/docs/marketing site is ever needed, it will live in a **separate repo** and point *to* this app. Do not try to turn this repo into a hybrid app+content framework.
+If a blog/docs/marketing site is ever needed, it will live in a **separate repo** and point _to_ this app. Do not try to turn this repo into a hybrid app+content framework.
 
 ---
 

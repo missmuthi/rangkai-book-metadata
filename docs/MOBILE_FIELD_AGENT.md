@@ -7,11 +7,13 @@ Implementation of the Mobile Field Agent feature for Rangkai Book Metadata appli
 ## Components
 
 ### 1. CameraScanner Component
+
 **File:** `src/lib/components/CameraScanner.svelte`
 
 A reusable Svelte 5 component that wraps the html5-qrcode library safely for SvelteKit SSR.
 
 **Features:**
+
 - SSR-safe implementation (dynamic import of html5-qrcode in `onMount`)
 - Svelte 5 runes (`$state` for reactive state management)
 - Callback props for events (`onscan`, `onerror`)
@@ -21,6 +23,7 @@ A reusable Svelte 5 component that wraps the html5-qrcode library safely for Sve
 - Graceful error handling and cleanup
 
 **Props:**
+
 ```typescript
 interface Props {
   onscan?: (detail: { text: string }) => void;
@@ -29,17 +32,20 @@ interface Props {
 ```
 
 **Scanner Configuration:**
+
 - FPS: 10
 - QR Box: 250x150px
 - Aspect Ratio: 1.0
 - Facing Mode: environment (rear camera)
 
 ### 2. Mobile Scan Page
+
 **File:** `src/routes/scan/mobile/+page.svelte`
 
 A dedicated route for mobile scanning functionality.
 
 **Features:**
+
 - Integration with CameraScanner component
 - Real-time book metadata fetching via `/api/book/[isbn]` endpoint
 - Smart request queueing (prevents request explosion on rapid scans)
@@ -53,6 +59,7 @@ A dedicated route for mobile scanning functionality.
   - Data source indicator
 
 **State Management:**
+
 ```typescript
 type LastBook = {
   isbn: string;
@@ -67,23 +74,27 @@ type LastBook = {
 ## Technical Implementation
 
 ### SSR Safety
+
 - No `window`, `document`, or `navigator` usage outside `onMount`
 - Dynamic import of html5-qrcode library
 - Browser-only audio context creation
 - Proper cleanup in component unmount
 
 ### Svelte 5 Runes
+
 - `$state` for reactive variables
 - `$props()` for component props
 - Callback props instead of `createEventDispatcher`
 
 ### Error Handling
+
 - Camera permission denial gracefully handled
 - Failed API requests show user-friendly errors
 - Image loading failures hide broken images
 - Scanner cleanup wrapped in try/catch
 
 ### Performance Optimizations
+
 - Duplicate scan debouncing (3-second window)
 - Request queueing for rapid scans (latest wins)
 - Lazy loading of html5-qrcode library
@@ -102,14 +113,15 @@ type LastBook = {
 ### For Developers
 
 **Using CameraScanner Component:**
+
 ```svelte
 <script lang="ts">
   import CameraScanner from '$lib/components/CameraScanner.svelte';
-  
+
   function handleScan(detail: { text: string }) {
     console.log('Scanned:', detail.text);
   }
-  
+
   function handleError(detail: { message: string }) {
     console.error('Scanner error:', detail.message);
   }
@@ -121,9 +133,11 @@ type LastBook = {
 ## Dependencies
 
 **New Dependency:**
+
 - `html5-qrcode`: ^2.x (barcode/QR code scanning library)
 
 **Installed via:**
+
 ```bash
 npm install html5-qrcode --save
 ```
@@ -131,30 +145,39 @@ npm install html5-qrcode --save
 ## Testing
 
 ### Type Checking
+
 ```bash
 npm run check
 ```
+
 **Status:** ✅ Passes (0 errors, 1 pre-existing warning)
 
 ### Build
+
 ```bash
 npm run build
 ```
+
 **Status:** ✅ Builds successfully
 
 ### Linting
+
 ```bash
 npm run lint
 ```
+
 **Status:** ✅ No errors in new files
 
 ### Unit Tests
+
 ```bash
 npm run test -- src/routes/scan/mobile/__tests__/mobile-scan-logic.test.ts
 ```
+
 **Status:** ✅ 41 tests passing
 
 **Test Coverage:**
+
 - ISBN normalization (spaces, hyphens, special characters)
 - API fetch integration (success, 404, 500, network errors)
 - Data mapping from `MergedBookData` to `LastBook` type
@@ -163,6 +186,7 @@ npm run test -- src/routes/scan/mobile/__tests__/mobile-scan-logic.test.ts
 - Edge cases (empty ISBN, long strings, special characters)
 
 **Test Files:**
+
 1. `src/routes/scan/mobile/__tests__/mobile-scan-logic.test.ts` - Unit tests for fetch logic
 2. `src/routes/scan/mobile/__tests__/mobile-scan.test.ts` - Integration tests (component rendering)
 
@@ -176,6 +200,7 @@ npm run test -- src/routes/scan/mobile/__tests__/mobile-scan-logic.test.ts
 ## API Integration
 
 The mobile scanner integrates with the existing book API:
+
 - **Endpoint:** `GET /api/book/[isbn]`
 - **Response:** `MergedBookData` type
 - **Caching:** Leverages existing KV cache (24-hour TTL)
@@ -192,12 +217,14 @@ The mobile scanner integrates with the existing book API:
 ## Browser Compatibility
 
 Requires modern browsers with:
+
 - ES Modules support
 - Web Audio API (for beep sound)
 - MediaDevices API (camera access)
 - Promises/async-await
 
 Tested on:
+
 - Chrome Mobile
 - Safari Mobile (iOS)
 - Firefox Mobile
@@ -205,6 +232,7 @@ Tested on:
 ## Future Enhancements
 
 Potential improvements (not implemented):
+
 - Scan history with local storage
 - Batch scanning mode
 - Flashlight toggle for low-light conditions
@@ -223,6 +251,7 @@ Potential improvements (not implemented):
 ## Architecture Compliance
 
 This implementation follows:
+
 - ✅ RANGKAI_APP_DIRECTION.md (mobile-first approach)
 - ✅ TIER1_REFACTOR_SUMMARY.md (component patterns)
 - ✅ TIER2_IMPLEMENTATION.md (API integration)
@@ -234,6 +263,7 @@ This implementation follows:
 ## Deployment Notes
 
 No special deployment configuration needed:
+
 - Works with existing Cloudflare Pages setup
 - No new environment variables required
 - No database schema changes

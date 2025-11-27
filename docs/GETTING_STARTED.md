@@ -53,6 +53,7 @@ git --version  # Should be 2.x or higher
 Download from [code.visualstudio.com](https://code.visualstudio.com/)
 
 **Recommended Extensions:**
+
 - Svelte for VS Code
 - Tailwind CSS IntelliSense
 - ESLint
@@ -77,6 +78,7 @@ npm install
 ```
 
 This installs:
+
 - SvelteKit + Svelte 5
 - TypeScript + type definitions
 - Tailwind CSS
@@ -103,6 +105,7 @@ VITE_GOOGLE_BOOKS_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
 **How to get a Google Books API key:**
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing
 3. Enable "Books API"
@@ -118,6 +121,7 @@ npm run dev
 ```
 
 **Expected output:**
+
 ```
   VITE v7.1.10  ready in 1234 ms
 
@@ -139,6 +143,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 4. You should see merged metadata from 3 sources
 
 **What's happening behind the scenes:**
+
 - Frontend calls `/api/book/9786235516981`
 - API route fetches from Google Books, OpenLibrary, Library of Congress
 - Data merging logic combines results (see `src/lib/merge.ts`)
@@ -203,6 +208,7 @@ rangkai-book-metadata/
 ```
 
 **Key files to explore first:**
+
 1. `src/routes/+page.svelte` - Main UI logic
 2. `src/lib/api.ts` - How we fetch from external APIs
 3. `src/lib/merge.ts` - Waterfall prioritization logic
@@ -261,6 +267,7 @@ npm run preview
 **Symptom:** `ERESOLVE unable to resolve dependency tree`
 
 **Solution:**
+
 ```bash
 # Clear npm cache
 rm -rf node_modules package-lock.json
@@ -273,6 +280,7 @@ npm install
 **Symptom:** `Error: Port 5173 is already in use`
 
 **Solution:**
+
 ```bash
 # Find and kill the process
 lsof -ti:5173 | xargs kill -9
@@ -286,6 +294,7 @@ npm run dev -- --port 3000
 **Symptom:** Red squiggly lines in VS Code, errors about `$types`
 
 **Solution:**
+
 ```bash
 # Regenerate SvelteKit types
 npm run prepare
@@ -299,6 +308,7 @@ npm run prepare
 **Symptom:** "API key not valid" error in console
 
 **Solution:**
+
 1. Verify API key in `.env.local` is correct
 2. Check that "Books API" is enabled in Google Cloud Console
 3. Ensure no extra spaces/quotes around the key in `.env.local`
@@ -367,14 +377,15 @@ npm run build
 
 ## Environment Variables Reference
 
-| Variable | Required? | Purpose | Example |
-|----------|-----------|---------|---------|
-| `VITE_GOOGLE_BOOKS_API_KEY` | Yes (local dev) | Google Books API access | `AIzaSy...` |
-| `VITE_APP_VERSION` | No | Shown in UI footer | `2.0.2` |
-| `DATABASE_URL` | No (prod only) | D1 database connection | Auto-injected by Cloudflare |
-| `KV_BOOK_CACHE` | No (prod only) | KV cache binding | Auto-injected by Cloudflare |
+| Variable                    | Required?       | Purpose                 | Example                     |
+| --------------------------- | --------------- | ----------------------- | --------------------------- |
+| `VITE_GOOGLE_BOOKS_API_KEY` | Yes (local dev) | Google Books API access | `AIzaSy...`                 |
+| `VITE_APP_VERSION`          | No              | Shown in UI footer      | `2.0.2`                     |
+| `DATABASE_URL`              | No (prod only)  | D1 database connection  | Auto-injected by Cloudflare |
+| `KV_BOOK_CACHE`             | No (prod only)  | KV cache binding        | Auto-injected by Cloudflare |
 
 **Local vs Production:**
+
 - Local dev uses `.env.local` (not committed)
 - Production uses Cloudflare Pages environment variables (set in dashboard)
 

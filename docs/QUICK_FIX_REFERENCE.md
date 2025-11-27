@@ -2,7 +2,7 @@
 
 **Problem:** Menu items don't work in production  
 **Solution:** Z-index fix (3 lines)  
-**Time to fix:** 5 minutes  
+**Time to fix:** 5 minutes
 
 ---
 
@@ -11,18 +11,21 @@
 ### src/routes/+layout.svelte
 
 **Line ~58: Backdrop**
+
 ```diff
 - <button class="fixed inset-0 z-40" onclick={closeUserMenu}>
 + <div class="fixed inset-0 z-20" onclick={closeUserMenu} role="button" tabindex="-1">
 ```
 
 **Line ~68: Header**
+
 ```diff
 - <header class="... z-30 ...">
 + <header class="... z-50 ...">
 ```
 
 **Line ~114: Dropdown**
+
 ```diff
 - <div class="... z-50">
 + <div class="... z-[100]">

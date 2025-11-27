@@ -1,6 +1,7 @@
 # Serverless Architecture - Rangkai Book Metadata
 
 ## Overview
+
 Rangkai v1.3.0 introduces a **serverless-first architecture** that moves data fetching from client-side to edge-optimized API endpoints powered by Cloudflare Workers.
 
 ## Architecture Diagram
@@ -51,6 +52,7 @@ Rangkai v1.3.0 introduces a **serverless-first architecture** that moves data fe
 ## What Changed?
 
 ### Before (v1.2.1) - Client-Side Fetching
+
 ```typescript
 // ❌ OLD: Direct API calls from browser
 const result = await BookApiService.fetchAll(isbn, true);
@@ -63,6 +65,7 @@ mergedData = processAndRenderMergedData(googleData, openLibraryData, locData);
 ```
 
 **Issues:**
+
 - ❌ No caching → repeated API calls for same ISBN
 - ❌ No audit logging → no analytics on usage patterns
 - ❌ Client-side rate limits → can't batch requests efficiently
@@ -71,6 +74,7 @@ mergedData = processAndRenderMergedData(googleData, openLibraryData, locData);
 ---
 
 ### After (v1.3.0) - Serverless API
+
 ```typescript
 // ✅ NEW: Single call to serverless endpoint
 const apiResult = await BookApiService.fetchFromServerless(isbn);
@@ -79,6 +83,7 @@ mergedData = apiResult as MergedBookData; // Already merged!
 ```
 
 **Benefits:**
+
 - ✅ **KV Caching**: 24-hour TTL = instant responses for popular ISBNs
 - ✅ **D1 Audit Logging**: Track all searches in SQLite database
 - ✅ **Background Writes**: `waitUntil` prevents data loss while maintaining speed
@@ -89,24 +94,26 @@ mergedData = apiResult as MergedBookData; // Already merged!
 
 ## Performance Improvements
 
-| Metric | v1.2.1 (Client) | v1.3.0 (Serverless) | Improvement |
-|--------|-----------------|---------------------|-------------|
-| **Cache Hit (Popular ISBN)** | N/A (no cache) | **< 100ms** | ∞ |
-| **First Request (Cold)** | ~2500ms | ~2400ms | 4% faster |
-| **Repeated Scans** | ~2500ms each | **~80ms** (cached) | **96% faster** |
-| **Database Logging** | N/A | Background (0ms overhead) | Non-blocking |
-| **API Rate Limits** | Per-user IP | Shared (Cloudflare IP) | Better batching |
+| Metric                       | v1.2.1 (Client) | v1.3.0 (Serverless)       | Improvement     |
+| ---------------------------- | --------------- | ------------------------- | --------------- |
+| **Cache Hit (Popular ISBN)** | N/A (no cache)  | **< 100ms**               | ∞               |
+| **First Request (Cold)**     | ~2500ms         | ~2400ms                   | 4% faster       |
+| **Repeated Scans**           | ~2500ms each    | **~80ms** (cached)        | **96% faster**  |
+| **Database Logging**         | N/A             | Background (0ms overhead) | Non-blocking    |
+| **API Rate Limits**          | Per-user IP     | Shared (Cloudflare IP)    | Better batching |
 
 ---
 
 ## API Response Structure
 
 ### Request
+
 ```bash
 GET /api/book/9780134092669
 ```
 
 ### Response (200 OK)
+
 ```json
 {
   "title": "Effective Java",
@@ -133,6 +140,7 @@ GET /api/book/9780134092669
 ```
 
 ### Headers
+
 ```http
 X-Cache: MISS | HIT
 X-Response-Time: 1852ms
@@ -148,13 +156,14 @@ The serverless API is **fully compatible** with Scanner Mode and Auto-Add featur
 ```typescript
 // AUTO-ADD MODE: Add directly to batch without showing detail card
 if (scannerModeEnabled && autoAddMode && hasUsableData) {
-    scanHistory.add(mergedData); // Works with serverless response
-    playFeedbackSound('success');
-    showToast(`✓ Added: ${truncatedTitle}`, 'success');
+  scanHistory.add(mergedData); // Works with serverless response
+  playFeedbackSound("success");
+  showToast(`✓ Added: ${truncatedTitle}`, "success");
 }
 ```
 
 **Key Features Preserved:**
+
 - ✅ Unjammable scanning (< 500ms debounce)
 - ✅ Auto-add to batch without review card
 - ✅ Toast notifications with book titles
@@ -167,14 +176,15 @@ if (scannerModeEnabled && autoAddMode && hasUsableData) {
 
 The serverless API uses HTTP status codes for error states:
 
-| Status | Scenario | Response |
-|--------|----------|----------|
-| **200** | Success (full or partial data) | Merged book data |
-| **400** | Invalid ISBN format | `{ message: "Invalid ISBN format" }` |
-| **404** | No data from any source | `{ message: "Book not found. Google: timeout; OL: 503" }` |
-| **500** | Internal server error | `{ message: "Server error" }` |
+| Status  | Scenario                       | Response                                                  |
+| ------- | ------------------------------ | --------------------------------------------------------- |
+| **200** | Success (full or partial data) | Merged book data                                          |
+| **400** | Invalid ISBN format            | `{ message: "Invalid ISBN format" }`                      |
+| **404** | No data from any source        | `{ message: "Book not found. Google: timeout; OL: 503" }` |
+| **500** | Internal server error          | `{ message: "Server error" }`                             |
 
 **Graceful Degradation:**
+
 - Missing LoC data → Returns Google + OpenLibrary only
 - Missing OpenLibrary data → Returns Google + LoC only
 - Missing Google data → Returns OpenLibrary + LoC only
@@ -186,20 +196,20 @@ The serverless API uses HTTP status codes for error states:
 All serverless API calls are tracked with enhanced metrics:
 
 ```typescript
-Analytics.track('api_timing', {
-    source: 'serverless',
-    endpoint: 'isbn_search',
-    duration_ms: 1852,
-    success: true,
-    cache_hit: false  // NEW: Track KV cache performance
+Analytics.track("api_timing", {
+  source: "serverless",
+  endpoint: "isbn_search",
+  duration_ms: 1852,
+  success: true,
+  cache_hit: false, // NEW: Track KV cache performance
 });
 
-Analytics.track('search_performed', {
-    type: 'isbn',
-    query_length: 13,
-    duration_ms: 1852,
-    result_count: 1,
-    cache_hit: false  // NEW: Distinguish cached vs. fresh fetches
+Analytics.track("search_performed", {
+  type: "isbn",
+  query_length: 13,
+  duration_ms: 1852,
+  result_count: 1,
+  cache_hit: false, // NEW: Distinguish cached vs. fresh fetches
 });
 ```
 
@@ -208,6 +218,7 @@ Analytics.track('search_performed', {
 ## Title Search (Legacy Client-Side)
 
 **Title searches still use client-side fetching** because:
+
 1. LoC API doesn't support title search (ISBN-only)
 2. Multiple results require UI selection before merging
 3. Lower usage frequency (< 5% of queries in Scanner Mode)
@@ -215,9 +226,9 @@ Analytics.track('search_performed', {
 ```typescript
 // Title searches remain client-side
 if (!isIsbn) {
-    const result = await BookApiService.fetchAll(trimmedQuery, false, 10, 10);
-    googleResults = result.google?.items ?? [];
-    openLibraryResults = result.openlibrary?.docs ?? [];
+  const result = await BookApiService.fetchAll(trimmedQuery, false, 10, 10);
+  googleResults = result.google?.items ?? [];
+  openLibraryResults = result.openlibrary?.docs ?? [];
 }
 ```
 
@@ -258,6 +269,7 @@ Track serverless performance via Cloudflare Dashboard:
 - **KV Metrics**: Cache hit rate, eviction rate, storage usage
 
 **Key Performance Indicators (KPIs):**
+
 - Cache Hit Rate: Target > 80% for production workloads
 - P95 Response Time: Target < 500ms (cache hit), < 3s (cache miss)
 - Error Rate: Target < 0.1% (graceful degradation)
@@ -267,9 +279,11 @@ Track serverless performance via Cloudflare Dashboard:
 ## Troubleshooting
 
 ### Issue: "KV Cache Not Working"
+
 **Symptom:** `X-Cache: MISS` on every request
 
 **Fix:**
+
 ```bash
 # Verify KV namespace exists
 npx wrangler kv namespace list
@@ -283,9 +297,11 @@ npx wrangler kv key get --namespace-id=<ID> "test"
 ```
 
 ### Issue: "D1 Database Writes Failing"
+
 **Symptom:** No records in `scans` table after API calls
 
 **Fix:**
+
 ```bash
 # Verify D1 database exists
 npx wrangler d1 list
@@ -298,9 +314,11 @@ npx wrangler d1 execute rangkai-scans --remote --command "SELECT * FROM scans OR
 ```
 
 ### Issue: "waitUntil Not Working"
+
 **Symptom:** Response takes 3+ seconds (writes are blocking)
 
 **Fix:**
+
 - Ensure `platform.context.waitUntil()` is called correctly
 - Verify Cloudflare Workers environment (not local dev)
 - Check for `await` in waitUntil promise (should be fire-and-forget)

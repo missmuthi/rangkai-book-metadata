@@ -1,11 +1,15 @@
 # 🔐 Rangkai v2.0 - Production Deployment Checklist
+
 # Zero-Trust Security Protocol for Identity Layer Deployment
 
 ## ══════════════════════════════════════════════════════════════
+
 ## PHASE 1: PRE-DEPLOYMENT VERIFICATION
+
 ## ══════════════════════════════════════════════════════════════
 
 ### 1.1 Code Quality Checks (Local)
+
 ```bash
 # Verify TypeScript compilation
 npm run check
@@ -21,12 +25,14 @@ npm run preview
 ```
 
 **Expected Results:**
+
 - ✅ 0 TypeScript errors
 - ✅ All tests passing
 - ✅ Build completes successfully
 - ✅ Preview runs without errors
 
 ### 1.2 Security Audit (Local)
+
 ```bash
 # Check .gitignore is properly configured
 cat .gitignore | grep -E "\.env|\.wrangler|better-auth-secret"
@@ -39,11 +45,13 @@ npm audit --production
 ```
 
 **Expected Results:**
+
 - ✅ .env, .wrangler/, better-auth-secret.txt are ignored
 - ✅ No hardcoded secrets found in src/
 - ✅ No critical vulnerabilities (or documented/accepted)
 
 ### 1.3 Database Backup (CRITICAL)
+
 ```bash
 # Export current production database BEFORE migration
 npx wrangler d1 export rangkai-scans --remote --output=backup-pre-v2-$(date +%Y%m%d-%H%M%S).sql
@@ -53,12 +61,15 @@ ls -lh backup-pre-v2-*.sql
 ```
 
 **Expected Results:**
+
 - ✅ Backup file created (size > 0 bytes)
 - ✅ File saved in safe location (NOT committed to git)
 - ✅ Backup tested (can be imported if needed)
 
 ## ══════════════════════════════════════════════════════════════
+
 ## PHASE 2: GOOGLE OAUTH SETUP
+
 ## ══════════════════════════════════════════════════════════════
 
 ### 2.1 Create OAuth 2.0 Credentials
@@ -67,17 +78,20 @@ ls -lh backup-pre-v2-*.sql
 https://console.cloud.google.com/apis/credentials
 
 **Steps:**
+
 1. Select project or create new project: "Rangkai Book Metadata"
 2. Click "CREATE CREDENTIALS" → "OAuth client ID"
 3. Application type: **Web application**
 4. Name: "Rangkai Production"
 
 **Authorized JavaScript origins:**
+
 ```
 https://rangkai-book-metadata.pages.dev
 ```
 
 **Authorized redirect URIs:**
+
 ```
 https://rangkai-book-metadata.pages.dev/api/auth/callback/google
 ```
@@ -86,6 +100,7 @@ https://rangkai-book-metadata.pages.dev/api/auth/callback/google
 6. **COPY** Client ID and Client Secret (you'll need these in Phase 3)
 
 **Security Checklist:**
+
 - [ ] OAuth consent screen configured (external, non-sensitive scopes)
 - [ ] Test users added (if app is in testing mode)
 - [ ] Redirect URIs match production URL EXACTLY
@@ -104,15 +119,19 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 **Expected Output:** Random string like `dGhpcyBpcyBhIHNlY3JldCBrZXkgZm9yIGJldHRlciBhdXRo==`
 
 **CRITICAL:**
+
 - ✅ Store this secret securely (password manager)
 - ✅ NEVER commit to git
 - ✅ Use different secret for dev/staging/production
 
 ## ══════════════════════════════════════════════════════════════
+
 ## PHASE 3: CLOUDFLARE PAGES SECRETS CONFIGURATION
+
 ## ══════════════════════════════════════════════════════════════
 
 ### 3.1 Navigate to Cloudflare Pages Dashboard
+
 ```
 https://dash.cloudflare.com → Pages → rangkai-book-metadata → Settings → Environment variables
 ```
@@ -123,12 +142,12 @@ https://dash.cloudflare.com → Pages → rangkai-book-metadata → Settings →
 
 Click "Add environment variable" and add:
 
-| Variable Name            | Value                                          | Environment |
-|--------------------------|------------------------------------------------|-------------|
-| BETTER_AUTH_SECRET       | `<output from Phase 2.2>`                      | Production  |
-| BETTER_AUTH_URL          | `https://rangkai-book-metadata.pages.dev`      | Production  |
-| GOOGLE_CLIENT_ID         | `<from Google Cloud Console>`                  | Production  |
-| GOOGLE_CLIENT_SECRET     | `<from Google Cloud Console>`                  | Production  |
+| Variable Name        | Value                                     | Environment |
+| -------------------- | ----------------------------------------- | ----------- |
+| BETTER_AUTH_SECRET   | `<output from Phase 2.2>`                 | Production  |
+| BETTER_AUTH_URL      | `https://rangkai-book-metadata.pages.dev` | Production  |
+| GOOGLE_CLIENT_ID     | `<from Google Cloud Console>`             | Production  |
+| GOOGLE_CLIENT_SECRET | `<from Google Cloud Console>`             | Production  |
 
 **Option B: Via Wrangler CLI (Alternative)**
 
@@ -147,12 +166,14 @@ echo "<your-google-client-secret>" | npx wrangler pages secret put GOOGLE_CLIENT
 ```
 
 **Verification:**
+
 ```bash
 # List configured secrets (values will be masked)
 npx wrangler pages secret list --project-name=rangkai-book-metadata
 ```
 
 **Expected Output:**
+
 ```
 BETTER_AUTH_SECRET: ******** (set)
 BETTER_AUTH_URL: ******** (set)
@@ -161,7 +182,9 @@ GOOGLE_CLIENT_SECRET: ******** (set)
 ```
 
 ## ══════════════════════════════════════════════════════════════
+
 ## PHASE 4: DATABASE MIGRATION
+
 ## ══════════════════════════════════════════════════════════════
 
 ### 4.1 Test Migration on Local Database (Optional but Recommended)
@@ -175,6 +198,7 @@ npx wrangler d1 execute rangkai-scans --local --command="SELECT name FROM sqlite
 ```
 
 **Expected Output:**
+
 ```
 user, session, account, verification, scans
 ```
@@ -206,13 +230,16 @@ npx wrangler d1 execute rangkai-scans --remote --command="SELECT name FROM sqlit
 ```
 
 **Expected Results:**
+
 - ✅ 5 tables: user, session, account, verification, scans
 - ✅ scans table has columns: id, user_id, isbn, title, json_data, status, created_at, updated_at
 - ✅ All indexes created (10 total: 5 for Better Auth, 5 for scans)
 - ✅ Existing scans assigned to 'system-user-legacy-import' (if any existed)
 
 ## ══════════════════════════════════════════════════════════════
+
 ## PHASE 5: DEPLOYMENT
+
 ## ══════════════════════════════════════════════════════════════
 
 ### 5.1 Commit and Push Code
@@ -239,11 +266,13 @@ git push origin main
 ### 5.2 Monitor Deployment
 
 **Cloudflare Pages Dashboard:**
+
 ```
 https://dash.cloudflare.com → Pages → rangkai-book-metadata → Deployments
 ```
 
 **Watch build logs for:**
+
 - ✅ Build succeeds (npm run build completes)
 - ✅ No TypeScript errors
 - ✅ Deployment completes
@@ -252,6 +281,7 @@ https://dash.cloudflare.com → Pages → rangkai-book-metadata → Deployments
 ### 5.3 Smoke Test (Production)
 
 **Test Authentication Flow:**
+
 ```
 1. Visit: https://rangkai-book-metadata.pages.dev/login
 2. Click "Sign in with Google"
@@ -263,6 +293,7 @@ https://dash.cloudflare.com → Pages → rangkai-book-metadata → Deployments
 ```
 
 **Test Protected Routes:**
+
 ```
 1. Sign out (if signed in)
 2. Visit: https://rangkai-book-metadata.pages.dev/dashboard
@@ -272,6 +303,7 @@ https://dash.cloudflare.com → Pages → rangkai-book-metadata → Deployments
 ```
 
 **Test Book Search (Authenticated):**
+
 ```
 1. Sign in
 2. Search for ISBN: 9780134092669
@@ -280,7 +312,9 @@ https://dash.cloudflare.com → Pages → rangkai-book-metadata → Deployments
 ```
 
 ## ══════════════════════════════════════════════════════════════
+
 ## PHASE 6: POST-DEPLOYMENT VERIFICATION
+
 ## ══════════════════════════════════════════════════════════════
 
 ### 6.1 Database Health Check
@@ -315,6 +349,7 @@ curl -I http://rangkai-book-metadata.pages.dev | grep -i "location"
 ### 6.3 Performance Monitoring
 
 **Lighthouse Audit:**
+
 ```bash
 # Install Lighthouse CLI (if not installed)
 npm install -g lighthouse
@@ -324,18 +359,22 @@ lighthouse https://rangkai-book-metadata.pages.dev --output html --output-path l
 ```
 
 **Expected Scores:**
+
 - ✅ Performance: >90
 - ✅ Accessibility: >95
 - ✅ Best Practices: >95
 - ✅ SEO: >90
 
 ## ══════════════════════════════════════════════════════════════
+
 ## PHASE 7: ROLLBACK PLAN (IF ISSUES OCCUR)
+
 ## ══════════════════════════════════════════════════════════════
 
 ### 7.1 Immediate Rollback (Revert Deployment)
 
 **Option A: Via Cloudflare Dashboard**
+
 ```
 1. Go to: Pages → rangkai-book-metadata → Deployments
 2. Find previous deployment (v1.3.0)
@@ -344,6 +383,7 @@ lighthouse https://rangkai-book-metadata.pages.dev --output html --output-path l
 ```
 
 **Option B: Via Git Revert**
+
 ```bash
 # Revert the last commit
 git revert HEAD
@@ -375,7 +415,9 @@ npx wrangler pages secret delete GOOGLE_CLIENT_SECRET --project-name=rangkai-boo
 ```
 
 ## ══════════════════════════════════════════════════════════════
+
 ## PHASE 8: DOCUMENTATION & TEAM NOTIFICATION
+
 ## ══════════════════════════════════════════════════════════════
 
 ### 8.1 Update CHANGELOG.md
@@ -384,6 +426,7 @@ npx wrangler pages secret delete GOOGLE_CLIENT_SECRET --project-name=rangkai-boo
 ## [2.0.0] - 2024-11-21
 
 ### 🔐 Added (Identity Layer)
+
 - Multi-user authentication with Better Auth
 - Google OAuth integration (primary login method)
 - User-scoped scan history (privacy and data isolation)
@@ -393,6 +436,7 @@ npx wrangler pages secret delete GOOGLE_CLIENT_SECRET --project-name=rangkai-boo
 - Login page with Google OAuth button
 
 ### 🗄️ Database Changes
+
 - Added `user` table (Better Auth)
 - Added `session` table (Better Auth)
 - Added `account` table (OAuth providers)
@@ -401,6 +445,7 @@ npx wrangler pages secret delete GOOGLE_CLIENT_SECRET --project-name=rangkai-boo
 - Created 10 indexes for performance
 
 ### 🔒 Security
+
 - Environment variable management for OAuth secrets
 - User data isolation (one user cannot access another's scans)
 - Session-based authentication (no JWT in localStorage)
@@ -408,12 +453,14 @@ npx wrangler pages secret delete GOOGLE_CLIENT_SECRET --project-name=rangkai-boo
 - Hardened .gitignore for secrets management
 
 ### 📚 Documentation
+
 - Created AUTHENTICATION_SETUP.md
 - Updated agents.md with v2.0 security constraints
 - Added migration guide (migrations/v2.0-auth-migration.sql)
 - Updated .env.example with OAuth credentials template
 
 ### ⚠️ Breaking Changes
+
 - All scans now require user authentication
 - Existing scans assigned to 'system-user-legacy-import'
 - Protected routes redirect to /login if not authenticated
@@ -422,6 +469,7 @@ npx wrangler pages secret delete GOOGLE_CLIENT_SECRET --project-name=rangkai-boo
 ### 8.2 Notify Team/Users
 
 **Internal Team:**
+
 ```
 Subject: 🚀 Rangkai v2.0 Deployed - Multi-User Authentication Live
 
@@ -444,6 +492,7 @@ Rollback Plan:
 ```
 
 **End Users (If applicable):**
+
 ```
 📢 New Feature: User Accounts!
 
@@ -462,12 +511,15 @@ but your scans won't be saved.
 ```
 
 ## ══════════════════════════════════════════════════════════════
+
 ## DEPLOYMENT COMPLETION CHECKLIST
+
 ## ══════════════════════════════════════════════════════════════
 
 Mark each item as completed:
 
 ### Pre-Deployment
+
 - [ ] npm run check passes (0 errors)
 - [ ] npm test passes (100%)
 - [ ] npm run build succeeds
@@ -475,17 +527,20 @@ Mark each item as completed:
 - [ ] .gitignore verified (no secrets exposed)
 
 ### Google OAuth Setup
+
 - [ ] OAuth client created in Google Cloud Console
 - [ ] Redirect URIs configured correctly
 - [ ] Client ID and Client Secret obtained
 - [ ] OAuth consent screen configured
 
 ### Secrets Configuration
+
 - [ ] BETTER_AUTH_SECRET generated (32+ chars)
 - [ ] All 4 environment variables set in Cloudflare Pages
 - [ ] Secrets verified with `wrangler pages secret list`
 
 ### Database Migration
+
 - [x] Migration tested locally (optional but Recommended)
 - [x] Migration applied to production
 - [x] All 5 tables exist (user, session, account, verification, scans)
@@ -493,12 +548,14 @@ Mark each item as completed:
 - [x] Existing scans migrated successfully
 
 ### Deployment
+
 - [ ] Code committed and pushed to main
 - [ ] Cloudflare Pages build completed
 - [ ] Deployment status: Success
 - [ ] Production URL active
 
 ### Testing
+
 - [ ] Google OAuth login works
 - [ ] User menu displays correctly
 - [ ] Sign out works
@@ -507,19 +564,23 @@ Mark each item as completed:
 - [ ] Multiple users can sign in independently
 
 ### Security
+
 - [ ] No secrets in client bundle (verified with curl)
 - [ ] HTTPS enforced
 - [ ] CSP headers present
 - [ ] No console errors in production
 
 ### Documentation
+
 - [ ] CHANGELOG.md updated
 - [ ] Team notified
 - [ ] Rollback plan documented
 - [ ] Backup location recorded
 
 ## ══════════════════════════════════════════════════════════════
+
 ## SUCCESS CRITERIA
+
 ## ══════════════════════════════════════════════════════════════
 
 Deployment is considered successful when:
@@ -534,7 +595,9 @@ Deployment is considered successful when:
 ✅ Rollback plan tested and documented
 
 ## ══════════════════════════════════════════════════════════════
+
 ## SUPPORT & TROUBLESHOOTING
+
 ## ══════════════════════════════════════════════════════════════
 
 **Common Issues:**
@@ -556,12 +619,15 @@ Deployment is considered successful when:
    - Check GOOGLE_CLIENT_SECRET is correct (not Client ID)
 
 **Contact:**
+
 - GitHub Issues: https://github.com/missmuthi/rangkai-book-metadata/issues
 - Email: [your-support-email]
 - Slack: #rangkai-support
 
 ## ══════════════════════════════════════════════════════════════
+
 ## NEXT STEPS (Post-Deployment)
+
 ## ══════════════════════════════════════════════════════════════
 
 After successful deployment:

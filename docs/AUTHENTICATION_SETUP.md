@@ -1,50 +1,61 @@
 # 🔐 Authentication Setup Guide (Better Auth + D1)
 
 ## Overview
+
 Rangkai v2.0 implements multi-user authentication using **Better Auth** with Cloudflare D1 database and Google OAuth.
 
 ## ✅ Completed Implementation
 
 ### 1. Database Schema (v2.0)
+
 **File:** `schema.sql`
 
 Better Auth tables created:
+
 - **user**: User profiles (id, name, email, image, timestamps)
 - **session**: Active sessions (token, expiresAt, userId)
 - **account**: OAuth provider accounts (providerId, accountId, userId)
 - **verification**: Email verification tokens
 
 Multi-user scans table:
+
 - Added `user_id TEXT` foreign key → `user(id) ON DELETE CASCADE`
 - Added `status TEXT DEFAULT 'draft'` for scan lifecycle management
 - Added composite index `idx_scans_user_created` for efficient user queries
 
 ### 2. Server Configuration
+
 **File:** `src/lib/auth.ts`
 
 Exports:
+
 - `getAuthWithPlatform(db, baseURL)`: Initialize auth with D1 context
 - `Auth` type for TypeScript support
 
 Configuration:
+
 - Google OAuth (requires `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
 - Email/password authentication (optional)
 - 7-day session expiration
 - SQLite compatibility for D1
 
 ### 3. Client Configuration
+
 **File:** `src/lib/auth-client.ts`
 
 Exports:
+
 - `signInWithGoogle()`: Initiate Google OAuth flow
 - `handleSignOut()`: Sign out and redirect to home
 - `getCurrentSession()`: Get active session
 - All Better Auth client methods (signIn, signOut, signUp, useSession, etc.)
 
 ### 4. API Routes
+
 **File:** `src/routes/api/auth/[...all]/+server.ts`
 
 Handles:
+
 - `POST /api/auth/sign-in`: Sign in with credentials
 - `POST /api/auth/sign-up`: Create new account
 - `POST /api/auth/sign-out`: End session
@@ -54,32 +65,38 @@ Handles:
 All methods: GET, POST, PUT, DELETE, PATCH
 
 ### 5. Session Injection
+
 **File:** `src/hooks.server.ts`
 
 Updated `handle` hook:
+
 - Fetches session from Better Auth on every request
 - Injects `event.locals.session` and `event.locals.user`
 - Available in all routes via `locals` or `data`
 - Gracefully handles missing platform context (local dev)
 
 ### 6. TypeScript Definitions
+
 **File:** `src/app.d.ts`
 
 Added `App.Locals` interface:
+
 ```typescript
 interface Locals {
   session: {
-    user: { id, name, email, image },
-    session: { token, expiresAt, userId }
+    user: { id; name; email; image };
+    session: { token; expiresAt; userId };
   } | null;
-  user: { id, name, email, image } | null;
+  user: { id; name; email; image } | null;
 }
 ```
 
 ### 7. Layout with User Menu
+
 **File:** `src/routes/+layout.svelte`
 
 Features:
+
 - Sticky header with auth status
 - User avatar dropdown menu (when authenticated)
 - Login button (when not authenticated)
@@ -90,17 +107,20 @@ Features:
 **File:** `src/routes/+layout.server.ts`
 
 Passes session data from `locals` to all pages:
+
 ```typescript
 export const load = async ({ locals }) => ({
   session: locals.session,
-  user: locals.user
+  user: locals.user,
 });
 ```
 
 ### 8. Login Page
+
 **File:** `src/routes/login/+page.svelte`
 
 Features:
+
 - Google OAuth button
 - Loading states
 - Error handling
@@ -109,9 +129,11 @@ Features:
 - Modern gradient design
 
 ### 9. Environment Variables
+
 **File:** `.env.example`
 
 Required variables:
+
 ```bash
 BETTER_AUTH_URL=http://localhost:5173
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
@@ -123,6 +145,7 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 ## 🚀 Deployment Checklist
 
 ### ⏳ TODO: Apply Database Schema
+
 ```bash
 # Remote (Production)
 npx wrangler d1 execute rangkai-scans --remote --file=./schema.sql
@@ -132,11 +155,13 @@ npx wrangler d1 execute rangkai-scans --local --file=./schema.sql
 ```
 
 **Verify tables created:**
+
 ```bash
 npx wrangler d1 execute rangkai-scans --remote --command="SELECT name FROM sqlite_master WHERE type='table';"
 ```
 
 Expected output:
+
 ```
 user, session, account, verification, scans
 ```
@@ -153,11 +178,12 @@ user, session, account, verification, scans
      - Production: `https://rangkai-book-metadata.pages.dev/api/auth/callback/google`
 
 3. **Copy credentials to environment variables:**
+
    ```bash
    # Local: Create .env file
    cp .env.example .env
    # Edit .env and add your credentials
-   
+
    # Production: Set in Cloudflare Pages
    # Dashboard → Pages → rangkai-book-metadata → Settings → Environment variables
    # Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
@@ -169,6 +195,7 @@ Go to Cloudflare Pages dashboard:
 https://dash.cloudflare.com → Pages → rangkai-book-metadata → Settings → Environment variables
 
 Add:
+
 - `BETTER_AUTH_URL` = `https://rangkai-book-metadata.pages.dev`
 - `GOOGLE_CLIENT_ID` = `your-production-client-id`
 - `GOOGLE_CLIENT_SECRET` = `your-production-client-secret`
@@ -178,6 +205,7 @@ Click "Save and Deploy"
 ### ⏳ TODO: Test Authentication Flow
 
 1. **Local Testing:**
+
    ```bash
    npm run dev
    # Visit http://localhost:5173/login
@@ -213,23 +241,28 @@ Click "Save and Deploy"
 ## 🔍 Troubleshooting
 
 ### "Database not configured" error
+
 - **Cause:** Missing `platform.env.DB` binding
 - **Fix:** Check `wrangler.toml` has D1 database binding
 - **Local dev:** Run with `npm run dev` (uses Wrangler)
 
 ### "Failed to initialize database adapter"
+
 - **Cause:** Better Auth trying to connect during build time
 - **Fix:** Already implemented - auth is lazy-loaded at runtime
 
 ### OAuth redirect mismatch
+
 - **Cause:** Redirect URI not authorized in Google Console
 - **Fix:** Add exact callback URL to Google OAuth credentials
 
 ### Session not persisting
+
 - **Cause:** Cookie domain mismatch or missing cookies
 - **Fix:** Check `BETTER_AUTH_URL` matches current domain
 
 ### TypeScript errors in auth files
+
 - **Cause:** Missing `@types/node` for `process.env` access
 - **Fix:** Already installed - `npm install --save-dev @types/node`
 
@@ -238,11 +271,13 @@ Click "Save and Deploy"
 ## 📊 Database Queries (Examples)
 
 ### Get all users
+
 ```sql
 SELECT id, name, email, createdAt FROM user ORDER BY createdAt DESC;
 ```
 
 ### Get active sessions
+
 ```sql
 SELECT s.token, s.expiresAt, u.name, u.email
 FROM session s
@@ -251,6 +286,7 @@ WHERE s.expiresAt > datetime('now');
 ```
 
 ### Get user's scans
+
 ```sql
 SELECT isbn, title, authors, created_at
 FROM scans
@@ -260,6 +296,7 @@ LIMIT 10;
 ```
 
 ### Delete expired sessions (automatic cleanup)
+
 ```sql
 DELETE FROM session WHERE expiresAt < datetime('now');
 ```
@@ -302,6 +339,7 @@ DELETE FROM session WHERE expiresAt < datetime('now');
 ## 🎯 Next Steps (v2.1+)
 
 Potential enhancements:
+
 - [ ] Email verification flow (currently disabled)
 - [ ] Password reset functionality
 - [ ] User profile editing page

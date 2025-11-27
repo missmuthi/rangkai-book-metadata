@@ -3,6 +3,7 @@
 ## 1. Menu Navigation Issue
 
 ### BEFORE ❌
+
 ```svelte
 <a
   href="/dashboard"
@@ -18,6 +19,7 @@
 **Problem:** The `onclick` handler interfered with navigation. Clicking "Dashboard" or "History" did nothing.
 
 ### AFTER ✅
+
 ```svelte
 <a
   href="/dashboard"
@@ -36,6 +38,7 @@
 ### BEFORE ❌
 
 **Layout Header (src/routes/+layout.svelte):**
+
 ```
 ┌─────────────────────────────────────┐
 │ [Rangkai Logo] Rangkai    [Login]  │ ← Layout header
@@ -43,6 +46,7 @@
 ```
 
 **Page Header (src/routes/+page.svelte):**
+
 ```
 ┌─────────────────────────────────────┐
 │ [R] Rangkai    Metadata Harvester   │ ← DUPLICATE!
@@ -54,6 +58,7 @@
 ### AFTER ✅
 
 **Single Header (src/routes/+layout.svelte only):**
+
 ```
 ┌─────────────────────────────────────┐
 │ [Rangkai Logo] Rangkai    [Login]  │ ← One header for all pages
@@ -67,6 +72,7 @@
 ## 3. Footer Updates
 
 ### BEFORE ❌
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │ Rangkai v1.1.0  |  Home Features GitHub  |  By MikhailRyu
@@ -74,11 +80,13 @@
 ```
 
 **Problems:**
+
 - Wrong version (v1.1.0 vs actual v2.0.2)
 - Minimal branding (just "Rangkai")
 - No indication of app purpose
 
 ### AFTER ✅
+
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │ Rangkai Book Metadata Harvester                                │
@@ -89,6 +97,7 @@
 ```
 
 **Improvements:**
+
 - ✅ Correct version (v2.0.2)
 - ✅ Full app name
 - ✅ Clear purpose ("Built for SLiMS workflows")
@@ -101,25 +110,29 @@
 ### BEFORE ❌
 
 **Tone:** Marketing-heavy
+
 ```markdown
 # Why use Rangkai?
 
-A modern, intelligent metadata harvesting tool designed for 
-Indonesian libraries and catalogers. Automate the tedious 
+A modern, intelligent metadata harvesting tool designed for
+Indonesian libraries and catalogers. Automate the tedious
 process of metadata entry...
 
 ## Triple-Source Search
-Simultaneously fetch metadata from Google Books, OpenLibrary, 
-and Library of Congress. Get the most complete and authoritative 
+
+Simultaneously fetch metadata from Google Books, OpenLibrary,
+and Library of Congress. Get the most complete and authoritative
 data available. ✨
 
 [Authoritative LCC] [DDC Mapping]
 
 ## Unjammable Scanner Mode ⚡
+
 Scan 50+ books in minutes without touching the mouse!
 ```
 
 **Problems:**
+
 - Heavy marketing language ("Why use Rangkai?", "Automate the tedious...")
 - Superlatives and hype ("most complete", "⚡ 50+ books in minutes!")
 - Not aligned with app-only direction
@@ -127,11 +140,12 @@ Scan 50+ books in minutes without touching the mouse!
 ### AFTER ✅
 
 **Tone:** Professional, app-focused
+
 ```markdown
 # Rangkai Book Metadata Harvester
 
-A focused tool for librarians to scan ISBNs, fetch authoritative 
-metadata from multiple sources, and prepare catalog-ready records 
+A focused tool for librarians to scan ISBNs, fetch authoritative
+metadata from multiple sources, and prepare catalog-ready records
 for SLiMS and other library systems.
 
 ✅ App-only, no marketing fluff
@@ -140,19 +154,22 @@ for SLiMS and other library systems.
 ## Core Capabilities
 
 ### ISBN Scan & Fetch
-Scan or input ISBN-10/13. Automatically fetches from Google Books, 
+
+Scan or input ISBN-10/13. Automatically fetches from Google Books,
 OpenLibrary, and Library of Congress.
 
 [Multi-source] [Barcode scanner ready]
 
 ### Normalized & Merged Metadata
-Combines data from all sources into a clean, SLiMS-compatible 
+
+Combines data from all sources into a clean, SLiMS-compatible
 record with DDC/LCC classification.
 
 [Auto call numbers] [Cataloger-first fields]
 ```
 
 **Improvements:**
+
 - ✅ Direct, factual language
 - ✅ Emphasizes actual workflow (scan → fetch → export)
 - ✅ Focus on librarian needs (SLiMS, cataloging)
@@ -163,12 +180,12 @@ record with DDC/LCC classification.
 
 ## Summary of Changes
 
-| Issue | Before | After | Impact |
-|-------|--------|-------|--------|
-| **Menu navigation** | Broken `onclick` handlers | Clean `<a href>` | ✅ Navigation works |
-| **Duplicate headers** | 2 headers (layout + page) | 1 header (layout only) | ✅ Clean UI |
-| **Footer version** | v1.1.0 | v2.0.2 | ✅ Accurate branding |
-| **Features page** | Marketing-heavy | App-focused | ✅ Professional tone |
+| Issue                 | Before                    | After                  | Impact               |
+| --------------------- | ------------------------- | ---------------------- | -------------------- |
+| **Menu navigation**   | Broken `onclick` handlers | Clean `<a href>`       | ✅ Navigation works  |
+| **Duplicate headers** | 2 headers (layout + page) | 1 header (layout only) | ✅ Clean UI          |
+| **Footer version**    | v1.1.0                    | v2.0.2                 | ✅ Accurate branding |
+| **Features page**     | Marketing-heavy           | App-focused            | ✅ Professional tone |
 
 ---
 
@@ -179,6 +196,7 @@ record with DDC/LCC classification.
 3. `src/routes/features/+page.svelte` - Complete rewrite (app-focused)
 
 Total changes:
+
 - +175 insertions
 - -162 deletions
 - 3 files changed

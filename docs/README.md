@@ -15,12 +15,15 @@ This directory contains all core documentation for the Rangkai project.
 ## 📚 Documentation Structure
 
 ### Core Docs
+
 - System overview, architecture, API integration, deployment
 
 ### Meta Docs (`/meta`)
+
 - AI agents, Copilot instructions, tooling
 
 ### Legacy Docs (`/legacy`)
+
 - Historical references, archived bugfixes, deprecated notes
 
 ## 📖 Full Documentation Map

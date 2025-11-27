@@ -215,13 +215,7 @@
 
 	<!-- Floating Action Button -->
 	<button
-		class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50
-			   flex items-center gap-3 px-8 py-4
-			   bg-gradient-to-r from-blue-600 to-blue-700
-			   text-white text-lg font-semibold rounded-full
-			   shadow-2xl active:scale-95 transition-all
-			   disabled:opacity-80 disabled:cursor-wait
-			   min-w-[220px] justify-center hover:shadow-blue-500/30"
+		class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-lg font-semibold rounded-full shadow-2xl active:scale-95 transition-all disabled:opacity-80 disabled:cursor-wait min-w-[220px] justify-center hover:shadow-blue-500/30"
 		onclick={toggleCamera}
 		disabled={isLoading}
 		aria-label={cameraActive ? "Stop scanning" : "Start scanning"}

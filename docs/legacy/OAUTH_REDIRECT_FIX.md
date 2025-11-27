@@ -23,25 +23,28 @@ Google OAuth was returning `Error 400: redirect_uri_mismatch` during login. The 
  * Prevents double-slash issues in OAuth redirect URIs
  */
 function normalizeBaseUrl(baseUrl: string): string {
-	if (!baseUrl) {
-		throw new Error('BETTER_AUTH_URL environment variable is not set');
-	}
-	
-	// Remove all trailing slashes
-	const normalized = baseUrl.replace(/\/+$/, '');
-	
-	// Validate it's a proper URL
-	try {
-		new URL(normalized);
-	} catch (error) {
-		throw new Error(`Invalid BETTER_AUTH_URL: ${baseUrl}. Must be a valid URL.`);
-	}
-	
-	return normalized;
+  if (!baseUrl) {
+    throw new Error("BETTER_AUTH_URL environment variable is not set");
+  }
+
+  // Remove all trailing slashes
+  const normalized = baseUrl.replace(/\/+$/, "");
+
+  // Validate it's a proper URL
+  try {
+    new URL(normalized);
+  } catch (error) {
+    throw new Error(
+      `Invalid BETTER_AUTH_URL: ${baseUrl}. Must be a valid URL.`,
+    );
+  }
+
+  return normalized;
 }
 ```
 
 **Why this matters:**
+
 - Strips trailing slashes: `https://example.com/` → `https://example.com`
 - Prevents: `https://example.com//api/auth/callback/google` (double slash)
 - Validates URL format before use
@@ -52,23 +55,24 @@ function normalizeBaseUrl(baseUrl: string): string {
 **File:** `src/lib/auth-simple.ts`
 
 ```typescript
-export function createGoogleAuth(env: App.Platform['env']) {
-	const baseUrl = normalizeBaseUrl(env.BETTER_AUTH_URL);
-	const redirectUri = `${baseUrl}/api/auth/callback/google`;
-	
-	// Debug logging for OAuth configuration
-	console.log('[OAuth Config] Base URL:', baseUrl);
-	console.log('[OAuth Config] Redirect URI:', redirectUri);
-	
-	return new Google(
-		env.GOOGLE_CLIENT_ID,
-		env.GOOGLE_CLIENT_SECRET,
-		redirectUri
-	);
+export function createGoogleAuth(env: App.Platform["env"]) {
+  const baseUrl = normalizeBaseUrl(env.BETTER_AUTH_URL);
+  const redirectUri = `${baseUrl}/api/auth/callback/google`;
+
+  // Debug logging for OAuth configuration
+  console.log("[OAuth Config] Base URL:", baseUrl);
+  console.log("[OAuth Config] Redirect URI:", redirectUri);
+
+  return new Google(
+    env.GOOGLE_CLIENT_ID,
+    env.GOOGLE_CLIENT_SECRET,
+    redirectUri,
+  );
 }
 ```
 
 **Benefits:**
+
 - Logs exact redirect URI being sent to Google
 - Makes debugging production issues trivial
 - Shows immediately if env var is wrong
@@ -78,12 +82,13 @@ export function createGoogleAuth(env: App.Platform['env']) {
 **File:** `src/routes/api/auth/[...all]/+server.ts`
 
 ```typescript
-console.log('[OAuth] Initiating Google login flow');
-console.log('[OAuth] State:', state);
-console.log('[OAuth] Authorization URL:', authUrl.toString());
+console.log("[OAuth] Initiating Google login flow");
+console.log("[OAuth] State:", state);
+console.log("[OAuth] Authorization URL:", authUrl.toString());
 ```
 
 **Helps debug:**
+
 - When OAuth flow starts
 - What state token was generated
 - Full authorization URL with all parameters
@@ -101,6 +106,7 @@ BETTER_AUTH_URL="http://localhost:5173"
 ```
 
 **Why this matters:**
+
 - Local dev now uses `http://localhost:5173/api/auth/callback/google`
 - Matches Google Cloud Console authorized redirect URI for dev
 - No more production URL in local development
@@ -165,6 +171,7 @@ npm run deploy
 2. Click "Continue with Google"
 3. Open browser DevTools → Console
 4. Watch for logs:
+
    ```
    [OAuth Config] Base URL: https://rangkai-book-metadata.pages.dev
    [OAuth Config] Redirect URI: https://rangkai-book-metadata.pages.dev/api/auth/callback/google
@@ -183,6 +190,7 @@ npx wrangler pages deployment tail --project-name=rangkai-book-metadata --format
 ```
 
 **Look for:**
+
 ```
 ✅ [OAuth Config] Base URL: https://rangkai-book-metadata.pages.dev
 ✅ [OAuth Config] Redirect URI: https://rangkai-book-metadata.pages.dev/api/auth/callback/google
@@ -190,6 +198,7 @@ npx wrangler pages deployment tail --project-name=rangkai-book-metadata --format
 ```
 
 **Red flags:**
+
 ```
 ❌ [OAuth Config] Base URL: https://rangkai-book-metadata.pages.dev/  (trailing slash!)
 ❌ [OAuth Config] Redirect URI: ...//api/auth/...  (double slash!)
@@ -227,12 +236,12 @@ npm run dev
 
 ## 📊 What Changed
 
-| File | Change | Purpose |
-|------|--------|---------|
-| `src/lib/auth-simple.ts` | Added `normalizeBaseUrl()` | Strip trailing slashes, validate URL |
-| `src/lib/auth-simple.ts` | Updated `createGoogleAuth()` | Use normalized URL, add debug logging |
-| `src/routes/api/auth/[...all]/+server.ts` | Added OAuth flow logging | Debug authorization URL generation |
-| `.env` | Changed `BETTER_AUTH_URL` to localhost | Fix local development environment |
+| File                                      | Change                                 | Purpose                               |
+| ----------------------------------------- | -------------------------------------- | ------------------------------------- |
+| `src/lib/auth-simple.ts`                  | Added `normalizeBaseUrl()`             | Strip trailing slashes, validate URL  |
+| `src/lib/auth-simple.ts`                  | Updated `createGoogleAuth()`           | Use normalized URL, add debug logging |
+| `src/routes/api/auth/[...all]/+server.ts` | Added OAuth flow logging               | Debug authorization URL generation    |
+| `.env`                                    | Changed `BETTER_AUTH_URL` to localhost | Fix local development environment     |
 
 ---
 
@@ -241,6 +250,7 @@ npm run dev
 If OAuth still fails after this fix:
 
 ### 1. Check Environment Variables
+
 ```bash
 # Production (Cloudflare Dashboard)
 # Verify BETTER_AUTH_URL = https://rangkai-book-metadata.pages.dev (NO trailing slash)
@@ -250,6 +260,7 @@ If OAuth still fails after this fix:
 ```
 
 ### 2. Check Console Logs
+
 ```javascript
 // Look for these exact values in browser console:
 [OAuth Config] Base URL: https://rangkai-book-metadata.pages.dev
@@ -257,24 +268,27 @@ If OAuth still fails after this fix:
 ```
 
 ### 3. Check Authorization URL
+
 The authorization URL should contain:
+
 ```
 redirect_uri=https%3A%2F%2Frangkai-book-metadata.pages.dev%2Fapi%2Fauth%2Fcallback%2Fgoogle
 ```
 
 Decoded:
+
 ```
 redirect_uri=https://rangkai-book-metadata.pages.dev/api/auth/callback/google
 ```
 
 ### 4. Common Issues
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| Double slash in URL (`//api/auth`) | Trailing slash in `BETTER_AUTH_URL` | Use `normalizeBaseUrl()` helper |
-| `google2` in redirect path | Stale Google Cloud Console config | Remove old redirect URIs |
-| `localhost` redirects in production | Wrong Cloudflare env var | Update `BETTER_AUTH_URL` secret |
-| `redirect_uri_mismatch` | URL doesn't match Google Console | Copy exact URL from logs, add to Google Console |
+| Symptom                             | Cause                               | Fix                                             |
+| ----------------------------------- | ----------------------------------- | ----------------------------------------------- |
+| Double slash in URL (`//api/auth`)  | Trailing slash in `BETTER_AUTH_URL` | Use `normalizeBaseUrl()` helper                 |
+| `google2` in redirect path          | Stale Google Cloud Console config   | Remove old redirect URIs                        |
+| `localhost` redirects in production | Wrong Cloudflare env var            | Update `BETTER_AUTH_URL` secret                 |
+| `redirect_uri_mismatch`             | URL doesn't match Google Console    | Copy exact URL from logs, add to Google Console |
 
 ---
 
@@ -290,6 +304,7 @@ redirect_uri=https://rangkai-book-metadata.pages.dev/api/auth/callback/google
 - [x] TypeScript compilation passes
 
 **Next step:** Deploy and verify in production logs that the redirect URI is exactly:
+
 ```
 https://rangkai-book-metadata.pages.dev/api/auth/callback/google
 ```

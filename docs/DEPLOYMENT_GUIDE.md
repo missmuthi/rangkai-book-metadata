@@ -30,17 +30,20 @@ This guide covers deploying Rangkai Book Metadata to Cloudflare Pages (productio
 ### 1. Cloudflare Account Setup
 
 **Create Account:**
+
 1. Sign up at [dash.cloudflare.com](https://dash.cloudflare.com/)
 2. Verify email
 3. (Optional) Add payment method for production usage
 
 **Required Services:**
+
 - ✅ Cloudflare Pages (hosting)
 - ✅ Cloudflare Workers (serverless API)
 - ✅ Cloudflare D1 (database)
 - ✅ Cloudflare KV (cache)
 
 **Free Tier Limits:**
+
 - Workers: 100,000 requests/day
 - D1: 5 GB storage, 5M reads/day
 - KV: 100,000 reads/day, 1,000 writes/day
@@ -202,13 +205,13 @@ id = "0844494af5e74ac1b28600f686a060c2"  # From output above
 1. Go to **Pages** → **rangkai-book-metadata** → **Settings** → **Environment variables**
 2. Add production variables:
 
-| Variable Name | Value | Environment |
-|---------------|-------|-------------|
-| `VITE_GOOGLE_BOOKS_API_KEY` | `AIzaSy...` | Production |
-| `BETTER_AUTH_SECRET` | (generated secret) | Production |
-| `BETTER_AUTH_URL` | `https://rangkai-book-metadata.pages.dev` | Production |
-| `GOOGLE_CLIENT_ID` | (OAuth client ID) | Production |
-| `GOOGLE_CLIENT_SECRET` | (OAuth client secret) | Production |
+| Variable Name               | Value                                     | Environment |
+| --------------------------- | ----------------------------------------- | ----------- |
+| `VITE_GOOGLE_BOOKS_API_KEY` | `AIzaSy...`                               | Production  |
+| `BETTER_AUTH_SECRET`        | (generated secret)                        | Production  |
+| `BETTER_AUTH_URL`           | `https://rangkai-book-metadata.pages.dev` | Production  |
+| `GOOGLE_CLIENT_ID`          | (OAuth client ID)                         | Production  |
+| `GOOGLE_CLIENT_SECRET`      | (OAuth client secret)                     | Production  |
 
 **Via Wrangler CLI:**
 
@@ -272,7 +275,7 @@ name: Deploy to Cloudflare Pages
 on:
   push:
     branches:
-      - main  # Deploy on push to main branch
+      - main # Deploy on push to main branch
 
 jobs:
   deploy:
@@ -280,31 +283,31 @@ jobs:
     permissions:
       contents: read
       deployments: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-      
+          node-version: "18"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run tests
         run: npm test
-      
+
       - name: Type check
         run: npm run check
-      
+
       - name: Build
         run: npm run build
         env:
           VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
-      
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
@@ -320,11 +323,11 @@ jobs:
 1. Go to **GitHub repo** → **Settings** → **Secrets and variables** → **Actions**
 2. Add secrets:
 
-| Secret Name | Value | How to Get |
-|-------------|-------|------------|
-| `CLOUDFLARE_API_TOKEN` | (API token) | Cloudflare Dashboard → My Profile → API Tokens |
-| `CLOUDFLARE_ACCOUNT_ID` | (account ID) | Cloudflare Dashboard → Workers → Account ID |
-| `GOOGLE_BOOKS_API_KEY` | (API key) | Google Cloud Console → APIs & Services |
+| Secret Name             | Value        | How to Get                                     |
+| ----------------------- | ------------ | ---------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | (API token)  | Cloudflare Dashboard → My Profile → API Tokens |
+| `CLOUDFLARE_ACCOUNT_ID` | (account ID) | Cloudflare Dashboard → Workers → Account ID    |
+| `GOOGLE_BOOKS_API_KEY`  | (API key)    | Google Cloud Console → APIs & Services         |
 
 **Create Cloudflare API Token:**
 
@@ -473,6 +476,7 @@ wrangler d1 execute rangkai-scans --file=./migrations/20250122120001_rollback_ad
 ### Environment Variables Strategy
 
 **Development (.env.local):**
+
 ```bash
 VITE_GOOGLE_BOOKS_API_KEY=<dev-api-key>
 BETTER_AUTH_URL=http://localhost:5173
@@ -480,6 +484,7 @@ GOOGLE_CLIENT_ID=<dev-oauth-client>
 ```
 
 **Production (Cloudflare Dashboard):**
+
 ```bash
 VITE_GOOGLE_BOOKS_API_KEY=<prod-api-key>
 BETTER_AUTH_URL=https://rangkai-book-metadata.pages.dev
@@ -487,6 +492,7 @@ GOOGLE_CLIENT_ID=<prod-oauth-client>
 ```
 
 **Staging (Optional):**
+
 ```bash
 VITE_GOOGLE_BOOKS_API_KEY=<dev-api-key>  # Use dev quota
 BETTER_AUTH_URL=https://staging.rangkai-book-metadata.pages.dev
@@ -522,6 +528,7 @@ const apiKey = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY;
 **Navigate to:** Pages → rangkai-book-metadata → Analytics
 
 **Key Metrics:**
+
 - **Requests:** Total HTTP requests per day
 - **Bandwidth:** Data transferred
 - **Errors:** 4xx/5xx response counts
@@ -556,6 +563,7 @@ wrangler pages deployment tail --status 5xx
 **Cause:** D1 database not linked in `wrangler.toml`.
 
 **Solution:**
+
 ```toml
 [[d1_databases]]
 binding = "DB"
@@ -568,6 +576,7 @@ database_id = "your-actual-database-id"
 **Cause:** Cache miss (expected) or KV namespace not linked.
 
 **Solution:** Check `wrangler.toml`:
+
 ```toml
 [[kv_namespaces]]
 binding = "BOOK_CACHE"
@@ -579,6 +588,7 @@ id = "your-actual-kv-id"
 **Cause:** API key not set or quota exceeded.
 
 **Solution:**
+
 - Verify `VITE_GOOGLE_BOOKS_API_KEY` in Cloudflare Pages settings
 - Check quota usage in Google Cloud Console
 
@@ -587,6 +597,7 @@ id = "your-actual-kv-id"
 **Cause:** Google OAuth client not configured for production URL.
 
 **Solution:**
+
 - Go to Google Cloud Console → OAuth 2.0 Client
 - Add authorized redirect URI:
   - `https://rangkai-book-metadata.pages.dev/api/auth/callback/google`
@@ -603,13 +614,14 @@ id = "your-actual-kv-id"
 // src/routes/api/book/[isbn]/+server.ts
 return json(data, {
   headers: {
-    'Cache-Control': 'public, max-age=3600, s-maxage=86400',
-    'X-Cache': cacheHit ? 'HIT' : 'MISS'
-  }
+    "Cache-Control": "public, max-age=3600, s-maxage=86400",
+    "X-Cache": cacheHit ? "HIT" : "MISS",
+  },
 });
 ```
 
 **Benefits:**
+
 - Cloudflare edge caches responses
 - Reduces Worker invocations
 - Faster response times globally
@@ -617,6 +629,7 @@ return json(data, {
 ### Enable Compression
 
 **Cloudflare Auto-Compresses:**
+
 - Gzip/Brotli automatically enabled
 - No configuration needed
 - ~70% size reduction for JSON/HTML
@@ -626,6 +639,7 @@ return json(data, {
 **Current Cold Start:** ~5-10ms (Workers V8 isolates)
 
 **Optimization:**
+
 - Keep bundle size small (<1MB)
 - Avoid heavy dependencies in Workers
 - Use lazy loading for infrequent code paths
@@ -650,6 +664,7 @@ return json(data, {
 ### HTTPS Enforcement
 
 **Cloudflare Pages Auto-Enables:**
+
 - HTTPS by default
 - Auto SSL certificate
 - HTTP → HTTPS redirect

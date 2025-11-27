@@ -5,14 +5,15 @@
 The OAuth callback handler was catching SvelteKit `redirect()` objects as errors, logging them, and returning a 500 error instead of allowing the redirect to complete. This broke the entire login flow.
 
 **Root Cause:**
+
 ```typescript
 // ❌ WRONG - Treats redirects as errors
 try {
-    // ... auth logic ...
-    throw redirect(303, '/');
+  // ... auth logic ...
+  throw redirect(303, "/");
 } catch (error) {
-    console.error('Error:', error); // Logs the redirect object!
-    return new Response('Auth failed', { status: 500 });
+  console.error("Error:", error); // Logs the redirect object!
+  return new Response("Auth failed", { status: 500 });
 }
 ```
 
@@ -21,33 +22,36 @@ try {
 ## ✅ The Fix
 
 ### 1. Import `isRedirect` Helper
+
 ```typescript
-import { redirect, isRedirect } from '@sveltejs/kit';
+import { redirect, isRedirect } from "@sveltejs/kit";
 ```
 
 ### 2. Check for Redirects in Catch Block
+
 ```typescript
 try {
-    // ... OAuth logic ...
-    console.log('[OAuth] ✅ Login successful for user:', googleUser.email);
-    throw redirect(303, '/');
+  // ... OAuth logic ...
+  console.log("[OAuth] ✅ Login successful for user:", googleUser.email);
+  throw redirect(303, "/");
 } catch (error) {
-    // ⚠️ CRITICAL: SvelteKit throws redirects as errors - we must re-throw them!
-    if (isRedirect(error)) {
-        throw error; // Allow the redirect to propagate
-    }
-    
-    // Log only actual errors
-    console.error('🔴 OAUTH CALLBACK ERROR');
-    console.error('Timestamp:', new Date().toISOString());
-    // ... detailed error logging ...
-    return new Response('Authentication failed', { status: 500 });
+  // ⚠️ CRITICAL: SvelteKit throws redirects as errors - we must re-throw them!
+  if (isRedirect(error)) {
+    throw error; // Allow the redirect to propagate
+  }
+
+  // Log only actual errors
+  console.error("🔴 OAUTH CALLBACK ERROR");
+  console.error("Timestamp:", new Date().toISOString());
+  // ... detailed error logging ...
+  return new Response("Authentication failed", { status: 500 });
 }
 ```
 
 ### 3. Added Success Logging
+
 ```typescript
-console.log('[OAuth] ✅ Login successful for user:', googleUser.email);
+console.log("[OAuth] ✅ Login successful for user:", googleUser.email);
 ```
 
 ---
@@ -55,16 +59,19 @@ console.log('[OAuth] ✅ Login successful for user:', googleUser.email);
 ## 🗄️ Database Reset Commands
 
 ### Quick Reset (Local Development)
+
 ```bash
 npx wrangler d1 execute rangkai-scans --local --file=reset-database.sql
 ```
 
 ### Production Reset (⚠️ Use with Caution)
+
 ```bash
 npx wrangler d1 execute rangkai-scans --remote --file=reset-database.sql
 ```
 
 ### Manual SQL Commands
+
 ```sql
 -- Delete in correct order (respect foreign keys)
 DELETE FROM session;
@@ -88,32 +95,32 @@ SELECT COUNT(*) as sessions FROM session;
 
 ```typescript
 async function onSignOut() {
-    closeUserMenu();
-    
-    try {
-        console.log('[Logout] Initiating sign out...');
-        
-        // Call server-side sign-out endpoint
-        const response = await fetch('/api/auth/sign-out', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            cache: 'no-store' // Prevent caching
-        });
-        
-        console.log('[Logout] Sign out response status:', response.status);
-        
-        if (!response.ok) {
-            console.error('[Logout] Sign out failed:', response.status);
-        }
-        
-        console.log('[Logout] ✅ Redirecting to /login');
-        // Force hard reload to clear all client-side state
-        window.location.href = '/login';
-    } catch (error) {
-        console.error('[Logout] ❌ Sign out error:', error);
-        // Still redirect even if API call fails
-        window.location.href = '/login';
+  closeUserMenu();
+
+  try {
+    console.log("[Logout] Initiating sign out...");
+
+    // Call server-side sign-out endpoint
+    const response = await fetch("/api/auth/sign-out", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store", // Prevent caching
+    });
+
+    console.log("[Logout] Sign out response status:", response.status);
+
+    if (!response.ok) {
+      console.error("[Logout] Sign out failed:", response.status);
     }
+
+    console.log("[Logout] ✅ Redirecting to /login");
+    // Force hard reload to clear all client-side state
+    window.location.href = "/login";
+  } catch (error) {
+    console.error("[Logout] ❌ Sign out error:", error);
+    // Still redirect even if API call fails
+    window.location.href = "/login";
+  }
 }
 ```
 
@@ -121,42 +128,43 @@ async function onSignOut() {
 
 ```typescript
 export const POST: RequestHandler = async ({ platform, cookies }) => {
-    if (!platform?.env?.DB) {
-        return new Response('Database not configured', { status: 500 });
+  if (!platform?.env?.DB) {
+    return new Response("Database not configured", { status: 500 });
+  }
+
+  const sessionToken = cookies.get("session");
+  if (sessionToken) {
+    try {
+      await deleteSession(platform.env.DB, sessionToken);
+      console.log("[Sign Out] ✅ Session deleted from database");
+    } catch (error) {
+      console.error("[Sign Out] ❌ Failed to delete session:", error);
     }
-    
-    const sessionToken = cookies.get('session');
-    if (sessionToken) {
-        try {
-            await deleteSession(platform.env.DB, sessionToken);
-            console.log('[Sign Out] ✅ Session deleted from database');
-        } catch (error) {
-            console.error('[Sign Out] ❌ Failed to delete session:', error);
-        }
-    }
-    
-    // Delete session cookie
-    cookies.delete('session', {
-        path: '/',
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax'
-    });
-    
-    console.log('[Sign Out] ✅ Session cookie deleted');
-    
-    return new Response(JSON.stringify({ success: true }), {
-        headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-store, no-cache, must-revalidate, private',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-        }
-    });
+  }
+
+  // Delete session cookie
+  cookies.delete("session", {
+    path: "/",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+  });
+
+  console.log("[Sign Out] ✅ Session cookie deleted");
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, no-cache, must-revalidate, private",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
+  });
 };
 ```
 
 **Why This Works:**
+
 1. ✅ Calls server endpoint to delete session from database
 2. ✅ Deletes session cookie with exact same attributes as creation
 3. ✅ Forces hard reload (`window.location.href`) to clear all state
@@ -168,6 +176,7 @@ export const POST: RequestHandler = async ({ platform, cookies }) => {
 ## 🧪 Testing Checklist
 
 ### 1. Test Fresh Login Flow
+
 ```bash
 # Reset database
 npx wrangler d1 execute rangkai-scans --local --file=reset-database.sql
@@ -181,6 +190,7 @@ npx wrangler d1 execute rangkai-scans --local --file=reset-database.sql
 ```
 
 ### 2. Verify Session in Database
+
 ```bash
 # Check session was created
 npx wrangler d1 execute rangkai-scans --local --command="SELECT * FROM session;"
@@ -188,6 +198,7 @@ npx wrangler d1 execute rangkai-scans --local --command="SELECT * FROM user;"
 ```
 
 **Expected Output:**
+
 ```
 ┌─────────┬─────────┬──────────┬────────┬────────────┬────────────┐
 │ id      │ userId  │ token    │ ...    │ userAgent  │ createdAt  │
@@ -197,6 +208,7 @@ npx wrangler d1 execute rangkai-scans --local --command="SELECT * FROM user;"
 ```
 
 ### 3. Test Sign Out
+
 ```bash
 # Click user menu → Sign Out
 # Should redirect to /login
@@ -204,6 +216,7 @@ npx wrangler d1 execute rangkai-scans --local --command="SELECT * FROM user;"
 ```
 
 ### 4. Verify Session Deleted from Database
+
 ```bash
 npx wrangler d1 execute rangkai-scans --local --command="SELECT COUNT(*) as sessions FROM session;"
 ```
@@ -211,6 +224,7 @@ npx wrangler d1 execute rangkai-scans --local --command="SELECT COUNT(*) as sess
 **Expected Output:** `sessions: 0`
 
 ### 5. Test Protected Routes
+
 ```bash
 # Visit /dashboard while logged out
 # Should redirect to /login
@@ -224,25 +238,27 @@ npx wrangler d1 execute rangkai-scans --local --command="SELECT COUNT(*) as sess
 
 ## 📊 What Changed
 
-| File | Change | Purpose |
-|------|--------|---------|
-| `src/routes/api/auth/[...all]/+server.ts` | Added `isRedirect()` check | Allow SvelteKit redirects to propagate |
-| `src/routes/api/auth/[...all]/+server.ts` | Added success log | Debug OAuth flow completion |
-| `src/routes/api/auth/[...all]/+server.ts` | Cleaned up error logging | Only log actual errors, not redirects |
-| `reset-database.sql` | Created new file | Provide easy database reset for testing |
-| `OAUTH_FIX_SUMMARY.md` | Created new file | Document the fix and testing steps |
+| File                                      | Change                     | Purpose                                 |
+| ----------------------------------------- | -------------------------- | --------------------------------------- |
+| `src/routes/api/auth/[...all]/+server.ts` | Added `isRedirect()` check | Allow SvelteKit redirects to propagate  |
+| `src/routes/api/auth/[...all]/+server.ts` | Added success log          | Debug OAuth flow completion             |
+| `src/routes/api/auth/[...all]/+server.ts` | Cleaned up error logging   | Only log actual errors, not redirects   |
+| `reset-database.sql`                      | Created new file           | Provide easy database reset for testing |
+| `OAUTH_FIX_SUMMARY.md`                    | Created new file           | Document the fix and testing steps      |
 
 ---
 
 ## 🚀 Deployment Steps
 
 ### Before Deploying:
+
 1. ✅ TypeScript check: `npm run check` (0 errors)
 2. ✅ Test locally: Full OAuth flow + logout
 3. ✅ Verify database schema matches code
 4. ✅ Ensure Google OAuth redirect URI is configured
 
 ### Deploy to Production:
+
 ```bash
 # 1. Build production bundle
 npm run build
@@ -268,12 +284,14 @@ npx wrangler pages deployment tail --project-name=rangkai-book-metadata --format
 ## 🔒 Security Notes
 
 ### What We Fixed:
+
 1. ✅ OAuth redirects now work correctly (no more 500 errors)
 2. ✅ User agent tracking added to sessions
 3. ✅ OAuth state timestamp validation (10-minute window)
 4. ✅ Proper error logging without exposing sensitive data
 
 ### Still TODO (Future Enhancements):
+
 - [ ] Rate limiting on `/api/auth/google` endpoint
 - [ ] Session sliding window (refresh expiry on activity)
 - [ ] Post-login redirect to original URL
@@ -285,18 +303,21 @@ npx wrangler pages deployment tail --project-name=rangkai-book-metadata --format
 ## 📝 Logs to Watch For
 
 ### Successful Login:
+
 ```
 [OAuth] ✅ Login successful for user: user@example.com
 [AUTH] Session created for user abc123..., expires: 2025-11-28T...
 ```
 
 ### Successful Logout:
+
 ```
 [Sign Out] ✅ Session deleted from database: abc12345...
 [Sign Out] ✅ Session cookie deleted
 ```
 
 ### Redirect Working (No Errors):
+
 ```
 # Should NOT see this anymore:
 # 🔴 OAUTH CALLBACK ERROR
