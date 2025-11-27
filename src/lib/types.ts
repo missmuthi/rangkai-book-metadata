@@ -96,4 +96,5 @@ export interface MergedBookData {
     | "google-only"
     | "loc-only"
     | "openlibrary-only";
+  aiWarning?: string;
 }

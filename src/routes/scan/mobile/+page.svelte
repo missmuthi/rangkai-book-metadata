@@ -74,6 +74,43 @@
 			error = null;
 		}
 	}
+
+	async function cleanData() {
+		if (!lastResult) return;
+
+		const original = { ...lastResult };
+		isLoading = true;
+
+		try {
+			const res = await fetch('/api/ai/clean', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(lastResult)
+			});
+
+			if (!res.ok) throw new Error('AI Cleaning failed');
+
+			const cleaned = await res.json();
+			lastResult = cleaned;
+
+			// Handle warnings
+			if (cleaned.aiWarning) {
+				toasts.add(cleaned.aiWarning, 'warning');
+			} else {
+				toasts.add('Metadata cleaned by AI ✨', 'success');
+			}
+
+			// Update selectedBook if it matches
+			if (selectedBook && (selectedBook.isbn13 === original.isbn13 || selectedBook.isbn10 === original.isbn10)) {
+				selectedBook = cleaned;
+			}
+		} catch (e) {
+			console.error(e);
+			toasts.add('Failed to clean metadata', 'error');
+		} finally {
+			isLoading = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -205,6 +242,27 @@
 					</div>
 				</div>
 			</button>
+
+			<div class="mt-2 flex justify-end">
+				<button
+					onclick={cleanData}
+					class="text-sm flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors"
+					disabled={isLoading}
+				>
+					{#if isLoading}
+						<svg class="animate-spin size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+						Cleaning...
+					{:else}
+						<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+						</svg>
+						AI Clean
+					{/if}
+				</button>
+			</div>
 		{:else}
 			<!-- Empty State Hint -->
 			<div class="text-center py-8 opacity-60">
