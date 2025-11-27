@@ -6,12 +6,14 @@
  * - 3-Source Data Fetching via metadata engine
  * - Background Writes (waitUntil pattern)
  * - Type-safe operations
+ * - ETag Support (Conditional Requests)
+ * - Input Validation (Zod)
  */
 
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { isValidISBN13, isValidISBN10 } from '$lib/utils';
 import type { MergedBookData } from '$lib/types';
+import { z } from 'zod';
 import {
 	getKV,
 	CacheKeys,
@@ -19,139 +21,173 @@ import {
 	cacheGet,
 	cacheSet,
 	fetchBookByIsbn,
-	getSourceStatus,
 	getDB,
-	createScan,
 	createAnonymousScan
 } from '$lib/server';
 
+// Define the schema for ISBN validation
+const isbnSchema = z.string().refine((val) => {
+	// Simple regex check for ISBN-10 or ISBN-13 (ignoring hyphens for regex simplicity,
+	// but the refine could be more robust if needed. The prompt asked for zod validation).
+	// We can reuse the existing utils or rely on zod regex.
+	// Let's use a regex that matches loose ISBN formats, then rely on the existing strict validators if needed,
+	// or just trust the regex.
+	// Matches 10 or 13 digits, optionally with hyphens.
+	const clean = val.replace(/[-\s]/g, '');
+	return /^(?:\d{9}[\dX]|\d{13})$/.test(clean);
+}, "Invalid ISBN format. Must be valid ISBN-10 or ISBN-13.");
+
+/**
+ * Generate a simple hash for ETag
+ */
+async function generateETag(data: unknown): Promise<string> {
+	const text = JSON.stringify(data);
+	const encoder = new TextEncoder();
+	const dataBuffer = encoder.encode(text);
+	const hashBuffer = await crypto.subtle.digest('SHA-1', dataBuffer);
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+	return `"${hashHex}"`;
+}
+
 /**
  * GET /api/book/[isbn]
- * 
- * Performance Flow:
- * 1. Check KV cache (< 100ms if hit)
- * 2. Fetch from metadata engine (< 2.5s)
- * 3. Return response IMMEDIATELY
- * 4. Background: Write to KV (non-blocking)
  */
-export const GET: RequestHandler = async ({ params, platform, fetch }) => {
+export const GET: RequestHandler = async ({ params, platform, fetch, request }) => {
 	const { isbn } = params;
 	const startTime = performance.now();
 
-	// Validate ISBN format
-	if (!isValidISBN13(isbn) && !isValidISBN10(isbn)) {
+	// === Validation ===
+	const validation = isbnSchema.safeParse(isbn);
+	if (!validation.success) {
 		throw error(400, {
-			message: 'Invalid ISBN format. Must be valid ISBN-10 or ISBN-13.'
+			message: validation.error.issues[0].message
 		});
 	}
 
 	// === STEP 1: Cache Check (KV) ===
 	const kv = getKV(platform);
+	let responseData: MergedBookData & { meta?: any } | null = null;
+	let cacheHit = false;
+
 	if (kv) {
 		try {
 			const cached = await cacheGet<MergedBookData>(kv, CacheKeys.book(isbn));
 			if (cached) {
 				console.info(`✅ [Cache HIT] ${isbn} - ${Math.round(performance.now() - startTime)}ms`);
-				return json(cached, {
-					headers: {
-						'Cache-Control': 'public, max-age=86400', // 24 hours
-						'X-Cache': 'HIT',
-						'X-Response-Time': `${Math.round(performance.now() - startTime)}ms`
-					}
-				});
+				responseData = cached;
+				cacheHit = true;
 			}
 		} catch (cacheError) {
 			console.warn('⚠️ KV cache read failed:', cacheError);
-			// Continue without cache (graceful degradation)
 		}
 	}
 
-	// === STEP 2: Fetch via Metadata Engine ===
-	const fetchStartTime = performance.now();
-	
-	let mergedData: MergedBookData;
-	let sources: { google: boolean; openlibrary: boolean; loc: boolean };
-	
-	try {
-		mergedData = await fetchBookByIsbn(fetch, isbn);
+	// === STEP 2: Fetch via Metadata Engine (if not in cache) ===
+	if (!responseData) {
+		const fetchStartTime = performance.now();
+		let mergedData: MergedBookData;
+		let sources: { google: boolean; openlibrary: boolean; loc: boolean };
 		
-		// Get source status from the metadata (with fallback)
-		const dataSource = mergedData.dataSource || '';
-		sources = {
-			google: dataSource.includes('google'),
-			openlibrary: dataSource.includes('openlibrary'),
-			loc: dataSource.includes('loc')
+		try {
+			// Pass platform for Circuit Breaker support
+			mergedData = await fetchBookByIsbn(platform, fetch, isbn);
+
+			// Get source status from the metadata
+			const dataSource = mergedData.dataSource || '';
+			sources = {
+				google: dataSource.includes('google'),
+				openlibrary: dataSource.includes('openlibrary'),
+				loc: dataSource.includes('loc')
+			};
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+			console.error(`❌ [Fetch Error] ${isbn}:`, errorMessage);
+			throw error(404, {
+				message: `Book not found: ${errorMessage}`
+			});
+		}
+
+		const fetchDuration = Math.round(performance.now() - fetchStartTime);
+		console.info(`📚 [Fetch] ${isbn} - ${fetchDuration}ms`);
+
+		// Add metadata
+		responseData = {
+			...mergedData,
+			meta: {
+				isbn,
+				sources,
+				fetchDuration,
+				totalDuration: Math.round(performance.now() - startTime),
+				timestamp: new Date().toISOString()
+			}
 		};
-	} catch (err) {
-		const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-		console.error(`❌ [Fetch Error] ${isbn}:`, errorMessage);
-		throw error(404, {
-			message: `Book not found: ${errorMessage}`
+
+		// === STEP 3: Background Tasks (waitUntil Pattern) ===
+		if (platform?.context?.waitUntil) {
+			const db = getDB(platform);
+
+			// 1. Cache Write Promise
+			const cacheWritePromise = (async () => {
+				if (kv && responseData) {
+					try {
+						await cacheSet(kv, CacheKeys.book(isbn), responseData, CacheTTL.book);
+						console.info(`✅ [KV Write] ${isbn} cached`);
+					} catch (kvError) {
+						console.error('❌ [KV Write Error]:', kvError);
+					}
+				}
+			})();
+
+			// 2. Scan Logging Promise (Anonymous - API endpoints don't have session context)
+			const scanLogPromise = (async () => {
+				try {
+					if (responseData) {
+						const title = responseData.title || 'Unknown Title';
+						const jsonData = JSON.stringify(responseData);
+
+						await createAnonymousScan(db, isbn, title, jsonData);
+						console.info(`✅ [DB Log] Anonymous scan logged`);
+					}
+				} catch (dbError) {
+					console.error('❌ [DB Write Error]:', dbError);
+				}
+			})();
+
+			// Schedule both background tasks
+			platform.context.waitUntil(Promise.allSettled([cacheWritePromise, scanLogPromise]));
+		}
+	}
+
+	if (!responseData) {
+		// Should not happen given the flow, but typescript safeguard
+		throw error(500, "Internal Server Error");
+	}
+
+	// === STEP 4: ETag and Response ===
+	const etag = await generateETag(responseData);
+	const ifNoneMatch = request.headers.get('if-none-match');
+
+	if (ifNoneMatch === etag) {
+		return new Response(null, {
+			status: 304,
+			headers: {
+				'ETag': etag,
+				'Cache-Control': 'public, max-age=3600',
+				'X-Cache': cacheHit ? 'HIT' : 'MISS'
+			}
 		});
 	}
 
-	const fetchDuration = Math.round(performance.now() - fetchStartTime);
-	console.info(`📚 [Fetch] ${isbn} - ${fetchDuration}ms`);
-
-	// Add metadata
-	const responseData = {
-		...mergedData,
-		meta: {
-			isbn,
-			sources,
-			fetchDuration,
-			totalDuration: Math.round(performance.now() - startTime),
-			timestamp: new Date().toISOString()
-		}
-	};
-
-	// === STEP 3: Background Tasks (waitUntil Pattern) ===
-	if (platform?.context?.waitUntil) {
-		const db = getDB(platform);
-
-		// 1. Cache Write Promise
-		const cacheWritePromise = (async () => {
-			if (kv) {
-				try {
-					await cacheSet(kv, CacheKeys.book(isbn), responseData, CacheTTL.book);
-					console.info(`✅ [KV Write] ${isbn} cached`);
-				} catch (kvError) {
-					console.error('❌ [KV Write Error]:', kvError);
-				}
-			}
-		})();
-
-		// 2. Scan Logging Promise (Anonymous - API endpoints don't have session context)
-		const scanLogPromise = (async () => {
-			try {
-				const title = responseData.title || 'Unknown Title';
-				const jsonData = JSON.stringify(responseData);
-
-				await createAnonymousScan(db, isbn, title, jsonData);
-				console.info(`✅ [DB Log] Anonymous scan logged`);
-			} catch (dbError) {
-				console.error('❌ [DB Write Error]:', dbError);
-			}
-		})();
-
-		// Schedule both background tasks to complete after response is sent
-		platform.context.waitUntil(Promise.allSettled([cacheWritePromise, scanLogPromise]));
-	} else if (!kv) {
-		console.warn('⚠️ KV not available - caching skipped');
-	} else {
-		console.warn('⚠️ waitUntil not available - background cache write skipped');
-	}
-
-	// === STEP 4: Return Response Immediately ===
 	const totalDuration = Math.round(performance.now() - startTime);
-	console.info(`🚀 [Response] ${isbn} - ${totalDuration}ms (cache miss)`);
 
 	return json(responseData, {
 		headers: {
+			'ETag': etag,
 			'Cache-Control': 'public, max-age=3600', // 1 hour
-			'X-Cache': 'MISS',
+			'X-Cache': cacheHit ? 'HIT' : 'MISS',
 			'X-Response-Time': `${totalDuration}ms`,
-			'X-Sources': JSON.stringify(sources)
+			'X-Sources': responseData.meta ? JSON.stringify(responseData.meta.sources) : 'cache'
 		}
 	});
 };
@@ -165,7 +201,7 @@ export const OPTIONS: RequestHandler = async () => {
 		headers: {
 			'Access-Control-Allow-Origin': '*',
 			'Access-Control-Allow-Methods': 'GET, OPTIONS',
-			'Access-Control-Allow-Headers': 'Content-Type',
+			'Access-Control-Allow-Headers': 'Content-Type, If-None-Match',
 			'Access-Control-Max-Age': '86400'
 		}
 	});

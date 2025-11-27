@@ -8,6 +8,24 @@
 import type { OpenLibraryBookData, OpenLibrarySearchResponse } from '$lib/types';
 import { Analytics } from '$lib/services/analytics';
 import { logger, LogEvents } from '$lib/server/log';
+import { CircuitBreaker, withTimeout } from '$lib/server/utils/resilience';
+import { getKV } from '$lib/server';
+
+// Platform object is needed to get KV, so we need to inject it or handle it in the caller.
+// The current fetchOpenLibrary doesn't take platform.
+// For now, we will create the CircuitBreaker inside if we can access platform, but these functions are pure.
+// The caller (src/lib/server/metadata/index.ts) probably needs to pass the platform or KV.
+// Let's check src/lib/server/metadata/index.ts again.
+
+// Wait, the current `fetchBookByIsbn` implementation in `index.ts` only takes `fetch` and `isbn`.
+// `src/routes/api/book/[isbn]/+server.ts` calls `fetchBookByIsbn(fetch, isbn)`.
+// It does NOT pass platform.
+// However, `src/routes/api/book/[isbn]/+server.ts` HAS `platform`.
+// I should update `fetchBookByIsbn` to accept `platform` or `KVNamespace`.
+// This is a cascading change.
+
+// For this step, I will assume I can modify the signature of `fetchOpenLibraryWithTimeout` to accept KV.
+// But first I need to check `src/lib/server/metadata/index.ts`.
 
 const OPENLIBRARY_PROXY = '/api/openlibrary';
 const DEFAULT_TIMEOUT = 3000; // 3 seconds (fail fast, secondary source)
@@ -15,11 +33,6 @@ const DEFAULT_TIMEOUT = 3000; // 3 seconds (fail fast, secondary source)
 /**
  * Fetch book data from OpenLibrary API (via proxy)
  * Gracefully handles rate limiting and service unavailability
- * 
- * @param query - Search query (ISBN or title)
- * @param isIsbn - Whether the query is an ISBN
- * @param limit - Maximum number of results to return
- * @returns OpenLibrary API response or null
  */
 export async function fetchOpenLibrary(
 	query: string,
@@ -33,7 +46,6 @@ export async function fetchOpenLibrary(
 		const response = await fetch(url);
 		const duration = Math.round(performance.now() - startTime);
 		
-		// Graceful degradation: Don't throw on 503/429, return null to allow Google Books fallback
 		if (!response.ok) {
 			const errorType = response.status === 503 ? 'api_503' : response.status === 429 ? 'rate_limit' : 'unknown';
 			Analytics.track('error_occurred', {
@@ -48,16 +60,15 @@ export async function fetchOpenLibrary(
 					status: response.status,
 					fallback: 'google_books'
 				});
-				return null; // Allow the app to continue with Google Books data
+				// We should throw to trigger circuit breaker failure counting
+				throw new Error(`OpenLibrary API error: ${response.status} ${response.statusText}`);
 			}
 			throw new Error(`OpenLibrary API error: ${response.status} ${response.statusText}`);
 		}
 
 		const data = await response.json();
 
-		// Check for API-level errors
 		if (data.error) {
-			// Graceful degradation for temporary unavailability
 			if (data.error.includes('temporarily unavailable') || data.error.includes('rate limit')) {
 				Analytics.track('error_occurred', {
 					error_type: 'rate_limit',
@@ -69,12 +80,11 @@ export async function fetchOpenLibrary(
 					reason: 'temporarily_unavailable',
 					fallback: 'google_books'
 				});
-				return null;
+				throw new Error(data.error);
 			}
 			throw new Error(data.error);
 		}
 
-		// Track API timing
 		Analytics.track('api_timing', {
 			source: 'openlibrary',
 			endpoint: isIsbn ? 'isbn_search' : 'title_search',
@@ -107,33 +117,36 @@ export async function fetchOpenLibrary(
 }
 
 /**
- * Fetch with timeout wrapper
+ * Fetch with timeout wrapper and circuit breaker
  */
 export async function fetchOpenLibraryWithTimeout(
+	platform: App.Platform | undefined, // Added platform
 	query: string,
 	isIsbn: boolean,
 	limit = 1,
 	timeoutMs = DEFAULT_TIMEOUT
 ): Promise<OpenLibraryBookData | OpenLibrarySearchResponse | null> {
-	return withTimeout(
-		fetchOpenLibrary(query, isIsbn, limit),
-		timeoutMs,
-		'OpenLibrary API timeout'
-	);
-}
+	const kv = getKV(platform);
+	const breaker = new CircuitBreaker(kv, 'openlibrary');
 
-/**
- * Utility to add timeout to promises
- */
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
-	return new Promise((resolve, reject) => {
-		const timeoutId = setTimeout(() => {
-			reject(new Error(timeoutMessage));
-		}, timeoutMs);
+	if (await breaker.isOpen()) {
+		console.warn('[OpenLibrary] Circuit open, skipping request');
+		return null;
+	}
 
-		promise
-			.then(resolve)
-			.catch(reject)
-			.finally(() => clearTimeout(timeoutId));
-	});
+	try {
+		const result = await withTimeout(
+			fetchOpenLibrary(query, isIsbn, limit),
+			timeoutMs,
+			'OpenLibrary API timeout'
+		);
+		await breaker.success();
+		return result;
+	} catch (error) {
+		await breaker.failure();
+		// Return null on failure instead of throwing, to allow other sources to succeed
+		// But log the error
+		console.error('[OpenLibrary] Request failed:', error);
+		return null;
+	}
 }

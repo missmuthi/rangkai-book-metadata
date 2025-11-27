@@ -9,17 +9,14 @@
 import type { LoCBookData } from '$lib/types';
 import { Analytics } from '$lib/services/analytics';
 import { logger, LogEvents } from '$lib/server/log';
+import { CircuitBreaker, withTimeout } from '$lib/server/utils/resilience';
+import { getKV } from '$lib/server';
 
 const LOC_BASE = 'https://www.loc.gov/books/';
 const DEFAULT_TIMEOUT = 5000; // 5 seconds (LoC can be slow, fail fast)
 
 /**
  * Fetch book data from Library of Congress API
- * Gracefully handles timeouts and service unavailability
- * Priority source for LCC (Library of Congress Classification)
- * 
- * @param isbn - ISBN identifier
- * @returns LoC API response or null
  */
 export async function fetchLibraryOfCongress(
 	fetchFn: typeof fetch,
@@ -32,7 +29,6 @@ export async function fetchLibraryOfCongress(
 		const response = await fetchFn(url);
 		const duration = Math.round(performance.now() - startTime);
 		
-		// Graceful degradation: Don't throw on errors, return null to allow fallback
 		if (!response.ok) {
 			const errorType = response.status === 503 ? 'api_503' : response.status === 429 ? 'rate_limit' : 'unknown';
 			Analytics.track('error_occurred', {
@@ -47,7 +43,7 @@ export async function fetchLibraryOfCongress(
 					status: response.status,
 					fallback: 'other_sources'
 				});
-				return null;
+				throw new Error(`Library of Congress API error: ${response.status} ${response.statusText}`);
 			}
 			throw new Error(`Library of Congress API error: ${response.status} ${response.statusText}`);
 		}
@@ -60,7 +56,6 @@ export async function fetchLibraryOfCongress(
 			return null;
 		}
 
-		// Track API timing
 		Analytics.track('api_timing', {
 			source: 'loc',
 			endpoint: 'isbn_search',
@@ -72,7 +67,6 @@ export async function fetchLibraryOfCongress(
 	} catch (error) {
 		const duration = Math.round(performance.now() - startTime);
 		
-		// Track timing even for failures
 		Analytics.track('api_timing', {
 			source: 'loc',
 			endpoint: 'isbn_search',
@@ -88,43 +82,43 @@ export async function fetchLibraryOfCongress(
 			});
 		}
 
-		// Silent failure - LoC can be slow or unavailable
 		logger.warn(LogEvents.METADATA_FETCH_FAILED, {
 			provider: 'loc',
 			isbn,
 			error: error instanceof Error ? error.message : 'Unknown error'
 		});
-		return null;
+		throw error;
 	}
 }
 
 /**
- * Fetch with timeout wrapper
+ * Fetch with timeout wrapper and circuit breaker
  */
 export async function fetchLibraryOfCongressWithTimeout(
+	platform: App.Platform | undefined,
 	fetchFn: typeof fetch,
 	isbn: string,
 	timeoutMs = DEFAULT_TIMEOUT
 ): Promise<LoCBookData | null> {
-	return withTimeout(
-		fetchLibraryOfCongress(fetchFn, isbn),
-		timeoutMs,
-		'Library of Congress API timeout'
-	);
-}
+	const kv = getKV(platform);
+	const breaker = new CircuitBreaker(kv, 'loc');
 
-/**
- * Utility to add timeout to promises
- */
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
-	return new Promise((resolve, reject) => {
-		const timeoutId = setTimeout(() => {
-			reject(new Error(timeoutMessage));
-		}, timeoutMs);
+	if (await breaker.isOpen()) {
+		console.warn('[LoC] Circuit open, skipping request');
+		return null;
+	}
 
-		promise
-			.then(resolve)
-			.catch(reject)
-			.finally(() => clearTimeout(timeoutId));
-	});
+	try {
+		const result = await withTimeout(
+			fetchLibraryOfCongress(fetchFn, isbn),
+			timeoutMs,
+			'Library of Congress API timeout'
+		);
+		await breaker.success();
+		return result;
+	} catch (error) {
+		await breaker.failure();
+		console.error('[LoC] Request failed:', error);
+		return null;
+	}
 }

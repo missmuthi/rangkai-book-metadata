@@ -8,17 +8,14 @@
 import type { GoogleBooksResponse } from '$lib/types';
 import { Analytics } from '$lib/services/analytics';
 import { logger, LogEvents } from '$lib/server/log';
+import { CircuitBreaker, withTimeout } from '$lib/server/utils/resilience';
+import { getKV } from '$lib/server';
 
 const GOOGLE_BOOKS_BASE = 'https://www.googleapis.com/books/v1/volumes';
 const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
 /**
  * Fetch book data from Google Books API
- * 
- * @param query - Search query (ISBN or title)
- * @param isIsbn - Whether the query is an ISBN
- * @param maxResults - Maximum number of results to return
- * @returns Google Books API response or null
  */
 export async function fetchGoogleBooks(
 	fetchFn: typeof fetch,
@@ -46,7 +43,6 @@ export async function fetchGoogleBooks(
 
 		const data: GoogleBooksResponse = await response.json();
 		
-		// Track API timing
 		Analytics.track('api_timing', {
 			source: 'google',
 			endpoint: isIsbn ? 'isbn_search' : 'title_search',
@@ -74,34 +70,35 @@ export async function fetchGoogleBooks(
 }
 
 /**
- * Fetch with timeout wrapper
+ * Fetch with timeout wrapper and circuit breaker
  */
 export async function fetchGoogleBooksWithTimeout(
+	platform: App.Platform | undefined,
 	fetchFn: typeof fetch,
 	query: string,
 	isIsbn: boolean,
 	maxResults = 1,
 	timeoutMs = DEFAULT_TIMEOUT
 ): Promise<GoogleBooksResponse | null> {
-	return withTimeout(
-		fetchGoogleBooks(fetchFn, query, isIsbn, maxResults),
-		timeoutMs,
-		'Google Books API timeout'
-	);
-}
+	const kv = getKV(platform);
+	const breaker = new CircuitBreaker(kv, 'google');
 
-/**
- * Utility to add timeout to promises
- */
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
-	return new Promise((resolve, reject) => {
-		const timeoutId = setTimeout(() => {
-			reject(new Error(timeoutMessage));
-		}, timeoutMs);
+	if (await breaker.isOpen()) {
+		console.warn('[GoogleBooks] Circuit open, skipping request');
+		return null;
+	}
 
-		promise
-			.then(resolve)
-			.catch(reject)
-			.finally(() => clearTimeout(timeoutId));
-	});
+	try {
+		const result = await withTimeout(
+			fetchGoogleBooks(fetchFn, query, isIsbn, maxResults),
+			timeoutMs,
+			'Google Books API timeout'
+		);
+		await breaker.success();
+		return result;
+	} catch (error) {
+		await breaker.failure();
+		console.error('[GoogleBooks] Request failed:', error);
+		return null;
+	}
 }
