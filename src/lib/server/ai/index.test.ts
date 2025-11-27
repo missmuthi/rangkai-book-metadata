@@ -54,7 +54,11 @@ describe('AiService', () => {
       authors: ['J. R. R. Tolkien'],
       publisher: 'Houghton Mifflin',
       description: 'Bilbo Baggins, a hobbit who enjoys a comfortable, unambitious life, is whisked away by the wizard Gandalf and a company of thirteen dwarves. He finds himself caught up in a plot to raid the treasure hoard of Smaug the Magnificent, a large and very dangerous dragon.',
-      publishedDate: '2012'
+      publishedDate: '2012',
+      ddc: '823.912',
+      lcc: 'PR6039',
+      classification: 'Fiction',
+      changes: ['Fixed Title Case', 'Added DDC']
     };
 
     (generateObject as any).mockResolvedValue({
@@ -68,6 +72,10 @@ describe('AiService', () => {
     expect(result.publisher).toBe('Houghton Mifflin');
     expect(result.description).toBe(mockCleanedData.description);
     expect(result.date).toBe('2012');
+    expect(result.ddc).toBe('823.912');
+    expect(result.lcc).toBe('PR6039');
+    expect(result.classification).toBe('Fiction');
+    expect(result._changes).toEqual(['Fixed Title Case', 'Added DDC']);
   });
 
   it('should handle partial updates correctly', async () => {

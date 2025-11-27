@@ -2,14 +2,15 @@
         import type { MergedBookData } from '$lib/types';
 
         let { book, onClose }: { book: MergedBookData; onClose: () => void } = $props();
+
+        const FALLBACK_COVER =
+                'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTBlMGUwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjN2M3YzdjIj5ObyBDb3ZlcjwvdGV4dD48L3N2Zz4=';
+
         let isCleaning = $state(false);
         let toast = $state<string | null>(null);
         let copiedField = $state<string | null>(null);
 
         let coverUrl = $derived(getSecureProxyUrl(book.cover));
-        
-        const FALLBACK_COVER =
-                'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTBlMGUwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjN2M3YzdjIj5ObyBDb3ZlcjwvdGV4dD48L3N2Zz4=';
 
         // ISBD Publisher Format
         let publisherISBD = $derived(() => {
@@ -101,6 +102,12 @@
                         isCleaning = false;
                 }
         }
+
+        // AI History (Latest Log)
+        let latestAiLog = $derived(() => {
+                if (!book.ai_log || book.ai_log.length === 0) return null;
+                return book.ai_log[book.ai_log.length - 1];
+        });
 
         function onBackdropClick(event: MouseEvent) {
                 if ((event.target as HTMLElement).id === 'book-detail-backdrop') {
@@ -257,6 +264,36 @@
 							</div>
 						</div>
 					</div>
+
+					<!-- AI History Section -->
+					{#if latestAiLog()}
+						{@const log = latestAiLog()}
+						<div class="rounded-lg bg-violet-50 p-4 ring-1 ring-violet-200">
+							<div class="flex items-center justify-between mb-2">
+								<h3 class="text-xs font-semibold uppercase tracking-wide text-violet-700">🤖 AI History</h3>
+								<span class="text-[10px] text-violet-500">
+									{new Date(log!.timestamp).toLocaleTimeString()}
+								</span>
+							</div>
+							{#if log!.changes && log!.changes.length > 0}
+								<ul class="space-y-1">
+									{#each log!.changes as change}
+										<li class="text-xs text-violet-900 flex items-start gap-1.5">
+											<span class="text-violet-400 mt-0.5">•</span>
+											{change}
+										</li>
+									{/each}
+								</ul>
+							{:else}
+								<p class="text-xs text-violet-800 flex items-center gap-1.5">
+									<svg class="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+									</svg>
+									Metadata was already perfect.
+								</p>
+							{/if}
+						</div>
+					{/if}
 
 					<!-- Actions -->
 					<div class="space-y-2">
