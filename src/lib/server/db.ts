@@ -6,6 +6,7 @@
  */
 
 import type { D1Database, Scan, User } from './types';
+import { logger, LogEvents } from './log';
 
 /**
  * Get D1 database from platform context
@@ -74,6 +75,7 @@ export async function getUserScans(
 		.bind(userId, limit)
 		.all<Scan>();
 
+	logger.info('scan_history_fetched', { userId, count: result.results?.length || 0 });
 	return result.results || [];
 }
 
@@ -146,10 +148,16 @@ export async function createScan(
 	// In D1, we can query for the last inserted row
 	const lastInserted = await db
 		.prepare(
-			`SELECT id FROM scans WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`
+			`SELECT id FROM scans WHERE user_id = ? ORDER BY id DESC LIMIT 1`
 		)
 		.bind(userId)
 		.first<{ id: number }>();
+
+	if (lastInserted?.id) {
+		logger.info(LogEvents.SCAN_CREATED, { userId, scanId: lastInserted.id, isbn });
+	} else {
+		logger.error(LogEvents.DB_WRITE_FAILED, { userId, isbn, context: 'createScan' });
+	}
 
 	return lastInserted?.id || 0;
 }

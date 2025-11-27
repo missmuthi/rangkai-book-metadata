@@ -10,15 +10,18 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireSession } from '$lib/server';
+import { logger } from '$lib/server/log';
 import { createBookScan, validateISBN } from '$modules/scan';
 
 export const POST: RequestHandler = async (event) => {
 	// Require authentication
-	await requireSession(event);
+	const session = await requireSession(event);
 
 	// Parse request body
 	const body = await event.request.json();
 	const { isbn } = body;
+
+	logger.info('scan_request_received', { userId: session.user.id, isbn });
 
 	if (!isbn || typeof isbn !== 'string') {
 		throw error(400, 'ISBN is required and must be a string');
