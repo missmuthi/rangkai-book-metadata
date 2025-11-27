@@ -68,6 +68,12 @@ export const GET: RequestHandler = async ({ params, platform, fetch, request, lo
 	// === Authorization Check ===
 	// CRITICAL: Ensure user is authenticated before saving to history
 	if (!locals.session || !locals.user) {
+		console.warn('⚠️ [Auth] Unauthorized access attempt:', {
+			hasSession: !!locals.session,
+			hasUser: !!locals.user,
+			isbn,
+			note: 'Make sure to run with `npm run dev:wrangler` for D1 database access'
+		});
 		return json({ error: 'Unauthorized: Please log in to save scans' }, { status: 401 });
 	}
 

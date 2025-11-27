@@ -35,11 +35,20 @@
 
 		try {
 			const cleaned = normalizeISBN(rawIsbn);
-			const data = await BookApiService.fetchFromServerless(cleaned);
-			lastResult = data as MergedBookData;
+			console.log('[Scanner] Looking up ISBN:', cleaned);
+			console.log('[Scanner] Session status:', data.session ? 'Authenticated' : 'Not authenticated');
+			
+			const result = await BookApiService.fetchFromServerless(cleaned);
+			lastResult = result as MergedBookData;
+			
+			console.log('[Scanner] ✅ Book fetched successfully');
+			console.log('[Scanner] Book saved to history:', result ? 'Yes' : 'Unknown');
 		} catch (err: any) {
+			console.error('[Scanner] ❌ Error fetching book:', err);
+			
 			// Handle 401 Unauthorized specifically
 			if (err.message && (err.message.includes('401') || err.message.includes('Unauthorized'))) {
+				console.warn('[Scanner] Authentication required - redirecting to login');
 				goto('/login?redirect=/scan/mobile');
 				return;
 			}
