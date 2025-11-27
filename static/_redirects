@@ -1,0 +1,3 @@
+# Cloudflare Pages Redirects
+# Force non-www canonical URL (SEO optimization)
+https://www.rangkai-book-metadata.pages.dev/* https://rangkai-book-metadata.pages.dev/:splat 301

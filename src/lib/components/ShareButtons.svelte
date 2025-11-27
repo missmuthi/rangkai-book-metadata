@@ -27,7 +27,7 @@
 		target="_blank"
 		rel="noopener noreferrer"
 		onclick={() => handleShare('whatsapp')}
-		class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors shadow-sm"
+		class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm"
 		title="Bagikan via WhatsApp"
 	>
 		<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

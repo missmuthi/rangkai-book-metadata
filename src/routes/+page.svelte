@@ -776,8 +776,16 @@
 		
 		<!-- Search Bar (from your design) -->
 		<div class="text-center mb-12 space-y-4 max-w-3xl mx-auto">
-			<h2 class="text-3xl font-bold text-gray-900">Harvest Book Data</h2>
-			<p class="text-gray-500">Enter an ISBN or Title to gather metadata from Google Books & OpenLibrary.</p>
+			<h1 class="text-4xl font-bold text-gray-900">Katalogisasi Buku Otomatis untuk SLiMS</h1>
+			<p class="text-lg text-gray-700 max-w-2xl mx-auto">
+				Scan ISBN dengan kamera ponsel, ambil metadata lengkap dari Google Books, OpenLibrary, dan Library of Congress. 
+				Export langsung ke format SLiMS CSV atau MARCXML. 100% gratis, tidak perlu registrasi.
+			</p>
+			<p class="text-sm text-gray-600">
+				<strong>Hemat waktu katalogisasi:</strong> 50 buku dalam 5 menit. 
+				Metadata otomatis termasuk DDC, LCC, ISBN, penerbit, dan subjek. 
+				Sempurna untuk perpustakaan yang menggunakan SLiMS atau sistem katalog MARC21.
+			</p>
 			
 			<div class="flex gap-2 max-w-lg mx-auto mt-6 relative">
 				<input 

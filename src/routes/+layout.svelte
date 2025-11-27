@@ -102,6 +102,7 @@ async function onSignOut() {
 <svelte:head>
 	<title>Rangkai - Katalog Buku Otomatis untuk SLiMS | Gratis & Cepat</title>
 	<meta name="description" content="Scan ISBN, ambil metadata dari 3 sumber global, export ke SLiMS. 100% gratis. Katalog 50 buku dalam 5 menit." />
+	<link rel="canonical" href="https://rangkai-book-metadata.pages.dev" />
 	<meta property="og:title" content="Rangkai - Katalog Buku Otomatis untuk SLiMS | Gratis & Cepat" />
 	<meta property="og:description" content="Scan ISBN, ambil metadata dari 3 sumber global, export ke SLiMS. 100% gratis. Katalog 50 buku dalam 5 menit." />
 	<meta property="og:image" content="https://rangkai.app/og-image.png" />
