@@ -1,10 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { requireSession } from '$lib/server';
+import { logger } from '$lib/server/log';
 import { getScanHistory } from '$modules/scan';
 
 export const load: PageServerLoad = async (event) => {
 	// Protect this route - require authentication (throws redirect if not logged in)
 	const session = await requireSession(event);
+
+	logger.info('history_page_load', { userId: session.user.id });
 
 	try {
 		// Fetch scan history using scan module
