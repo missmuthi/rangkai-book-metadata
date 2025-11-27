@@ -104,4 +104,5 @@ export interface MergedBookData {
     | "loc-only"
     | "openlibrary-only";
   aiWarning?: string;
+  ai_log?: { timestamp: number; model: string; changes: string[] }[];
 }

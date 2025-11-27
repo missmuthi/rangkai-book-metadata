@@ -18,8 +18,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const cleanedFields = await aiService.cleanMetadata(book);
 
-		// Merge cleaned fields with original data
-		const cleanedBook = { ...book, ...cleanedFields };
+		// Extract internal changes array if present
+		const changes = (cleanedFields as any)._changes || [];
+		delete (cleanedFields as any)._changes;
+
+		// Create log entry
+		const logEntry = {
+			timestamp: Date.now(),
+			model: 'Gemini 2.0',
+			changes: changes.length > 0 ? changes : []
+		};
+
+		// Merge cleaned fields with original data and append log
+		const cleanedBook = {
+			...book,
+			...cleanedFields,
+			ai_log: [...(book.ai_log || []), logEntry]
+		};
 
 		return json(cleanedBook);
 	} catch (err) {
