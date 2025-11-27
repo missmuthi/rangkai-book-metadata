@@ -231,7 +231,7 @@
 
                 {#if !isOnline}
                         <div class="absolute right-2 top-2 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-amber-50 shadow">
-                                🔌 Offline
+                                🔌 Offline Mode
                         </div>
                 {/if}
 
@@ -249,8 +249,8 @@
                                 stopScanning();
                         }}
                         disabled={!isScanning && !isStarting}
-                        aria-label="Stop camera"
-                        title="Stop camera"
+                        aria-label="Stop camera scanning"
+                        title="Stop camera scanning"
                 >
                         ⏸️ Stop
                 </button>
@@ -259,8 +259,8 @@
                         class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                         on:click={switchCamera}
                         disabled={isStarting}
-                        aria-label="Switch between front and rear camera"
-                        title="Switch between front and rear camera"
+                        aria-label="Switch camera"
+                        title="Switch camera"
                 >
                         🔄 Switch
                 </button>
@@ -272,8 +272,8 @@
                                 startIfNeeded();
                         }}
                         disabled={isScanning || isStarting}
-                        aria-label="Resume camera"
-                        title="Resume camera"
+                        aria-label="Resume camera scanning"
+                        title="Resume camera scanning"
                 >
                         ▶️ Resume
                 </button>
