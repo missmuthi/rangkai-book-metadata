@@ -2,6 +2,7 @@
 import "../app.css";
 import favicon from '$lib/assets/favicon.svg';
 import ErrorBoundary from '$lib/ErrorBoundary.svelte';
+import Toast from '$lib/components/Toast.svelte';
 import { onMount } from 'svelte';
 
 let { children, data } = $props();
@@ -60,6 +61,8 @@ async function onSignOut() {
 <svelte:head>
 	<link rel="icon" href="{favicon}" />
 </svelte:head>
+
+<Toast />
 
 <!-- Close menu when clicking outside - positioned BEHIND dropdown -->
 {#if showUserMenu}
