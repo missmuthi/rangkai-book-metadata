@@ -366,9 +366,6 @@ class AnalyticsService {
       }
 
       if (key && this.isSensitiveKey(key)) {
-        if (typeof value === "string") {
-          return this.hashSensitiveValue(value);
-        }
         return "[REDACTED]";
       }
 
@@ -380,15 +377,6 @@ class AnalyticsService {
 
   private isSensitiveKey(key: string): boolean {
     return /(email|token|code|state)/i.test(key);
-  }
-
-  private hashSensitiveValue(value: string): string {
-    let hash = 0;
-    for (let i = 0; i < value.length; i++) {
-      hash = (hash << 5) - hash + value.charCodeAt(i);
-      hash |= 0;
-    }
-    return `[REDACTED:${Math.abs(hash)}]`;
   }
 
   /**

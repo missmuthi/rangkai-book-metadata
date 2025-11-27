@@ -347,6 +347,7 @@
 
         // --- Enhanced Main Search Function ---
         async function handleSearch() {
+                // Latency Tracking: Start timer for "Time to Toast" metric
                 const scanLatencyStart = performance.now();
                 const searchStartTime = scanLatencyStart;
                 const trimmedQuery = searchQuery.trim();
