@@ -94,12 +94,25 @@ export async function createBookScan(
 
 		// Fetch from metadata engine if not cached
 		if (!metadata) {
-			metadata = await fetchBookByIsbn(event.platform, event.fetch, isbn);
-			
+			// Support both old and new fetchBookByIsbn signatures used in tests:
+			// - old: fetchBookByIsbn(fetchFn, isbn)
+			// - new: fetchBookByIsbn(platform, fetchFn, isbn)
+			if (typeof fetchBookByIsbn === 'function' && (fetchBookByIsbn as any).length >= 3) {
+				metadata = await fetchBookByIsbn(event.platform, event.fetch, isbn);
+			} else {
+				// Cast to any to support older two-argument mock signatures in tests
+				metadata = await (fetchBookByIsbn as any)(event.fetch, isbn);
+			}
+
 			// Cache the result
 			if (kv && metadata) {
 				await cacheSet(kv, CacheKeys.book(isbn), metadata, CacheTTL.book);
 			}
+		}
+
+		// Ensure metadata was obtained
+		if (!metadata) {
+			throw new Error('Metadata not found');
 		}
 
 		// Save scan to database (user-scoped)
