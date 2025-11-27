@@ -94,7 +94,7 @@ export async function createBookScan(
 
 		// Fetch from metadata engine if not cached
 		if (!metadata) {
-			metadata = await fetchBookByIsbn(event.fetch, isbn);
+			metadata = await fetchBookByIsbn(event.platform, event.fetch, isbn);
 			
 			// Cache the result
 			if (kv && metadata) {

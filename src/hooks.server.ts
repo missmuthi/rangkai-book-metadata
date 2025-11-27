@@ -1,4 +1,6 @@
 import type { Handle, HandleServerError } from '@sveltejs/kit';
+import { RateLimiter } from '$lib/server/rate-limiter';
+import { getKV } from '$lib/server/cache';
 
 /**
  * Global error handler for server-side errors
@@ -51,13 +53,31 @@ export const handleError: HandleServerError = ({ error, event, status, message }
 };
 
 /**
- * Global request handler with lightweight session injection
- * Fetches the current session from cookies and makes it available in event.locals
+ * Global request handler with lightweight session injection and Rate Limiting
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	// Log incoming requests in development
 	if (import.meta.env.DEV) {
 		console.warn(`[${event.request.method}] ${event.url.pathname}`);
+	}
+
+	// === Rate Limiting ===
+	// Limit unauthenticated users on API routes
+	if (event.url.pathname.startsWith('/api/') && !event.url.pathname.startsWith('/api/auth')) {
+		const kv = getKV(event.platform);
+		// Check for session token to determine authentication status (simple check before full session load)
+		const sessionToken = event.cookies.get('session');
+
+		if (!sessionToken) {
+			const clientIp = event.getClientAddress();
+			// Limit: 60 requests per minute for unauthenticated users
+			const limiter = new RateLimiter(kv, 60, 60);
+			const allowed = await limiter.check(clientIp);
+
+			if (!allowed) {
+				return new Response('Rate limit exceeded', { status: 429 });
+			}
+		}
 	}
 	
 	try {
