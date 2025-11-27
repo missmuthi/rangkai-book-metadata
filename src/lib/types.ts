@@ -80,6 +80,10 @@ export interface MergedBookData {
   subjects: string;
   series: string;
   publisherString: string;
+  publishPlace?: string;
+  publishYear?: string;
+  physicalDescription?: string;
+  authors?: string;
   collation: string;
   classification: string;
   edition: string;
@@ -87,6 +91,9 @@ export interface MergedBookData {
   gmd: string;
   infoLink: string;
   cover: string;
+  isbn?: string;
+  is_ai_enhanced?: boolean;
+  enhanced_at?: number;
   isPartialData?: boolean; // True when one or more sources failed
   dataSource?:
     | "all-three"
