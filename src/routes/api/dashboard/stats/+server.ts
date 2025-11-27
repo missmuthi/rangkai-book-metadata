@@ -11,7 +11,7 @@
 
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { requireSession } from "$lib/server";
+import { requireSession } from "$lib/server/auth";
 import { getDashboardData, getActivitySummary } from "$modules/dashboard";
 
 export const GET: RequestHandler = async (event) => {

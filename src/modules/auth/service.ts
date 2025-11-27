@@ -9,7 +9,7 @@
 
 import { redirect, error } from "@sveltejs/kit";
 import type { RequestEvent } from "@sveltejs/kit";
-import { getSession, requireSession as baseRequireSession } from "$lib/server";
+import { getSession, requireSession as baseRequireSession } from "$lib/server/auth";
 import type { User, SessionData } from "$lib/server/types";
 
 /**

@@ -1,5 +1,5 @@
 import type { PageServerLoad } from "./$types";
-import { requireSession } from "$lib/server";
+import { requireSession } from "$lib/server/auth";
 import { getDashboardData } from "$modules/dashboard";
 
 export const load: PageServerLoad = async (event) => {

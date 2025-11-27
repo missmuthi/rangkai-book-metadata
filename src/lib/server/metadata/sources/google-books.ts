@@ -9,7 +9,7 @@ import type { GoogleBooksResponse } from "$lib/types";
 import { Analytics } from "$lib/services/analytics";
 import { logger, LogEvents } from "$lib/server/log";
 import { CircuitBreaker, withTimeout } from "$lib/server/utils/resilience";
-import { getKV } from "$lib/server";
+import { getKV } from "$lib/server/cache";
 
 const GOOGLE_BOOKS_BASE = "https://www.googleapis.com/books/v1/volumes";
 const DEFAULT_TIMEOUT = 10000; // 10 seconds

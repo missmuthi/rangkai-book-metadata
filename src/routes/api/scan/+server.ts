@@ -9,7 +9,7 @@
 
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { requireSession } from "$lib/server";
+import { requireSession } from "$lib/server/auth";
 import { logger } from "$lib/server/log";
 import { createBookScan, validateISBN } from "$modules/scan";
 

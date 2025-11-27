@@ -1,5 +1,5 @@
 import type { PageServerLoad } from "./$types";
-import { requireSession } from "$lib/server";
+import { requireSession } from "$lib/server/auth";
 import { logger } from "$lib/server/log";
 import { getScanHistory } from "$modules/scan";
 

@@ -10,7 +10,7 @@ import type { LoCBookData } from "$lib/types";
 import { Analytics } from "$lib/services/analytics";
 import { logger, LogEvents } from "$lib/server/log";
 import { CircuitBreaker, withTimeout } from "$lib/server/utils/resilience";
-import { getKV } from "$lib/server";
+import { getKV } from "$lib/server/cache";
 
 const LOC_BASE = "https://www.loc.gov/books/";
 const DEFAULT_TIMEOUT = 5000; // 5 seconds (LoC can be slow, fail fast)

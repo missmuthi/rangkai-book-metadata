@@ -12,7 +12,7 @@ import type {
 import { Analytics } from "$lib/services/analytics";
 import { logger, LogEvents } from "$lib/server/log";
 import { CircuitBreaker, withTimeout } from "$lib/server/utils/resilience";
-import { getKV } from "$lib/server";
+import { getKV } from "$lib/server/cache";
 
 // Platform object is needed to get KV, so we need to inject it or handle it in the caller.
 // The current fetchOpenLibrary doesn't take platform.
