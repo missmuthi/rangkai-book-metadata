@@ -2,12 +2,17 @@
         import { onMount } from 'svelte';
         import type { MergedBookData } from '$lib/types';
 
-        let { book, onClose }: { book: MergedBookData; onClose: () => void } = $props();
+        interface BookWithScanId extends MergedBookData {
+                scan_id?: number;
+        }
+
+        let { book, onClose }: { book: BookWithScanId; onClose: () => void } = $props();
 
         const FALLBACK_COVER =
                 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTBlMGUwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjN2M3YzdjIj5ObyBDb3ZlcjwvdGV4dD48L3N2Zz4=';
 
         let isCleaning = $state(false);
+        let saveStatus = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
         let toast = $state<string | null>(null);
         let copiedField = $state<string | null>(null);
         let _mounted = $state(false);
@@ -94,28 +99,57 @@
 				if (isCleaning) return;
 				
 				isCleaning = true;
+				saveStatus = 'saving';
 				
 				try {
+						// Pass scan_id if available for database update
+						const payload = {
+								...book,
+								scan_id: book.scan_id || undefined
+						};
+						
 						const res = await fetch('/api/ai/clean', {
 								method: 'POST',
 								headers: { 'Content-Type': 'application/json' },
-								body: JSON.stringify(book)
+								body: JSON.stringify(payload)
 						});
 						
 						if (!res.ok) {
 								const errorText = await res.text();
 								console.error('[BookDetailModal] AI clean failed:', errorText);
+								saveStatus = 'error';
 								throw new Error('AI clean failed');
 						}
 						
 						const cleaned = await res.json();
+						
+						// Update local state with cleaned data
 						book = cleaned;
 						
-						toast = 'Metadata cleaned & saved to network.';
-						setTimeout(() => (toast = null), 3000);
+						// Check if save was successful
+						if (cleaned.saved === true || cleaned.scan_id) {
+								saveStatus = 'saved';
+								toast = 'Metadata cleaned & saved ✓';
+						} else if (cleaned.saveError) {
+								saveStatus = 'error';
+								toast = `Cleaned but save failed: ${cleaned.saveError}`;
+						} else {
+								saveStatus = 'saved';
+								toast = 'Metadata cleaned & saved ✓';
+						}
+						
+						// Auto-reset status after 3 seconds
+						setTimeout(() => {
+								saveStatus = 'idle';
+								toast = null;
+						}, 3000);
 				} catch (_e) {
+						saveStatus = 'error';
 						toast = 'Cleaning failed. Try again.';
-						setTimeout(() => (toast = null), 3000);
+						setTimeout(() => {
+								saveStatus = 'idle';
+								toast = null;
+						}, 3000);
 				} finally {
 						isCleaning = false;
 				}
@@ -317,11 +351,25 @@
 							class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
 							type="button"
 							onclick={aiClean}
-							disabled={isCleaning}
+							disabled={isCleaning || saveStatus === 'saving'}
 						>
-							{#if isCleaning}
+							{#if isCleaning || saveStatus === 'saving'}
 								<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" opacity="0.75"/></svg>
-								Cleaning...
+								{#if saveStatus === 'saving'}
+									Saving...
+								{:else}
+									Cleaning...
+								{/if}
+							{:else if saveStatus === 'saved'}
+								<svg class="h-4 w-4 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+								</svg>
+								Saved ✓
+							{:else if saveStatus === 'error'}
+								<svg class="h-4 w-4 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+								</svg>
+								Save Failed
 							{:else}
 								✨ AI Clean
 							{/if}
