@@ -14,26 +14,50 @@ import type { SessionData } from "$lib/server/types";
 type D1Database = App.Platform["env"]["DB"];
 
 /**
- * Normalize base URL by removing trailing slashes
+ * Normalize base URL by removing trailing slashes and validating format
  * Prevents double-slash issues in OAuth redirect URIs
  *
  * @param baseUrl - Raw base URL from environment variable
  * @returns Normalized URL without trailing slash
+ *
+ * @example
+ * normalizeBaseUrl("https://example.com/") // => "https://example.com"
+ * normalizeBaseUrl("https://example.com///") // => "https://example.com"
  */
 function normalizeBaseUrl(baseUrl: string): string {
   if (!baseUrl) {
-    throw new Error("BETTER_AUTH_URL environment variable is not set");
+    throw new Error(
+      "BETTER_AUTH_URL environment variable is not set. " +
+        "Set it to your app's public URL (e.g., https://your-app.pages.dev)",
+    );
   }
 
-  // Remove all trailing slashes
-  const normalized = baseUrl.replace(/\/+$/, "");
+  // Trim whitespace that may have been introduced in env vars
+  let normalized = baseUrl.trim();
 
-  // Validate it's a proper URL
+  // Remove all trailing slashes
+  normalized = normalized.replace(/\/+$/, "");
+
+  // Validate it's a proper URL with protocol
+  let parsedUrl: URL;
   try {
-    new URL(normalized);
-  } catch (error) {
+    parsedUrl = new URL(normalized);
+  } catch {
     throw new Error(
-      `Invalid BETTER_AUTH_URL: ${baseUrl}. Must be a valid URL.`,
+      `Invalid BETTER_AUTH_URL: "${baseUrl}". ` +
+        "Must be a valid URL with protocol (e.g., https://your-app.pages.dev)",
+    );
+  }
+
+  // Warn if using HTTP in what looks like a production URL
+  if (
+    parsedUrl.protocol === "http:" &&
+    !parsedUrl.hostname.includes("localhost") &&
+    !parsedUrl.hostname.includes("127.0.0.1")
+  ) {
+    console.warn(
+      `⚠️ [OAuth] BETTER_AUTH_URL uses HTTP (${normalized}). ` +
+        "OAuth callbacks may fail if Google requires HTTPS.",
     );
   }
 
@@ -45,14 +69,38 @@ function normalizeBaseUrl(baseUrl: string): string {
  *
  * Redirect URI format: {BETTER_AUTH_URL}/api/auth/callback/google
  * Example: https://rangkai-book-metadata.pages.dev/api/auth/callback/google
+ *
+ * CRITICAL: The redirectUri MUST exactly match what's configured in Google Cloud Console.
+ * Common issues:
+ * - Trailing slashes mismatch
+ * - HTTP vs HTTPS mismatch
+ * - Missing www or extra www
  */
-export function createGoogleAuth(env: App.Platform["env"]) {
+export function createGoogleAuth(
+  env: App.Platform["env"],
+  options?: { debug?: boolean },
+): Google {
   const baseUrl = normalizeBaseUrl(env.BETTER_AUTH_URL);
   const redirectUri = `${baseUrl}/api/auth/callback/google`;
 
-  // Debug logging for OAuth configuration
-  // console.log("[OAuth Config] Base URL:", baseUrl);
-  // console.log("[OAuth Config] Redirect URI:", redirectUri);
+  // Debug logging for OAuth configuration (enable in development or via option)
+  if (options?.debug) {
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("🔧 [OAuth Config] Debug Info");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("Raw BETTER_AUTH_URL:", env.BETTER_AUTH_URL);
+    console.log("Normalized Base URL:", baseUrl);
+    console.log("Computed Redirect URI:", redirectUri);
+    console.log("Google Client ID present:", !!env.GOOGLE_CLIENT_ID);
+    console.log("Google Client Secret present:", !!env.GOOGLE_CLIENT_SECRET);
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  }
+
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+    throw new Error(
+      "Missing Google OAuth credentials. Ensure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set.",
+    );
+  }
 
   return new Google(
     env.GOOGLE_CLIENT_ID,

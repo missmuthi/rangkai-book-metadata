@@ -40,6 +40,7 @@
 | **[SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md)**             | High-level architecture, features, tech stack          | First time exploring the project   |
 | **[GETTING_STARTED.md](GETTING_STARTED.md)**             | Local setup, environment configuration                 | Setting up development environment |
 | **[ARCHITECTURE.md](ARCHITECTURE.md)**                   | Detailed technical architecture, components, data flow | Planning features or debugging     |
+| **[AUTH.md](AUTH.md)**                                   | Authentication system, OAuth flow, troubleshooting     | Working with Google login          |
 | **[API_INTEGRATION_GUIDE.md](API_INTEGRATION_GUIDE.md)** | Google Books, OpenLibrary, LoC API details             | Working with metadata sources      |
 | **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)**           | Production deployment, secrets, D1/KV setup            | Deploying to Cloudflare Pages      |
 | **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)**             | Common commands, file locations                        | Quick lookups during development   |

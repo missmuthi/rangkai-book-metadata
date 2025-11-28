@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import type { PageData } from './$types';
 	
 	let { data } = $props<{ data: PageData }>();
 	let isLoading = $state(false);
-	let error = $state<string | null>(null);
+	
+	// Read error from URL query params (set by OAuth callback on failure)
+	let error = $derived($page.url.searchParams.get('error'));
 	
 	// Auto-redirect logged-in users to root
 	$effect(() => {
@@ -14,9 +17,18 @@
 		}
 	});
 	
+	// Clear error from URL when user interacts (optional UX improvement)
+	function clearError() {
+		if (error) {
+			const url = new URL(window.location.href);
+			url.searchParams.delete('error');
+			history.replaceState({}, '', url.toString());
+		}
+	}
+	
 	function handleGoogleSignIn() {
+		clearError();
 		isLoading = true;
-		error = null;
 		
 		// Redirect to Google OAuth endpoint
 		window.location.href = '/api/auth/google';

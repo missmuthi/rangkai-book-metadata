@@ -2,9 +2,20 @@ import { deleteSession } from "$lib/auth-simple";
 import type { RequestHandler } from "./$types";
 
 /**
- * POST /api/auth/sign-out - Sign out
+ * Determine if cookies should be secure based on environment
  */
-export const POST: RequestHandler = async ({ platform, cookies }) => {
+function isSecureContext(url: URL): boolean {
+  if (url.hostname.includes("pages.dev")) return true;
+  if (url.protocol === "https:") return true;
+  return false;
+}
+
+/**
+ * POST /api/auth/sign-out - Sign out
+ *
+ * Deletes the session from D1 database and clears the session cookie.
+ */
+export const POST: RequestHandler = async ({ platform, cookies, url }) => {
   if (!platform?.env?.DB) {
     return new Response("Database not configured", { status: 500 });
   }
@@ -26,10 +37,11 @@ export const POST: RequestHandler = async ({ platform, cookies }) => {
   }
 
   // Delete session cookie (match exact attributes from creation)
+  const secureCookie = isSecureContext(url);
   cookies.delete("session", {
     path: "/",
     httpOnly: true,
-    secure: true,
+    secure: secureCookie,
     sameSite: "lax",
   });
 
