@@ -10,13 +10,13 @@
         let isCleaning = $state(false);
         let toast = $state<string | null>(null);
         let copiedField = $state<string | null>(null);
-        let mounted = $state(false);
+        let _mounted = $state(false);
 
         onMount(() => {
-                console.log('[BookDetailModal] Component mounted, client-side rendering confirmed');
-                mounted = true;
+                // Component mounted - client-side rendering confirmed
+                _mounted = true;
                 return () => {
-                        console.log('[BookDetailModal] Component unmounting');
+                        // Component unmounting
                 };
         });
 
@@ -73,7 +73,7 @@
 
                         const encodedUrl = encodeURIComponent(url);
                         return `https://wsrv.nl/?url=${encodedUrl}&w=450&q=80&output=webp`;
-                } catch (error) {
+                } catch (_error) {
                         console.warn('[Secure Proxy] Invalid URL format:', url);
                         return FALLBACK_COVER;
                 }
@@ -90,55 +90,36 @@
                 }
         }
 
-        async function aiClean() {
-                console.log('[BookDetailModal] AI Clean button clicked');
-                console.log('[BookDetailModal] Current isCleaning state:', isCleaning);
-                console.log('[BookDetailModal] Book data:', book);
-                
-                if (isCleaning) {
-                        console.log('[BookDetailModal] Already cleaning, returning early');
-                        return;
-                }
-                
-                isCleaning = true;
-                console.log('[BookDetailModal] Starting AI clean process...');
-                
-                try {
-                        console.log('[BookDetailModal] Sending POST to /api/ai/clean');
-                        const res = await fetch('/api/ai/clean', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(book)
-                        });
-                        
-                        console.log('[BookDetailModal] Response status:', res.status, res.statusText);
-                        
-                        if (!res.ok) {
-                                const errorText = await res.text();
-                                console.error('[BookDetailModal] Response not OK:', errorText);
-                                throw new Error('AI clean failed');
-                        }
-                        
-                        const cleaned = await res.json();
-                        console.log('[BookDetailModal] Received cleaned data:', cleaned);
-                        console.log('[BookDetailModal] Changes detected:', cleaned.ai_log?.[cleaned.ai_log.length - 1]?.changes);
-                        
-                        book = cleaned;
-                        console.log('[BookDetailModal] Book updated successfully');
-                        
-                        toast = 'Metadata cleaned & saved to network.';
-                        setTimeout(() => (toast = null), 3000);
-                } catch (e) {
-                        console.error('[BookDetailModal] Error during AI clean:', e);
-                        toast = 'Cleaning failed. Try again.';
-                        setTimeout(() => (toast = null), 3000);
-                } finally {
-                        isCleaning = false;
-                        console.log('[BookDetailModal] AI clean process completed, isCleaning set to false');
-                }
-        }
-
-        // AI History (Latest Log)
+	async function aiClean() {
+				if (isCleaning) return;
+				
+				isCleaning = true;
+				
+				try {
+						const res = await fetch('/api/ai/clean', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify(book)
+						});
+						
+						if (!res.ok) {
+								const errorText = await res.text();
+								console.error('[BookDetailModal] AI clean failed:', errorText);
+								throw new Error('AI clean failed');
+						}
+						
+						const cleaned = await res.json();
+						book = cleaned;
+						
+						toast = 'Metadata cleaned & saved to network.';
+						setTimeout(() => (toast = null), 3000);
+				} catch (_e) {
+						toast = 'Cleaning failed. Try again.';
+						setTimeout(() => (toast = null), 3000);
+				} finally {
+						isCleaning = false;
+				}
+	}        // AI History (Latest Log)
         let latestAiLog = $derived.by(() => {
                 if (!book.ai_log || book.ai_log.length === 0) return null;
                 return book.ai_log[book.ai_log.length - 1];
@@ -335,10 +316,7 @@
 						<button
 							class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
 							type="button"
-							onclick={() => {
-								console.log('[BookDetailModal] Button onclick triggered');
-								aiClean();
-							}}
+							onclick={aiClean}
 							disabled={isCleaning}
 						>
 							{#if isCleaning}

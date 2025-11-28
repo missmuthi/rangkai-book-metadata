@@ -96,10 +96,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Special logging for DDC/LCC specifically (critical fields)
 		if (isEmptyOrInvalid(book.ddc) && isFilledAndValid(cleanedFields.ddc)) {
-			console.log(`[AI Clean] DDC was empty/invalid, now filled: ${cleanedFields.ddc}`);
+			console.warn(`[AI Clean] DDC was empty/invalid, now filled: ${cleanedFields.ddc}`);
 		}
 		if (isEmptyOrInvalid(book.lcc) && isFilledAndValid(cleanedFields.lcc)) {
-			console.log(`[AI Clean] LCC was empty/invalid, now filled: ${cleanedFields.lcc}`);
+			console.warn(`[AI Clean] LCC was empty/invalid, now filled: ${cleanedFields.lcc}`);
 		}
 
 		// Merge AI-reported changes with our detected changes

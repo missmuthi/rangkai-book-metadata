@@ -20,9 +20,9 @@
 	let selectedBook = $state<MergedBookData | null>(null);
 
 	onMount(() => {
-		console.log('[MobileScanner] Component mounted, client-side rendering confirmed');
+		// Client-side component mounted
 		return () => {
-			console.log('[MobileScanner] Component unmounting');
+			// Component unmounting
 		};
 	});
 
@@ -86,27 +86,17 @@
 	}
 
 	async function cleanData() {
-		console.log('[MobileScanner] Clean Data button clicked');
-		console.log('[MobileScanner] lastResult:', lastResult);
-		
-		if (!lastResult) {
-			console.log('[MobileScanner] No lastResult, returning early');
-			return;
-		}
+		if (!lastResult) return;
 
 		const original = { ...lastResult };
 		isLoading = true;
-		console.log('[MobileScanner] Starting AI clean process...');
 
 		try {
-			console.log('[MobileScanner] Sending POST to /api/ai/clean');
 			const res = await fetch('/api/ai/clean', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(lastResult)
 			});
-
-			console.log('[MobileScanner] Response status:', res.status, res.statusText);
 
 			if (!res.ok) {
 				const errorText = await res.text();
@@ -115,15 +105,10 @@
 			}
 
 			const cleaned = await res.json();
-			console.log('[MobileScanner] Received cleaned data:', cleaned);
-			console.log('[MobileScanner] Changes detected:', cleaned.ai_log?.[cleaned.ai_log.length - 1]?.changes);
-			
 			lastResult = cleaned;
-			console.log('[MobileScanner] lastResult updated successfully');
 
 			// Handle warnings
 			if (cleaned.aiWarning) {
-				console.log('[MobileScanner] AI warning:', cleaned.aiWarning);
 				toasts.add(cleaned.aiWarning, 'warning');
 			} else {
 				toasts.add('Metadata cleaned by AI ✨', 'success');
@@ -132,14 +117,11 @@
 			// Update selectedBook if it matches
 			if (selectedBook && (selectedBook.isbn13 === original.isbn13 || selectedBook.isbn10 === original.isbn10)) {
 				selectedBook = cleaned;
-				console.log('[MobileScanner] selectedBook also updated');
 			}
-		} catch (e) {
-			console.error('[MobileScanner] Error during AI clean:', e);
+		} catch (_e) {
 			toasts.add('Failed to clean metadata', 'error');
 		} finally {
 			isLoading = false;
-			console.log('[MobileScanner] AI clean process completed, isLoading set to false');
 		}
 	}
 </script>
@@ -277,10 +259,7 @@
 			<div class="mt-2 flex justify-end">
 				<button
 					type="button"
-					onclick={() => {
-						console.log('[MobileScanner] Clean Data button onclick triggered');
-						cleanData();
-					}}
+					onclick={cleanData}
 					class="text-sm flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors"
 					disabled={isLoading}
 				>

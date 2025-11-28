@@ -109,8 +109,8 @@
                         isScanning = false;
                         statusMessage = 'Camera stopped';
                         dispatch('status', { active: false, online: isOnline });
-                } catch (err) {
-                        // console.debug('Unable to stop scanner', err);
+                } catch (_err) {
+                        // Ignore stop errors
                 }
         }
 
@@ -125,8 +125,8 @@
                 if (scanner) {
                         try {
                                 await scanner.clear();
-                        } catch (err) {
-                                // console.debug('Unable to clear scanner', err);
+                        } catch (_err) {
+                                // Ignore clear errors
                         }
                         scanner = null;
                 }
@@ -192,8 +192,8 @@
 
                         oscillator.start();
                         oscillator.stop(context.currentTime + 0.15);
-                } catch (err) {
-                        // console.debug('Audio unavailable', err);
+                } catch (_err) {
+                        // Audio unavailable - ignore
                 }
         }
 

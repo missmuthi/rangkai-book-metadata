@@ -59,13 +59,13 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
 
     // Log for debugging (redact sensitive info)
     if (debug) {
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("🔐 [OAuth] Initiating Google login flow");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("State:", state.substring(0, 8) + "...");
-      console.log("Authorization URL hostname:", authUrl.hostname);
-      console.log("Secure cookies:", isSecureContext(url));
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.warn("🔐 [OAuth] Initiating Google login flow");
+      console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.warn("State:", state.substring(0, 8) + "...");
+      console.warn("Authorization URL hostname:", authUrl.hostname);
+      console.warn("Secure cookies:", isSecureContext(url));
+      console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     }
 
     // Cookie options with environment-aware security

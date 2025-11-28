@@ -41,6 +41,7 @@ export default [
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
         },
       ],
       "@typescript-eslint/no-explicit-any": "warn",
@@ -71,6 +72,8 @@ export default [
       "SMART_PREFETCH_DEMO.ts",
       "USAGE_EXAMPLES.ts",
       "diagnostic.js",
+      "test-ai-integration.js",
+      "test-ai-live.js",
     ],
     rules: {
       "no-console": "off",

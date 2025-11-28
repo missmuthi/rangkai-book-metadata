@@ -82,7 +82,7 @@ async function networkFirst(request: Request): Promise<Response> {
     const response = await fetch(request);
     cache.put(request, response.clone());
     return response;
-  } catch (error) {
+  } catch (_error) {
     const cached = await cache.match(request);
     if (cached) {
       return cached;
@@ -108,7 +108,7 @@ async function handleNavigation(event: FetchEvent): Promise<Response> {
     const cache = await caches.open(RUNTIME_CACHE);
     cache.put(request, networkResponse.clone());
     return networkResponse;
-  } catch (error) {
+  } catch (_error) {
     const cache = await caches.open(STATIC_CACHE);
     const cachedPage = await cache.match(request);
 

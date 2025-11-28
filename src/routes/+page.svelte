@@ -155,7 +155,7 @@
 			const encodedUrl = encodeURIComponent(url);
 			return `https://wsrv.nl/?url=${encodedUrl}&w=300&q=80&output=webp`;
 			
-		} catch (error) {
+		} catch (_error) {
 			console.warn('[Secure Proxy] Invalid URL format:', url);
 			return FALLBACK_COVER;
 		}

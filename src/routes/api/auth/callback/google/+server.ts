@@ -94,15 +94,15 @@ export const GET: RequestHandler = async ({
   // Debug logging (only in callback to avoid sensitive data exposure)
   const debug = url.searchParams.get("debug") === "true";
   if (debug) {
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("🔐 [OAuth Callback] Processing callback");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("Has code:", !!code);
-    console.log("Has state:", !!state);
-    console.log("Has stored state:", !!storedState);
-    console.log("Has code verifier:", !!codeVerifier);
-    console.log("State matches:", state === storedState);
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.warn("🔐 [OAuth Callback] Processing callback");
+    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.warn("Has code:", !!code);
+    console.warn("Has state:", !!state);
+    console.warn("Has stored state:", !!storedState);
+    console.warn("Has code verifier:", !!codeVerifier);
+    console.warn("State matches:", state === storedState);
+    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   }
 
   // Validate state freshness (prevent replay attacks)
@@ -224,7 +224,7 @@ export const GET: RequestHandler = async ({
     cookies.delete("google_code_verifier", deleteCookieOptions);
     cookies.delete("google_oauth_timestamp", deleteCookieOptions);
 
-    console.log("✅ [OAuth Callback] Login successful for:", googleUser.email);
+    console.warn("✅ [OAuth Callback] Login successful for:", googleUser.email);
 
     // Redirect to home page (stable route)
     throw redirect(303, "/");

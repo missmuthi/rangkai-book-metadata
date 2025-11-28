@@ -85,15 +85,15 @@ export function createGoogleAuth(
 
   // Debug logging for OAuth configuration (enable in development or via option)
   if (options?.debug) {
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("🔧 [OAuth Config] Debug Info");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("Raw BETTER_AUTH_URL:", env.BETTER_AUTH_URL);
-    console.log("Normalized Base URL:", baseUrl);
-    console.log("Computed Redirect URI:", redirectUri);
-    console.log("Google Client ID present:", !!env.GOOGLE_CLIENT_ID);
-    console.log("Google Client Secret present:", !!env.GOOGLE_CLIENT_SECRET);
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.warn("🔧 [OAuth Config] Debug Info");
+    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.warn("Raw BETTER_AUTH_URL:", env.BETTER_AUTH_URL);
+    console.warn("Normalized Base URL:", baseUrl);
+    console.warn("Computed Redirect URI:", redirectUri);
+    console.warn("Google Client ID present:", !!env.GOOGLE_CLIENT_ID);
+    console.warn("Google Client Secret present:", !!env.GOOGLE_CLIENT_SECRET);
+    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   }
 
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {

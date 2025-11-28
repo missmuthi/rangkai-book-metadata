@@ -21,7 +21,7 @@
 			} else {
 				console.error(label, String(err));
 			}
-		} catch (logError) {
+		} catch (_logError) {
 			console.error(label, '[Unable to serialize error]');
 		}
 	}
