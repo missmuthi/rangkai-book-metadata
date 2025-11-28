@@ -1,15 +1,34 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/server/ai';
+import { generateObject } from 'ai';
+import { z } from 'zod';
+import { google } from '@ai-sdk/google';
+import { deepClean, normalizeKeys } from '$lib/utils/metadata';
 import type { MergedBookData } from '$lib/types';
+
+// Define the Schema STRICTLY
+const metadataSchema = z.object({
+  title: z.string(),
+  publisher: z.string().describe('Format: Place : Publisher, Year'),
+  authors: z.array(z.string()).describe('List of authors without titles like Ph.D'),
+  description: z.string().describe('Concise 2-sentence summary'),
+  
+  // The Critical Fields
+  ddc: z.string().describe('Dewey Decimal Code. ESTIMATE if unknown. Ex: 005.1'),
+  lcc: z.string().describe('Library of Congress Code. ESTIMATE if unknown. Ex: QA76'),
+  language: z.string().describe('ISO 639-2 code (e.g. eng, ind)'),
+  subjects: z.string().describe('Semicolon separated subject headings'),
+  series: z.string().optional(),
+  edition: z.string().optional(),
+});
 
 /**
  * AI Clean Endpoint with Write-Through Persistence
  * 
  * This endpoint:
- * 1. Cleans book metadata using AI
- * 2. Auto-saves to D1 database (if scan_id provided, updates; otherwise inserts)
- * 3. Uses waitUntil for non-blocking background writes
+ * 1. Cleans book metadata using AI with aggressive completion
+ * 2. Deep merges data to prevent loss
+ * 3. Auto-saves to D1 database with audit log
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	// Check authentication
@@ -18,246 +37,212 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	}
 
 	const userId = locals.user.id;
+	const DB = platform?.env?.DB;
 
 	try {
-		const body = (await request.json()) as MergedBookData & { scan_id?: number };
-		const { scan_id, ...book } = body;
+		const body = (await request.json()) as MergedBookData & { scan_id?: number; mode?: string };
+		const { scan_id, mode = 'fill_gaps', ...book } = body;
 
-		if (!book) {
-			return json({ error: 'No book data provided' }, { status: 400 });
+		if (!book || !DB) {
+			return json({ error: 'No book data provided or DB unavailable' }, { status: 400 });
 		}
 
-		const cleanedFields = await aiService.cleanMetadata(book);
+		// 1. AGGRESSIVE SYSTEM PROMPT
+		const systemPrompt = `
+			You are an expert Library Cataloger. Your job is to COMPLETE bibliographic records.
+			
+			CRITICAL RULES:
+			1. NEVER return empty strings for 'ddc' or 'lcc'. 
+			2. If exact classification is unknown, ESTIMATE based on Title/Subject.
+			3. Infer 'language' from the title text.
+			4. Format Publisher as "Place : Publisher, Year".
+			5. Clean "json_data" is better than empty "json_data".
+			
+			Current Book Data: ${JSON.stringify(book)}
+		`;
 
-		// Extract internal changes array from AI response
-		const aiChanges = (cleanedFields as MergedBookData & { _changes?: string[] })._changes || [];
-		delete (cleanedFields as MergedBookData & { _changes?: string[] })._changes;
+		// 2. GENERATE DATA
+		const { object: rawAiResult } = await generateObject({
+			model: google('gemini-2.0-flash-exp'),
+			schema: metadataSchema,
+			system: systemPrompt,
+			prompt: `Fix and Complete metadata for: "${book.title}" by ${book.author || 'Unknown'}`
+		});
 
-		// COMPREHENSIVE CHANGE DETECTION
-		// Track both NEW data (filling gaps) and UPDATED data (fixing errors)
-		const detectedChanges: string[] = [];
+		// 3. NORMALIZE & OPTIMIZE
+		const aiResult = normalizeKeys(rawAiResult);
+		const cleanAiResult = deepClean(aiResult);
+
+		// 4. DEEP MERGE (The Fix for Data Loss)
+		// Parse existing JSON from book data (may be in json_data field or scattered in book object)
+		const bookWithJson = book as MergedBookData & { json_data?: string | object };
+		const existingJson = bookWithJson.json_data ? 
+			(typeof bookWithJson.json_data === 'string' ? JSON.parse(bookWithJson.json_data) : bookWithJson.json_data) 
+			: {};
 		
-		/**
-		 * Helper: Check if a value is "empty" or invalid for cataloging purposes
-		 * Treats null, undefined, '', '-', 0, '0', and whitespace-only as INVALID
-		 */
-		const isEmptyOrInvalid = (val: unknown): boolean => {
-			if (val === null || val === undefined) return true;
-			if (typeof val === 'number') return val === 0;
-			if (typeof val === 'string') {
-				const trimmed = val.trim();
-				return trimmed === '' || trimmed === '-' || trimmed === '0';
-			}
-			if (Array.isArray(val)) return val.length === 0;
-			return false;
+		// Merge: Existing data < AI Data (AI overrides in this specific flow)
+		const finalJsonData = {
+			...existingJson,
+			...cleanAiResult, 
+			// Explicitly set these to ensure they aren't lost in nesting
+			ddc: cleanAiResult.ddc,
+			lcc: cleanAiResult.lcc,
+			language: cleanAiResult.language,
+			subjects: cleanAiResult.subjects,
+			series: cleanAiResult.series,
+			edition: cleanAiResult.edition,
 		};
 
-		/**
-		 * Helper: Check if a value is "filled" and valid
-		 */
-		const isFilledAndValid = (val: unknown): boolean => {
-			if (val === null || val === undefined) return false;
-			if (typeof val === 'number') return val !== 0;
-			if (typeof val === 'string') {
-				const trimmed = val.trim();
-				return trimmed !== '' && trimmed !== '-' && trimmed !== '0';
-			}
-			if (Array.isArray(val)) return val.length > 0;
-			return Boolean(val);
-		};
-
-		/**
-		 * Helper: Normalize value for comparison (convert to string, trim)
-		 */
-		const normalizeForCompare = (val: unknown): string => {
-			if (val === null || val === undefined) return '';
-			if (typeof val === 'number') return String(val);
-			if (typeof val === 'string') return val.trim();
-			if (Array.isArray(val)) return val.join('; ');
-			return String(val);
-		};
-
-		// Define all fields to monitor (these are fields AI can modify)
-		const fieldsToCheck = [
-			'title', 'author', 'publisher', 'description', 
-			'ddc', 'lcc', 'classification',
-			'language', 'series', 'edition', 'subjects', 'date', 'publishedDate'
-		] as const;
-
-
-		fieldsToCheck.forEach(field => {
-			// Use type assertion to safely access fields that may not be in cleanedFields
-			const oldVal = (book as Record<string, unknown>)[field];
-			const newVal = (cleanedFields as Record<string, unknown>)[field];
-
-			const oldEmpty = isEmptyOrInvalid(oldVal);
-			const newFilled = isFilledAndValid(newVal);
-
-			// Case 1: NEW data (filling a gap) - AI generated missing metadata
-			if (oldEmpty && newFilled) {
-				detectedChanges.push(`Generated ${field}: ${normalizeForCompare(newVal)}`);
-			}
-			// Case 2: UPDATED data (fixing existing data) - AI corrected something
-			else if (!oldEmpty && newFilled) {
-				const oldNorm = normalizeForCompare(oldVal);
-				const newNorm = normalizeForCompare(newVal);
-				if (oldNorm !== newNorm) {
-					detectedChanges.push(`Updated ${field}: "${oldNorm}" → "${newNorm}"`);
-				}
+		// 5. AUDIT LOG (Smart Tracking)
+		const changes: string[] = [];
+		Object.keys(cleanAiResult).forEach(key => {
+			const oldVal = (book as any)[key] || (existingJson as any)[key];
+			const newVal = (cleanAiResult as any)[key];
+			if (newVal && oldVal !== newVal) {
+				changes.push(`Updated ${key}: ${newVal}`);
 			}
 		});
 
-		// Special logging for DDC/LCC specifically (critical fields)
-		if (isEmptyOrInvalid(book.ddc) && isFilledAndValid(cleanedFields.ddc)) {
-			console.warn(`[AI Clean] DDC was empty/invalid, now filled: ${cleanedFields.ddc}`);
-		}
-		if (isEmptyOrInvalid(book.lcc) && isFilledAndValid(cleanedFields.lcc)) {
-			console.warn(`[AI Clean] LCC was empty/invalid, now filled: ${cleanedFields.lcc}`);
-		}
-
-		// Merge AI-reported changes with our detected changes
-		// Remove duplicates and combine
-		const allChanges = [...new Set([...aiChanges, ...detectedChanges])];
-
-		// Create comprehensive log entry
 		const logEntry = {
 			timestamp: Date.now(),
 			model: 'Gemini 2.0 Flash',
-			changes: allChanges.length > 0 ? allChanges : ['No changes detected']
+			changes: changes.length > 0 ? changes : ['No changes detected']
 		};
 
-		// Merge cleaned fields with original data and append log
-		const cleanedBook: MergedBookData = {
-			...book,
-			...cleanedFields,
-			is_ai_enhanced: true,
-			enhanced_at: Date.now(),
-			ai_log: [...(book.ai_log || []), logEntry]
-		};
+		// Parse existing ai_log
+		let existingLog: any[] = [];
+		try {
+			if (book.ai_log) {
+				existingLog = Array.isArray(book.ai_log) ? book.ai_log : JSON.parse(book.ai_log as any);
+			}
+		} catch (e) {
+			console.error('Failed to parse ai_log:', e);
+		}
 
-		// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-		// WRITE-THROUGH PERSISTENCE: Upsert to D1 database (prevents duplicates)
-		// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+		const auditLog = [...existingLog, logEntry];
+
+		// 6. DATABASE UPDATE
 		let savedScanId: number | null = null;
 		let saveError: string | null = null;
 
-		// Safety check for D1 binding (prevents crashes in local dev without DB)
-		if (platform?.env?.DB) {
-			const db = platform.env.DB;
-			const jsonData = JSON.stringify(cleanedBook);
-			const isbn = cleanedBook.isbn13 || cleanedBook.isbn10 || cleanedBook.isbn || '';
-			const title = cleanedBook.title || 'Untitled';
+		const finalJsonString = JSON.stringify(finalJsonData);
+		const auditLogString = JSON.stringify(auditLog);
+		const isbnValue = book.isbn13 || book.isbn10 || book.isbn || '';
+		const titleValue = cleanAiResult.title || book.title || 'Untitled';
 
-			/**
-			 * UPSERT LOGIC (prevents duplicate scans for same user+isbn):
-			 * 1. If scan_id provided → UPDATE that specific row (verify ownership)
-			 * 2. Else → Check if scan exists for this user+isbn → UPDATE if found
-			 * 3. Else → INSERT new scan
-			 * 4. Race condition handling: If INSERT fails due to UNIQUE constraint,
-			 *    catch the error and return the existing scan_id
-			 */
-			const upsertToDatabase = async (): Promise<{ scanId: number | null; error: string | null }> => {
-				try {
-					// CASE 1: scan_id provided → UPDATE existing (verify user ownership)
-					if (scan_id) {
-						console.warn(`[AI Clean] Updating existing scan ID: ${scan_id}`);
-						const result = await db.prepare(`
-							UPDATE scans 
-							SET json_data = ?, title = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
-							WHERE id = ? AND user_id = ?
-						`).bind(jsonData, title, scan_id, userId).run();
+		/**
+		 * UPSERT LOGIC (prevents duplicate scans for same user+isbn):
+		 * 1. If scan_id provided → UPDATE that specific row (verify ownership)
+		 * 2. Else → Check if scan exists for this user+isbn → UPDATE if found
+		 * 3. Else → INSERT new scan
+		 */
+		const upsertToDatabase = async (): Promise<{ scanId: number | null; error: string | null }> => {
+			try {
+				// CASE 1: scan_id provided → UPDATE existing (verify user ownership)
+				if (scan_id) {
+					console.warn(`[AI Clean] Updating existing scan ID: ${scan_id}`);
+					const result = await DB.prepare(`
+						UPDATE scans 
+						SET json_data = ?, title = ?, ai_log = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
+						WHERE id = ? AND user_id = ?
+					`).bind(finalJsonString, titleValue, auditLogString, scan_id, userId).run();
 
-						if (result.meta.changes > 0) {
-							console.warn(`[AI Clean] ✅ Updated scan ID: ${scan_id}`);
-							return { scanId: scan_id, error: null };
-						}
-						// scan_id not found for this user, fall through to lookup by isbn
-						console.warn(`[AI Clean] scan_id ${scan_id} not found, checking by ISBN`);
+					if (result.meta.changes > 0) {
+						console.warn(`[AI Clean] ✅ Updated scan ID: ${scan_id}`);
+						return { scanId: scan_id, error: null };
 					}
-
-					// CASE 2: No scan_id or update failed → Check if scan exists for this user+isbn
-					if (isbn) {
-						const existing = await db.prepare(`
-							SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1
-						`).bind(userId, isbn).first<{ id: number }>();
-
-						if (existing?.id) {
-							// Found existing scan → UPDATE it
-							console.warn(`[AI Clean] Found existing scan for ISBN ${isbn}, updating ID: ${existing.id}`);
-							await db.prepare(`
-								UPDATE scans 
-								SET json_data = ?, title = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
-								WHERE id = ? AND user_id = ?
-							`).bind(jsonData, title, existing.id, userId).run();
-
-							console.warn(`[AI Clean] ✅ Updated existing scan ID: ${existing.id}`);
-							return { scanId: existing.id, error: null };
-						}
-					}
-
-					// CASE 3: No existing scan → INSERT new
-					console.warn(`[AI Clean] No existing scan found, inserting new for ISBN: ${isbn}`);
-					const result = await db.prepare(`
-						INSERT INTO scans (user_id, isbn, title, json_data, status)
-						VALUES (?, ?, ?, ?, 'completed')
-					`).bind(userId, isbn, title, jsonData).run();
-
-					const newId = result.meta.last_row_id as number;
-					console.warn(`[AI Clean] ✅ Inserted new scan ID: ${newId}`);
-					return { scanId: newId, error: null };
-
-				} catch (dbError) {
-					// CASE 4: Race condition - UNIQUE constraint violation
-					// Another request inserted while we were checking, fetch that row
-					const errorMsg = dbError instanceof Error ? dbError.message : String(dbError);
-					
-					if (errorMsg.includes('UNIQUE constraint failed') || errorMsg.includes('SQLITE_CONSTRAINT')) {
-						console.warn(`[AI Clean] Race condition detected, fetching existing scan for ISBN: ${isbn}`);
-						try {
-							const fallback = await db.prepare(`
-								SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1
-							`).bind(userId, isbn).first<{ id: number }>();
-
-							if (fallback?.id) {
-								// Update the existing row that won the race
-								await db.prepare(`
-									UPDATE scans 
-									SET json_data = ?, title = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
-									WHERE id = ? AND user_id = ?
-								`).bind(jsonData, title, fallback.id, userId).run();
-
-								console.warn(`[AI Clean] ✅ Race resolved, updated scan ID: ${fallback.id}`);
-								return { scanId: fallback.id, error: null };
-							}
-						} catch (fallbackError) {
-							console.error('[AI Clean] Fallback lookup failed:', fallbackError);
-						}
-					}
-
-					console.error('[AI Clean] Database error:', dbError);
-					return { scanId: null, error: errorMsg };
+					// scan_id not found for this user, fall through to lookup by isbn
+					console.warn(`[AI Clean] scan_id ${scan_id} not found, checking by ISBN`);
 				}
-			};
 
-			// Execute upsert SYNCHRONOUSLY to ensure we return the correct scan_id
-			// (waitUntil would cause race conditions and return stale/pending IDs)
-			const result = await upsertToDatabase();
-			savedScanId = result.scanId;
-			saveError = result.error;
-		} else {
-			console.warn('[AI Clean] ⚠️ D1 database not available - skipping persistence');
-			saveError = 'Database not configured';
-		}
+				// CASE 2: No scan_id or update failed → Check if scan exists for this user+isbn
+				if (isbnValue) {
+					const existing = await DB.prepare(`
+						SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1
+					`).bind(userId, isbnValue).first<{ id: number }>();
 
-		// Return cleaned book with save status and scan_id for frontend to store
+					if (existing?.id) {
+						// Found existing scan → UPDATE it
+						console.warn(`[AI Clean] Found existing scan for ISBN ${isbnValue}, updating ID: ${existing.id}`);
+						await DB.prepare(`
+							UPDATE scans 
+							SET json_data = ?, title = ?, ai_log = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
+							WHERE id = ? AND user_id = ?
+						`).bind(finalJsonString, titleValue, auditLogString, existing.id, userId).run();
+
+						console.warn(`[AI Clean] ✅ Updated existing scan ID: ${existing.id}`);
+						return { scanId: existing.id, error: null };
+					}
+				}
+
+				// CASE 3: No existing scan → INSERT new
+				console.warn(`[AI Clean] No existing scan found, inserting new for ISBN: ${isbnValue}`);
+				const result = await DB.prepare(`
+					INSERT INTO scans (user_id, isbn, title, json_data, ai_log, status)
+					VALUES (?, ?, ?, ?, ?, 'completed')
+				`).bind(userId, isbnValue, titleValue, finalJsonString, auditLogString).run();
+
+				const newId = result.meta.last_row_id as number;
+				console.warn(`[AI Clean] ✅ Inserted new scan ID: ${newId}`);
+				return { scanId: newId, error: null };
+
+			} catch (dbError) {
+				// CASE 4: Race condition - UNIQUE constraint violation
+				const errorMsg = dbError instanceof Error ? dbError.message : String(dbError);
+				
+				if (errorMsg.includes('UNIQUE constraint failed') || errorMsg.includes('SQLITE_CONSTRAINT')) {
+					console.warn(`[AI Clean] Race condition detected, fetching existing scan for ISBN: ${isbnValue}`);
+					try {
+						const fallback = await DB.prepare(`
+							SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1
+						`).bind(userId, isbnValue).first<{ id: number }>();
+
+						if (fallback?.id) {
+							// Update the existing row that won the race
+							await DB.prepare(`
+								UPDATE scans 
+								SET json_data = ?, title = ?, ai_log = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
+								WHERE id = ? AND user_id = ?
+							`).bind(finalJsonString, titleValue, auditLogString, fallback.id, userId).run();
+
+							console.warn(`[AI Clean] ✅ Race resolved, updated scan ID: ${fallback.id}`);
+							return { scanId: fallback.id, error: null };
+						}
+					} catch (fallbackError) {
+						console.error('[AI Clean] Fallback lookup failed:', fallbackError);
+					}
+				}
+
+				console.error('[AI Clean] Database error:', dbError);
+				return { scanId: null, error: errorMsg };
+			}
+		};
+
+		// Execute upsert SYNCHRONOUSLY
+		const result = await upsertToDatabase();
+		savedScanId = result.scanId;
+		saveError = result.error;
+
+		// Merge cleaned fields with original data
+		const cleanedBook: MergedBookData = {
+			...book,
+			...finalJsonData,
+			json_data: finalJsonData,
+			is_ai_enhanced: true,
+			enhanced_at: Date.now(),
+			ai_log: auditLog
+		};
+
+		// Return cleaned book with save status
 		return json({ 
 			...cleanedBook, 
 			saved: !saveError,
 			scan_id: savedScanId,
-			saveError: saveError || undefined
+			saveError: saveError || undefined,
+			changes: changes
 		});
 	} catch (err) {
 		console.error('Error in AI clean endpoint:', err);
-		return json({ error: 'Internal Server Error' }, { status: 500 });
+		return json({ error: 'Internal Server Error', details: String(err) }, { status: 500 });
 	}
 };
