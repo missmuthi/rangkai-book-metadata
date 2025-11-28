@@ -84,7 +84,6 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			'language', 'series', 'edition', 'subjects', 'date', 'publishedDate'
 		] as const;
 
-		type CheckableField = (typeof fieldsToCheck)[number];
 
 		fieldsToCheck.forEach(field => {
 			// Use type assertion to safely access fields that may not be in cleanedFields
