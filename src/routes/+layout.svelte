@@ -11,8 +11,13 @@ let { children, data } = $props();
 // User menu state
 let showUserMenu = $state(false);
 
+interface BeforeInstallPromptEvent extends Event {
+	prompt: () => Promise<void>;
+	userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
 // PWA Install prompt state
-let deferredPrompt: any = null;
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
 let showInstallButton = $state(false);
 
 function toggleUserMenu() {
@@ -35,7 +40,7 @@ onMount(() => {
 		// Prevent the default prompt
 		e.preventDefault();
 		// Store the event for later use
-		deferredPrompt = e;
+		deferredPrompt = e as unknown as BeforeInstallPromptEvent;
 		// Show the custom install button
 		showInstallButton = true;
 		// console.log('[PWA] Install prompt available');
@@ -59,7 +64,7 @@ async function handleInstallApp() {
 	deferredPrompt.prompt();
 	
 	// Wait for the user's response
-	const { outcome } = await deferredPrompt.userChoice;
+	await deferredPrompt.userChoice;
 	// console.log(`[PWA] User response: ${outcome}`);
 	
 	// Clear the deferred prompt

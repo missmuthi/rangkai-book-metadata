@@ -8,6 +8,7 @@
  */
 
 import { Google } from "arctic";
+import type { SessionData } from "$lib/server/types";
 
 // Import D1Database type from App namespace
 type D1Database = App.Platform["env"]["DB"];
@@ -124,7 +125,7 @@ export async function createSession(
 export async function getSession(
   db: D1Database,
   token: string,
-): Promise<{ user: any; session: any } | null> {
+): Promise<SessionData | null> {
   const result = await db
     .prepare(
       `SELECT 

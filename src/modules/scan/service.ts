@@ -90,11 +90,12 @@ export async function createBookScan(
       // - new: fetchBookByIsbn(platform, fetchFn, isbn)
       if (
         typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as any).length >= 3
+        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown).length >= 3
       ) {
         metadata = await fetchBookByIsbn(event.platform, event.fetch, isbn);
       } else {
         // Cast to any to support older two-argument mock signatures in tests
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         metadata = await (fetchBookByIsbn as any)(event.fetch, isbn);
       }
 

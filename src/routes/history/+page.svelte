@@ -5,13 +5,21 @@
         import type { MergedBookData } from '$lib/types';
         import { fade, slide as _slide } from 'svelte/transition';
 
+		interface Scan {
+			id: number;
+			title: string;
+			isbn: string;
+			created_at: string | number | Date;
+			json_data: string;
+		}
+
         let { data }: { data: PageData } = $props();
         let selectedBook = $state<MergedBookData | null>(null);
 
 	// Filter state
 	let searchQuery = $state('');
 	let filteredScans = $derived(
-		data.scans.filter((scan: any) => {
+		(data.scans as Scan[]).filter((scan: Scan) => {
 			if (!searchQuery) return true;
 			const query = searchQuery.toLowerCase();
 			return (
@@ -28,14 +36,14 @@
 			
 			// Parse json_data for each scan
 			const books = filteredScans
-				.map((scan: any) => {
+				.map((scan: Scan) => {
 					try {
 						return JSON.parse(scan.json_data);
 					} catch {
 						return null;
 					}
 				})
-				.filter((book: any) => book !== null);
+				.filter((book: unknown) => book !== null) as MergedBookData[];
 
 			if (books.length === 0) {
 				alert('No valid scans to export');
@@ -51,7 +59,7 @@
                 }
         }
 
-        function openScanDetails(scan: any) {
+        function openScanDetails(scan: Scan) {
                 try {
                         selectedBook = JSON.parse(scan.json_data) as MergedBookData;
                 } catch (err) {
@@ -60,7 +68,7 @@
                 }
         }
 
-        function handleRowKeydown(event: KeyboardEvent, scan: any) {
+        function handleRowKeydown(event: KeyboardEvent, scan: Scan) {
                 if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
                         openScanDetails(scan);

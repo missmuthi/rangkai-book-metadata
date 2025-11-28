@@ -17,6 +17,7 @@ import { z } from "zod";
 import { getKV, CacheKeys, CacheTTL, cacheGet, cacheSet } from "$lib/server/cache";
 import { getDB, createScan } from "$lib/server/db";
 import { fetchBookByIsbn } from "$lib/server/metadata";
+import { logger } from "$lib/server/log";
 
 // Define the schema for ISBN validation
 const isbnSchema = z.string().refine((val) => {
@@ -69,7 +70,7 @@ export const GET: RequestHandler = async ({
   // === Authorization Check ===
   // CRITICAL: Ensure user is authenticated before saving to history
   if (!locals.session || !locals.user) {
-    console.warn("⚠️ [Auth] Unauthorized access attempt:", {
+    logger.warn("auth_unauthorized", {
       hasSession: !!locals.session,
       hasUser: !!locals.user,
       isbn,
@@ -83,21 +84,22 @@ export const GET: RequestHandler = async ({
 
   // === STEP 1: Cache Check (KV) ===
   const kv = getKV(platform);
-  let responseData: (MergedBookData & { meta?: any }) | null = null;
+  let responseData: (MergedBookData & { meta?: Record<string, unknown> }) | null = null;
   let cacheHit = false;
 
   if (kv) {
     try {
       const cached = await cacheGet<MergedBookData>(kv, CacheKeys.book(isbn));
       if (cached) {
-        console.info(
-          `✅ [Cache HIT] ${isbn} - ${Math.round(performance.now() - startTime)}ms`,
-        );
+        logger.info("metadata_cache_hit", {
+          isbn,
+          duration: Math.round(performance.now() - startTime),
+        });
         responseData = cached;
         cacheHit = true;
       }
     } catch (cacheError) {
-      console.warn("⚠️ KV cache read failed:", cacheError);
+      logger.warn("cache_get_failed", { error: cacheError });
     }
   }
 
@@ -114,15 +116,17 @@ export const GET: RequestHandler = async ({
       // - legacy: fetchBookByIsbn(isbn)
       if (
         typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as any).length >= 3
+        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown).length >= 3
       ) {
         mergedData = await fetchBookByIsbn(platform, fetch, isbn);
       } else if (
         typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as any).length === 2
+        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown).length === 2
       ) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mergedData = await (fetchBookByIsbn as any)(fetch, isbn);
       } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mergedData = await (fetchBookByIsbn as any)(isbn);
       }
 
@@ -135,14 +139,14 @@ export const GET: RequestHandler = async ({
       };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      console.error(`❌ [Fetch Error] ${isbn}:`, errorMessage);
+      logger.error("metadata_fetch_failed", { isbn, error: errorMessage });
       throw error(404, {
         message: `Book not found: ${errorMessage}`,
       });
     }
 
     const fetchDuration = Math.round(performance.now() - fetchStartTime);
-    console.info(`📚 [Fetch] ${isbn} - ${fetchDuration}ms`);
+    logger.info("metadata_fetch_success", { isbn, duration: fetchDuration });
 
     // Add metadata
     responseData = {
@@ -167,9 +171,9 @@ export const GET: RequestHandler = async ({
 
         // ✅ Use authenticated user ID (Fix for saving to history)
         await createScan(db, locals.user.id, isbn, title, jsonData);
-        console.info(`✅ [DB Log] Scan saved for user ${locals.user.id}`);
+        logger.info("scan_created", { userId: locals.user.id });
       } catch (dbError) {
-        console.error("❌ [DB Write Error]:", dbError);
+        logger.error("db_write_failed", { error: dbError });
         // We don't throw here to ensure the user still gets the book data
         // but we log it for debugging
       }
@@ -186,9 +190,9 @@ export const GET: RequestHandler = async ({
               responseData,
               CacheTTL.book,
             );
-            console.info(`✅ [KV Write] ${isbn} cached`);
+            logger.info("cache_set_success", { isbn });
           } catch (kvError) {
-            console.error("❌ [KV Write Error]:", kvError);
+            logger.error("cache_set_failed", { error: kvError });
           }
         })(),
       );

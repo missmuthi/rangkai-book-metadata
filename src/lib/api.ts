@@ -3,6 +3,7 @@ import type {
   GoogleBooksResponse,
   OpenLibrarySearchResponse,
   LoCBookData,
+  MergedBookData,
 } from "./types";
 import { getISBNSibling, isISBN } from "./utils";
 import { Analytics } from "./services/analytics";
@@ -330,7 +331,7 @@ export class BookApiService {
    * @param isbn - ISBN-10 or ISBN-13 identifier
    * @returns Merged book data with metadata from 3 sources
    */
-  static async fetchFromServerless(isbn: string): Promise<any> {
+  static async fetchFromServerless(isbn: string): Promise<MergedBookData> {
     const startTime = performance.now();
     const url = `/api/book/${encodeURIComponent(isbn)}`;
 
@@ -429,10 +430,10 @@ export class BookApiService {
 /**
  * Enhanced Cache with TTL and size limits
  */
-export class ApiCache {
+export class ApiCache<T = unknown> {
   private cache = new Map<
     string,
-    { data: any; timestamp: number; hits: number }
+    { data: T; timestamp: number; hits: number }
   >();
   private readonly ttl: number;
   private readonly maxSize: number;
@@ -443,7 +444,7 @@ export class ApiCache {
     this.maxSize = maxSize;
   }
 
-  get(key: string): any | null {
+  get(key: string): T | null {
     const entry = this.cache.get(key);
     if (!entry) {
       // Track cache miss
@@ -483,7 +484,7 @@ export class ApiCache {
     return entry.data;
   }
 
-  set(key: string, data: any): void {
+  set(key: string, data: T): void {
     const now = Date.now();
 
     // Evict oldest entries if at capacity
@@ -529,6 +530,9 @@ export class ApiCache {
 }
 
 // Global cache instances
-export const googleCache = new ApiCache();
-export const openLibraryCache = new ApiCache();
-export const locCache = new ApiCache(5 * 60 * 1000, 100); // 5 minutes TTL, 100 items max
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const googleCache = new ApiCache<any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const openLibraryCache = new ApiCache<any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const locCache = new ApiCache<any>(5 * 60 * 1000, 100); // 5 minutes TTL, 100 items max

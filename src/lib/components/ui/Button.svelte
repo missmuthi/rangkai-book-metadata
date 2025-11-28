@@ -11,7 +11,7 @@
 		type?: 'button' | 'submit' | 'reset';
 		onclick?: () => void;
 		class?: string;
-				children?: any;
+				children?: import('svelte').Snippet;
 	}
 	
 	let {
@@ -48,5 +48,7 @@
 	{onclick}
 	class={classes}
 >
-	{@render children()}
+	{#if children}
+		{@render children()}
+	{/if}
 </button>

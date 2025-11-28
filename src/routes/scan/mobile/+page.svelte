@@ -51,11 +51,13 @@
 			
 			toasts.add(`Found: ${lastResult.title}`, 'success');
 			// console.log('[Scanner] ✅ Book fetched successfully');
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[Scanner] ❌ Error fetching book:', err);
 			
+			const message = err instanceof Error ? err.message : String(err);
+
 			// Handle 401 Unauthorized specifically
-			if (err.message && (err.message.includes('401') || err.message.includes('Unauthorized'))) {
+			if (message && (message.includes('401') || message.includes('Unauthorized'))) {
 				toasts.add('Session expired. Redirecting...', 'warning');
 				goto('/login?redirect=/scan/mobile');
 				return;
