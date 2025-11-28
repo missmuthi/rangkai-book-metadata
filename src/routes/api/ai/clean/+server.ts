@@ -26,30 +26,81 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Track both NEW data (filling gaps) and UPDATED data (fixing errors)
 		const detectedChanges: string[] = [];
 		
+		/**
+		 * Helper: Check if a value is "empty" or invalid for cataloging purposes
+		 * Treats null, undefined, '', '-', 0, '0', and whitespace-only as INVALID
+		 */
+		const isEmptyOrInvalid = (val: unknown): boolean => {
+			if (val === null || val === undefined) return true;
+			if (typeof val === 'number') return val === 0;
+			if (typeof val === 'string') {
+				const trimmed = val.trim();
+				return trimmed === '' || trimmed === '-' || trimmed === '0';
+			}
+			if (Array.isArray(val)) return val.length === 0;
+			return false;
+		};
+
+		/**
+		 * Helper: Check if a value is "filled" and valid
+		 */
+		const isFilledAndValid = (val: unknown): boolean => {
+			if (val === null || val === undefined) return false;
+			if (typeof val === 'number') return val !== 0;
+			if (typeof val === 'string') {
+				const trimmed = val.trim();
+				return trimmed !== '' && trimmed !== '-' && trimmed !== '0';
+			}
+			if (Array.isArray(val)) return val.length > 0;
+			return Boolean(val);
+		};
+
+		/**
+		 * Helper: Normalize value for comparison (convert to string, trim)
+		 */
+		const normalizeForCompare = (val: unknown): string => {
+			if (val === null || val === undefined) return '';
+			if (typeof val === 'number') return String(val);
+			if (typeof val === 'string') return val.trim();
+			if (Array.isArray(val)) return val.join('; ');
+			return String(val);
+		};
+
 		// Define all fields to monitor
 		const fieldsToCheck = [
 			'title', 'author', 'publisher', 'description', 
 			'ddc', 'lcc', 'classification',
-			'language', 'series', 'edition', 'subjects', 'date'
+			'language', 'series', 'edition', 'subjects', 'date', 'publishedDate'
 		];
 
 		fieldsToCheck.forEach(field => {
 			const oldVal = book[field as keyof MergedBookData];
 			const newVal = cleanedFields[field as keyof typeof cleanedFields];
 
-			// Normalize empty values (treat '-', '', null, undefined as empty)
-			const isOldEmpty = !oldVal || oldVal === '-' || oldVal === '';
-			const isNewFilled = newVal && newVal !== '-' && newVal !== '';
+			const oldEmpty = isEmptyOrInvalid(oldVal);
+			const newFilled = isFilledAndValid(newVal);
 
 			// Case 1: NEW data (filling a gap) - AI generated missing metadata
-			if (isOldEmpty && isNewFilled) {
-				detectedChanges.push(`Generated ${field}: ${newVal}`);
+			if (oldEmpty && newFilled) {
+				detectedChanges.push(`Generated ${field}: ${normalizeForCompare(newVal)}`);
 			}
 			// Case 2: UPDATED data (fixing existing data) - AI corrected something
-			else if (!isOldEmpty && isNewFilled && oldVal !== newVal) {
-				detectedChanges.push(`Updated ${field}: "${oldVal}" → "${newVal}"`);
+			else if (!oldEmpty && newFilled) {
+				const oldNorm = normalizeForCompare(oldVal);
+				const newNorm = normalizeForCompare(newVal);
+				if (oldNorm !== newNorm) {
+					detectedChanges.push(`Updated ${field}: "${oldNorm}" → "${newNorm}"`);
+				}
 			}
 		});
+
+		// Special logging for DDC/LCC specifically (critical fields)
+		if (isEmptyOrInvalid(book.ddc) && isFilledAndValid(cleanedFields.ddc)) {
+			console.log(`[AI Clean] DDC was empty/invalid, now filled: ${cleanedFields.ddc}`);
+		}
+		if (isEmptyOrInvalid(book.lcc) && isFilledAndValid(cleanedFields.lcc)) {
+			console.log(`[AI Clean] LCC was empty/invalid, now filled: ${cleanedFields.lcc}`);
+		}
 
 		// Merge AI-reported changes with our detected changes
 		// Remove duplicates and combine
