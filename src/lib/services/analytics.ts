@@ -263,10 +263,11 @@ class AnalyticsService {
   /**
    * Dev mode logging with colors and emojis
    */
-  private logDevMode(event: { name: string; properties: any }): void {
+  private logDevMode(event: { name: string; properties: Record<string, unknown> }): void {
     const emoji = this.getEventEmoji(event.name);
     const color = this.getEventColor(event.name);
 
+    // eslint-disable-next-line no-console
     console.log(
       `%c${emoji} [Analytics] ${event.name}`,
       `color: ${color}; font-weight: bold;`,
@@ -278,7 +279,8 @@ class AnalyticsService {
    * Production mode logging (console.info with prefix)
    * Future: Replace with actual analytics service (Plausible, GA, PostHog)
    */
-  private logProdMode(event: { name: string; properties: any }): void {
+  private logProdMode(event: { name: string; properties: Record<string, unknown> }): void {
+    // eslint-disable-next-line no-console
     console.info("[Analytics]", event.name, event.properties);
 
     // TODO: Send to analytics service
@@ -338,7 +340,7 @@ class AnalyticsService {
   /**
    * Remove or hash sensitive values before logging
    */
-  private sanitizeEvent(event: { name: string; properties: any }) {
+  private sanitizeEvent(event: { name: string; properties: Record<string, unknown> }) {
     return {
       ...event,
       properties: this.sanitizeProperties(event.properties),
@@ -346,9 +348,9 @@ class AnalyticsService {
   }
 
   private sanitizeProperties(
-    properties: Record<string, any>,
-  ): Record<string, any> {
-    const sanitizeValue = (value: any, key?: string): any => {
+    properties: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const sanitizeValue = (value: unknown, key?: string): unknown => {
       if (value === null || value === undefined) return value;
 
       if (typeof value === "object") {
@@ -356,7 +358,7 @@ class AnalyticsService {
           return value.map((item) => sanitizeValue(item));
         }
 
-        return Object.entries(value).reduce<Record<string, any>>(
+        return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>(
           (acc, [childKey, childValue]) => {
             acc[childKey] = sanitizeValue(childValue, childKey);
             return acc;
@@ -372,7 +374,7 @@ class AnalyticsService {
       return value;
     };
 
-    return sanitizeValue(properties) as Record<string, any>;
+    return sanitizeValue(properties) as Record<string, unknown>;
   }
 
   private isSensitiveKey(key: string): boolean {

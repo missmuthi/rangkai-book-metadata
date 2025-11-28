@@ -85,7 +85,10 @@ export const GET: RequestHandler = async ({
     cookies.delete("google_code_verifier", { path: "/" });
     cookies.delete("google_oauth_timestamp", { path: "/" });
 
-    console.log("[OAuth] ✅ Login successful for user:", googleUser.email);
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log("[OAuth] ✅ Login successful for user:", googleUser.email);
+    }
 
     // Redirect to home page (stable route)
     throw redirect(303, "/");

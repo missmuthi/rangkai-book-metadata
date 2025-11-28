@@ -83,13 +83,14 @@ export const GET: RequestHandler = async ({
 
   // === STEP 1: Cache Check (KV) ===
   const kv = getKV(platform);
-  let responseData: (MergedBookData & { meta?: any }) | null = null;
+  let responseData: (MergedBookData & { meta?: Record<string, unknown> }) | null = null;
   let cacheHit = false;
 
   if (kv) {
     try {
       const cached = await cacheGet<MergedBookData>(kv, CacheKeys.book(isbn));
       if (cached) {
+        // eslint-disable-next-line no-console
         console.info(
           `✅ [Cache HIT] ${isbn} - ${Math.round(performance.now() - startTime)}ms`,
         );
@@ -112,18 +113,13 @@ export const GET: RequestHandler = async ({
       // - new: fetchBookByIsbn(platform, fetchFn, isbn)
       // - old: fetchBookByIsbn(fetchFn, isbn)
       // - legacy: fetchBookByIsbn(isbn)
-      if (
-        typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as any).length >= 3
-      ) {
+      const fetchFn = fetchBookByIsbn as ((...args: unknown[]) => Promise<MergedBookData>) & { length: number };
+      if (fetchFn.length >= 3) {
         mergedData = await fetchBookByIsbn(platform, fetch, isbn);
-      } else if (
-        typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as any).length === 2
-      ) {
-        mergedData = await (fetchBookByIsbn as any)(fetch, isbn);
+      } else if (fetchFn.length === 2) {
+        mergedData = await (fetchBookByIsbn as unknown as (f: typeof fetch, i: string) => Promise<MergedBookData>)(fetch, isbn);
       } else {
-        mergedData = await (fetchBookByIsbn as any)(isbn);
+        mergedData = await (fetchBookByIsbn as unknown as (i: string) => Promise<MergedBookData>)(isbn);
       }
 
       // Get source status from the metadata
@@ -142,6 +138,7 @@ export const GET: RequestHandler = async ({
     }
 
     const fetchDuration = Math.round(performance.now() - fetchStartTime);
+    // eslint-disable-next-line no-console
     console.info(`📚 [Fetch] ${isbn} - ${fetchDuration}ms`);
 
     // Add metadata
@@ -167,6 +164,7 @@ export const GET: RequestHandler = async ({
 
         // ✅ Use authenticated user ID (Fix for saving to history)
         await createScan(db, locals.user.id, isbn, title, jsonData);
+        // eslint-disable-next-line no-console
         console.info(`✅ [DB Log] Scan saved for user ${locals.user.id}`);
       } catch (dbError) {
         console.error("❌ [DB Write Error]:", dbError);
@@ -186,6 +184,7 @@ export const GET: RequestHandler = async ({
               responseData,
               CacheTTL.book,
             );
+            // eslint-disable-next-line no-console
             console.info(`✅ [KV Write] ${isbn} cached`);
           } catch (kvError) {
             console.error("❌ [KV Write Error]:", kvError);

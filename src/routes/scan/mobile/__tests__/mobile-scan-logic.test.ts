@@ -413,7 +413,7 @@ describe("Mobile Scan - Request Queueing Logic", () => {
     let pendingIsbn: string | null = null;
 
     // Simulate first scan (starts loading)
-    const isbn1 = "9780132350884";
+    const _isbn1 = "9780132350884";
     loading = true;
 
     // Simulate second scan while loading

@@ -12,9 +12,9 @@
 	const twitterUrl = `https://twitter.com/intent/tweet?text=${shareMessage}`;
 	const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${shareUrl}&quote=${shareMessage}`;
 	
-	function handleShare(platform: string) {
+	function handleShare(_platform: string) {
 		// Track share action (optional analytics)
-		console.log(`Shared via ${platform}`);
+		// Platform tracking is captured via the caller
 	}
 </script>
 

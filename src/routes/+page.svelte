@@ -1,11 +1,11 @@
 <script lang="ts">
         import { browser } from '$app/environment';
         import { onMount, tick } from 'svelte';
-        import { checkGoogleBooksLimit, checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
+        import { getRateLimitStatus } from '$lib/rateLimiter';
         import { scanHistory } from '$lib/stores/history.svelte';
         import { processAndRenderMergedData } from '$lib/merge';
         import { BookApiService, googleCache, openLibraryCache, locCache } from '$lib/api';
-        import { retry, isOnline, getSecureImageUrl } from '$lib/utils';
+        import { retry, isOnline } from '$lib/utils';
         import { cleanISBN } from '$lib/isbn-helpers';
 	import SkeletonCard from '$lib/SkeletonCard.svelte';
 	import { Analytics } from '$lib/services/analytics';
@@ -34,7 +34,7 @@
 		};
 	}
 
-	interface GoogleBooksResponse {
+	interface _GoogleBooksResponse {
 		totalItems: number;
 		items?: GoogleBookItem[];
 	}
@@ -72,7 +72,7 @@
 			isbn?: string[];
 			first_publish_year?: number;
 			number_of_pages_median?: number;
-			[key: string]: any;
+			[key: string]: string | number | string[] | undefined;
 		}>;
 	}
 
@@ -188,7 +188,7 @@
 	let openLibraryRaw = $state('');
 
 	// Rate limit status
-	let rateLimitStatus = $state(getRateLimitStatus());
+	let _rateLimitStatus = $state(getRateLimitStatus());
 
 	// Scanner Mode: Input reference for auto-focus
         let searchInputRef: HTMLInputElement | null = null;
@@ -225,7 +225,8 @@
                 if (typeof window === 'undefined' || !window.AudioContext) return;
 		
                 try {
-                        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+                        const audioContext = new AudioContextClass();
                         const oscillator = audioContext.createOscillator();
                         const gainNode = audioContext.createGain();
 			
@@ -277,7 +278,7 @@
 
 
 	// --- Home Navigation Function ---
-	function goHome() {
+	function _goHome() {
 		Analytics.track('user_interaction', {
 			action: 'home_navigation'
 		});
@@ -395,7 +396,8 @@
 			mergedData = apiResult as MergedBookData;
 			
 			// Extract metadata for analytics and debugging
-			const meta = apiResult.meta || {};
+			type ApiMeta = { sources?: { google?: boolean; openlibrary?: boolean; loc?: boolean }; cacheHit?: boolean; fetchDuration?: number; totalDuration?: number };
+			const meta = (apiResult as MergedBookData & { meta?: ApiMeta }).meta || {} as ApiMeta;
 			const hasGoogle = meta.sources?.google || false;
 			const hasOpenLib = meta.sources?.openlibrary || false;
 			const hasLoC = meta.sources?.loc || false;
@@ -542,7 +544,7 @@
                         }
 		} finally {
 			isLoading = false;
-			rateLimitStatus = getRateLimitStatus();
+			_rateLimitStatus = getRateLimitStatus();
 			searchQuery = '';
 			await tick();
 			if (searchInputRef) {
@@ -574,7 +576,7 @@
 		if (isbn) {
 			try {
 				const cacheKey = getCacheKey(isbn, 'openlibrary', true);
-				openLibraryData = openLibraryCache.get(cacheKey);
+				openLibraryData = openLibraryCache.get(cacheKey) as OpenLibraryBookData | null;
 
 				if (!openLibraryData) {
 					openLibraryData = await retry(() => BookApiService.fetchOpenLibrary(isbn, true)) as OpenLibraryBookData | null;
@@ -1188,8 +1190,8 @@
 							{@const title = doc.title || 'No Title'}
 							{@const author = doc.author_name ? doc.author_name[0] : 'Unknown Author'}
 							{@const coverID = doc.cover_i}
-							{@const cover = coverID ? `https://covers.openlibrary.org/b/id/${coverID}-S.jpg` : FALLBACK_COVER}
-							{@const secureProxiedCover = getSecureProxyUrl(cover)}							
+							{@const _cover = coverID ? `https://covers.openlibrary.org/b/id/${coverID}-S.jpg` : FALLBACK_COVER}
+							{@const _secureProxiedCover = getSecureProxyUrl(_cover)}							
 						<button type="button" onclick={() => handleOpenLibraryBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
 								<div>
 									<div class="font-semibold text-base text-green-700">{title}</div>

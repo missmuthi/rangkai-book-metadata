@@ -12,8 +12,8 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "../../../routes/api/book/[isbn]/+server";
-import type { RequestEvent } from "@sveltejs/kit";
-import type { MergedBookData } from "$lib/types";
+import type { RequestEvent as _RequestEvent } from "@sveltejs/kit";
+import type { MergedBookData as _MergedBookData } from "$lib/types";
 
 // Mock dependencies
 vi.mock("$lib/utils", () => ({
@@ -134,11 +134,11 @@ function createMockEvent(options: {
     },
     request: {
       headers: {
-        get: (key: string) => null,
+        get: (_key: string) => null,
       },
     },
     _waitUntilPromises: waitUntilPromises,
-  } as any;
+  } as unknown;
 }
 
 describe("GET /api/book/[isbn] - Integration Tests", () => {

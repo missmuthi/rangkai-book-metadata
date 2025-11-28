@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	/**
 	 * Reusable Alert component for displaying messages
 	 * Variants: info (blue), success (green), warning (yellow), error (red)
@@ -10,7 +11,7 @@
 		dismissible?: boolean;
 		onDismiss?: () => void;
 		class?: string;
-		children?: any;
+		children?: Snippet;
 	}
 	
 	let {
@@ -67,7 +68,7 @@
 				<h3 class="font-medium {config.title} mb-1">{title}</h3>
 			{/if}
 			<div class="text-sm {config.text}">
-				{@render children()}
+				{#if children}{@render children()}{/if}
 			</div>
 		</div>
 		

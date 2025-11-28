@@ -6,13 +6,18 @@ import Toast from '$lib/components/Toast.svelte';
 import ShareButtons from '$lib/components/ShareButtons.svelte';
 import { onMount } from 'svelte';
 
+interface BeforeInstallPromptEvent extends Event {
+	prompt(): Promise<void>;
+	userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 let { children, data } = $props();
 
 // User menu state
 let showUserMenu = $state(false);
 
 // PWA Install prompt state
-let deferredPrompt: any = null;
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
 let showInstallButton = $state(false);
 
 function toggleUserMenu() {
@@ -35,15 +40,21 @@ onMount(() => {
 		// Prevent the default prompt
 		e.preventDefault();
 		// Store the event for later use
-		deferredPrompt = e;
+		deferredPrompt = e as BeforeInstallPromptEvent;
 		// Show the custom install button
 		showInstallButton = true;
-		console.log('[PWA] Install prompt available');
+		if (import.meta.env.DEV) {
+			// eslint-disable-next-line no-console
+			console.log('[PWA] Install prompt available');
+		}
 	});
 	
 	// Track PWA installation
 	window.addEventListener('appinstalled', () => {
-		console.log('[PWA] App installed successfully');
+		if (import.meta.env.DEV) {
+			// eslint-disable-next-line no-console
+			console.log('[PWA] App installed successfully');
+		}
 		showInstallButton = false;
 		deferredPrompt = null;
 	});
@@ -60,7 +71,10 @@ async function handleInstallApp() {
 	
 	// Wait for the user's response
 	const { outcome } = await deferredPrompt.userChoice;
-	console.log(`[PWA] User response: ${outcome}`);
+	if (import.meta.env.DEV) {
+		// eslint-disable-next-line no-console
+		console.log(`[PWA] User response: ${outcome}`);
+	}
 	
 	// Clear the deferred prompt
 	deferredPrompt = null;
@@ -71,7 +85,10 @@ async function onSignOut() {
 	closeUserMenu();
 	
 	try {
-		console.log('[Logout] Initiating sign out...');
+		if (import.meta.env.DEV) {
+			// eslint-disable-next-line no-console
+			console.log('[Logout] Initiating sign out...');
+		}
 		
 		// Call server-side sign-out endpoint
 		const response = await fetch('/api/auth/sign-out', {
@@ -82,13 +99,19 @@ async function onSignOut() {
 			cache: 'no-store' // Prevent caching
 		});
 		
-		console.log('[Logout] Sign out response status:', response.status);
+		if (import.meta.env.DEV) {
+			// eslint-disable-next-line no-console
+			console.log('[Logout] Sign out response status:', response.status);
+		}
 		
 		if (!response.ok) {
 			console.error('[Logout] Sign out failed:', response.status);
 		}
 		
-		console.log('[Logout] ✅ Redirecting to /login');
+		if (import.meta.env.DEV) {
+			// eslint-disable-next-line no-console
+			console.log('[Logout] ✅ Redirecting to /login');
+		}
 		// Force hard reload to clear all client-side state
 		window.location.href = '/login';
 	} catch (error) {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	/**
 	 * Reusable Card component with consistent spacing and styling
 	 * Supports optional interactive state and custom padding
@@ -9,7 +10,7 @@
 		padding?: 'sm' | 'md' | 'lg';
 		class?: string;
 		onclick?: () => void;
-		children?: any;
+		children?: Snippet;
 	}
 	
 	let {
@@ -40,10 +41,10 @@
 		{onclick}
 		class="{classes} text-left"
 	>
-		{@render children()}
+		{#if children}{@render children()}{/if}
 	</button>
 {:else}
 	<div class={classes}>
-		{@render children()}
+		{#if children}{@render children()}{/if}
 	</div>
 {/if}

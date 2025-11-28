@@ -75,7 +75,7 @@ export function getSecureImageUrl(url: string | null | undefined): string {
 /**
  * Debounce function calls to prevent excessive API calls during typing
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number,
 ): (...args: Parameters<T>) => void {
@@ -90,7 +90,7 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Throttle function calls to limit execution frequency
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number,
 ): (...args: Parameters<T>) => void {
@@ -141,9 +141,9 @@ export async function retry<T>(
       lastError = error as Error;
 
       // Circuit Breaker: Don't retry on certain HTTP errors
-      if (error instanceof HttpError || (error as any).status) {
+      if (error instanceof HttpError || (error as { status?: number }).status) {
         const status =
-          error instanceof HttpError ? error.status : (error as any).status;
+          error instanceof HttpError ? error.status : (error as { status: number }).status;
         const message =
           error instanceof Error ? error.message : "Unknown error";
 
@@ -177,9 +177,12 @@ export async function retry<T>(
       // Exponential backoff for retryable errors (network issues, timeouts)
       if (i < maxRetries - 1) {
         const backoffDelay = initialDelay * Math.pow(2, i);
-        console.log(
-          `[Retry ${i + 1}/${maxRetries}] Waiting ${backoffDelay}ms before retry...`,
-        );
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[Retry ${i + 1}/${maxRetries}] Waiting ${backoffDelay}ms before retry...`,
+          );
+        }
         await new Promise((resolve) => setTimeout(resolve, backoffDelay));
       }
     }

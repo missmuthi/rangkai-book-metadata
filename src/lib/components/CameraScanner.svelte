@@ -110,7 +110,11 @@
                         statusMessage = 'Camera stopped';
                         dispatch('status', { active: false, online: isOnline });
                 } catch (err) {
-                        console.debug('Unable to stop scanner', err);
+                        // Silently handle - scanner may already be stopped
+                        if (import.meta.env.DEV) {
+                                // eslint-disable-next-line no-console
+                                console.debug('Unable to stop scanner', err);
+                        }
                 }
         }
 
@@ -126,7 +130,11 @@
                         try {
                                 await scanner.clear();
                         } catch (err) {
-                                console.debug('Unable to clear scanner', err);
+                                // Silently handle - scanner may already be cleared
+                                if (import.meta.env.DEV) {
+                                        // eslint-disable-next-line no-console
+                                        console.debug('Unable to clear scanner', err);
+                                }
                         }
                         scanner = null;
                 }
@@ -193,7 +201,11 @@
                         oscillator.start();
                         oscillator.stop(context.currentTime + 0.15);
                 } catch (err) {
-                        console.debug('Audio unavailable', err);
+                        // Silently handle - audio may not be available
+                        if (import.meta.env.DEV) {
+                                // eslint-disable-next-line no-console
+                                console.debug('Audio unavailable', err);
+                        }
                 }
         }
 

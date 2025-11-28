@@ -12,6 +12,23 @@ import { Google } from "arctic";
 // Import D1Database type from App namespace
 type D1Database = App.Platform["env"]["DB"];
 
+// Type definitions for session and user data
+interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  image: string | null;
+  emailVerified: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Session {
+  token: string;
+  userId: string;
+  expiresAt: Date;
+}
+
 /**
  * Normalize base URL by removing trailing slashes
  * Prevents double-slash issues in OAuth redirect URIs
@@ -50,8 +67,12 @@ export function createGoogleAuth(env: App.Platform["env"]) {
   const redirectUri = `${baseUrl}/api/auth/callback/google`;
 
   // Debug logging for OAuth configuration
-  console.log("[OAuth Config] Base URL:", baseUrl);
-  console.log("[OAuth Config] Redirect URI:", redirectUri);
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.log("[OAuth Config] Base URL:", baseUrl);
+    // eslint-disable-next-line no-console
+    console.log("[OAuth Config] Redirect URI:", redirectUri);
+  }
 
   return new Google(
     env.GOOGLE_CLIENT_ID,
@@ -101,9 +122,12 @@ export async function createSession(
       )
       .run();
 
-    console.log(
-      `[AUTH] Session created for user ${userId}, expires: ${expiresAt.toISOString()}`,
-    );
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[AUTH] Session created for user ${userId}, expires: ${expiresAt.toISOString()}`,
+      );
+    }
   } catch (error) {
     console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.error("🔴 DATABASE ERROR in createSession");
@@ -124,7 +148,7 @@ export async function createSession(
 export async function getSession(
   db: D1Database,
   token: string,
-): Promise<{ user: any; session: any } | null> {
+): Promise<{ user: User; session: Session } | null> {
   const result = await db
     .prepare(
       `SELECT 
@@ -186,9 +210,12 @@ export async function upsertUser(
 
     if (existing) {
       // Update existing user
-      console.log(
-        `[AUTH] Updating existing user: ${email} (ID: ${existing.id})`,
-      );
+      if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[AUTH] Updating existing user: ${email} (ID: ${existing.id})`,
+        );
+      }
       await db
         .prepare(
           `UPDATE user SET name = ?, image = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
@@ -200,7 +227,10 @@ export async function upsertUser(
 
     // Create new user
     const userId = crypto.randomUUID();
-    console.log(`[AUTH] Creating new user: ${email} (ID: ${userId})`);
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log(`[AUTH] Creating new user: ${email} (ID: ${userId})`);
+    }
     await db
       .prepare(
         `INSERT INTO user (id, email, name, image, emailVerified, createdAt, updatedAt)

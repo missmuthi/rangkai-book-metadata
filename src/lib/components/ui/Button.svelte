@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	/**
 	 * Reusable Button component with consistent styling and accessibility
 	 * Variants: primary (blue), secondary (gray), danger (red), ghost (transparent)
@@ -11,7 +12,7 @@
 		type?: 'button' | 'submit' | 'reset';
 		onclick?: () => void;
 		class?: string;
-		children?: any;
+		children?: Snippet;
 	}
 	
 	let {
@@ -48,5 +49,5 @@
 	{onclick}
 	class={classes}
 >
-	{@render children()}
+	{#if children}{@render children()}{/if}
 </button>

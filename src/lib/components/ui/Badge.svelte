@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	/**
 	 * Reusable Badge component for status indicators
 	 * Variants: default (gray), info (blue), success (green), warning (yellow), error (red)
@@ -8,7 +9,7 @@
 		variant?: 'default' | 'info' | 'success' | 'warning' | 'error';
 		size?: 'sm' | 'md';
 		class?: string;
-		children?: any;
+		children?: Snippet;
 	}
 	
 	let {
@@ -35,5 +36,5 @@
 </script>
 
 <span class={classes}>
-	{@render children()}
+	{#if children}{@render children()}{/if}
 </span>

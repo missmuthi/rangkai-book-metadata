@@ -44,18 +44,25 @@
 
 		try {
 			const cleaned = normalizeISBN(rawIsbn);
-			console.log('[Scanner] Looking up ISBN:', cleaned);
+			if (import.meta.env.DEV) {
+				// eslint-disable-next-line no-console
+				console.log('[Scanner] Looking up ISBN:', cleaned);
+			}
 			
 			const result = await BookApiService.fetchFromServerless(cleaned);
 			lastResult = result as MergedBookData;
 			
 			toasts.add(`Found: ${lastResult.title}`, 'success');
-			console.log('[Scanner] ✅ Book fetched successfully');
-		} catch (err: any) {
+			if (import.meta.env.DEV) {
+				// eslint-disable-next-line no-console
+				console.log('[Scanner] ✅ Book fetched successfully');
+			}
+		} catch (err: unknown) {
 			console.error('[Scanner] ❌ Error fetching book:', err);
 			
 			// Handle 401 Unauthorized specifically
-			if (err.message && (err.message.includes('401') || err.message.includes('Unauthorized'))) {
+			const errMessage = err instanceof Error ? err.message : '';
+			if (errMessage.includes('401') || errMessage.includes('Unauthorized')) {
 				toasts.add('Session expired. Redirecting...', 'warning');
 				goto('/login?redirect=/scan/mobile');
 				return;

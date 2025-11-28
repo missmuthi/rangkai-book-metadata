@@ -88,14 +88,12 @@ export async function createBookScan(
       // Support both old and new fetchBookByIsbn signatures used in tests:
       // - old: fetchBookByIsbn(fetchFn, isbn)
       // - new: fetchBookByIsbn(platform, fetchFn, isbn)
-      if (
-        typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as any).length >= 3
-      ) {
+      const fetchFn = fetchBookByIsbn as ((...args: unknown[]) => Promise<MergedBookData>) & { length: number };
+      if (fetchFn.length >= 3) {
         metadata = await fetchBookByIsbn(event.platform, event.fetch, isbn);
       } else {
-        // Cast to any to support older two-argument mock signatures in tests
-        metadata = await (fetchBookByIsbn as any)(event.fetch, isbn);
+        // Cast to support older two-argument mock signatures in tests
+        metadata = await (fetchBookByIsbn as unknown as (f: typeof event.fetch, i: string) => Promise<MergedBookData>)(event.fetch, isbn);
       }
 
       // Cache the result

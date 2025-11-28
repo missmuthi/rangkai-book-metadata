@@ -54,7 +54,7 @@ declare global {
          * Schedule background work after response is sent
          * Prevents data loss from promise termination
          */
-        waitUntil(promise: Promise<any>): void;
+        waitUntil(promise: Promise<unknown>): void;
       };
       /** Cloudflare request metadata */
       cf: CfProperties;

@@ -3,7 +3,14 @@
         import { Card, Button, EmptyState, Alert, Input } from '$lib/components/ui';
         import BookDetailModal from '$lib/components/BookDetailModal.svelte';
         import type { MergedBookData } from '$lib/types';
-        import { fade, slide } from 'svelte/transition';
+        import { fade } from 'svelte/transition';
+
+        interface ScanRecord {
+                title?: string;
+                isbn?: string;
+                json_data: string;
+                scanned_at?: string;
+        }
 
         let { data }: { data: PageData } = $props();
         let selectedBook = $state<MergedBookData | null>(null);
@@ -11,7 +18,7 @@
 	// Filter state
 	let searchQuery = $state('');
 	let filteredScans = $derived(
-		data.scans.filter((scan: any) => {
+		data.scans.filter((scan: ScanRecord) => {
 			if (!searchQuery) return true;
 			const query = searchQuery.toLowerCase();
 			return (
@@ -28,14 +35,14 @@
 			
 			// Parse json_data for each scan
 			const books = filteredScans
-				.map((scan: any) => {
+				.map((scan: ScanRecord) => {
 					try {
 						return JSON.parse(scan.json_data);
 					} catch {
 						return null;
 					}
 				})
-				.filter((book: any) => book !== null);
+				.filter((book: MergedBookData | null) => book !== null);
 
 			if (books.length === 0) {
 				alert('No valid scans to export');
@@ -51,7 +58,7 @@
                 }
         }
 
-        function openScanDetails(scan: any) {
+        function openScanDetails(scan: ScanRecord) {
                 try {
                         selectedBook = JSON.parse(scan.json_data) as MergedBookData;
                 } catch (err) {
@@ -60,7 +67,7 @@
                 }
         }
 
-        function handleRowKeydown(event: KeyboardEvent, scan: any) {
+        function handleRowKeydown(event: KeyboardEvent, scan: ScanRecord) {
                 if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
                         openScanDetails(scan);

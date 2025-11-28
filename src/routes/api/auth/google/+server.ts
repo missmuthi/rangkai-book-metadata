@@ -25,8 +25,12 @@ export const GET: RequestHandler = async ({ platform, cookies }) => {
   const state = crypto.randomUUID();
   const codeVerifier = generateCodeVerifier();
 
-  console.log("[OAuth] Initiating Google login flow");
-  console.log("[OAuth] State:", state);
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log("[OAuth] Initiating Google login flow");
+    // eslint-disable-next-line no-console
+    console.log("[OAuth] State:", state);
+  }
 
   // Arctic Google.createAuthorizationURL(state, codeVerifier, scopes[])
   const authUrl = await google.createAuthorizationURL(
@@ -35,7 +39,10 @@ export const GET: RequestHandler = async ({ platform, cookies }) => {
     ["openid", "profile", "email"], // Google scopes as array
   );
 
-  console.log("[OAuth] Authorization URL:", authUrl.toString());
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log("[OAuth] Authorization URL:", authUrl.toString());
+  }
 
   // Store state and code verifier for verification
   cookies.set("google_oauth_state", state, {

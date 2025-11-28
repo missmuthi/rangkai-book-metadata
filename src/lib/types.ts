@@ -1,5 +1,6 @@
 export interface GoogleBookItem {
   id: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   volumeInfo: any;
 }
 
@@ -14,6 +15,7 @@ export interface OpenLibraryBookData {
   publishers?: Array<{ name?: string }>;
   publish_date?: string | number;
   number_of_pages?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   description?: any;
   languages?: Array<{ key: string }>;
   subjects?: string[];

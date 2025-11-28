@@ -19,7 +19,7 @@
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 type LogContext = {
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 /**
@@ -42,7 +42,7 @@ function sanitizeContext(context: LogContext): LogContext {
       sanitized[key] = "[REDACTED]";
     } else if (value && typeof value === "object" && !Array.isArray(value)) {
       // Recursively sanitize nested objects
-      sanitized[key] = sanitizeContext(value);
+      sanitized[key] = sanitizeContext(value as LogContext);
     } else {
       sanitized[key] = value;
     }
@@ -79,6 +79,7 @@ export const logger = {
    */
   debug(event: string, context?: LogContext) {
     if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
       console.debug(formatLog("debug", event, context));
     }
   },
@@ -87,6 +88,7 @@ export const logger = {
    * Info-level logs (normal operations)
    */
   info(event: string, context?: LogContext) {
+    // eslint-disable-next-line no-console
     console.log(formatLog("info", event, context));
   },
 

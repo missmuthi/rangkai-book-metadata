@@ -349,12 +349,12 @@ export function processAndRenderMergedData(
 
   // ISBN: Prefer Google Books, fallback to OpenLibrary
   const googleISBN13 = google?.industryIdentifiers?.find(
-    (id: { type?: string; identifier?: string } | any) =>
+    (id: { type?: string; identifier?: string }) =>
       id?.type === "ISBN_13",
   )?.identifier;
   merged.isbn13 = googleISBN13 || openlib?.identifiers?.isbn_13?.[0] || "-";
   const googleISBN10 = google?.industryIdentifiers?.find(
-    (id: { type?: string; identifier?: string } | any) =>
+    (id: { type?: string; identifier?: string }) =>
       id?.type === "ISBN_10",
   )?.identifier;
   merged.isbn10 = googleISBN10 || openlib?.identifiers?.isbn_10?.[0] || "-";
@@ -404,7 +404,7 @@ export function processAndRenderMergedData(
 
   // COVER: Prefer Google Books, fallback to OpenLibrary (LoC doesn't provide covers)
   merged.cover =
-    (google as any)?.imageLinks?.thumbnail || openlib?.cover?.large || "";
+    (google as { imageLinks?: { thumbnail?: string } } | undefined)?.imageLinks?.thumbnail || openlib?.cover?.large || "";
 
   // CALL NUMBER: Generate using Cutter-Sanborn system
   const pubYear =
