@@ -163,7 +163,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 						console.warn(`[AI Clean] Updating existing scan ID: ${scan_id}`);
 						const result = await db.prepare(`
 							UPDATE scans 
-							SET json_data = ?, title = ?, updated_at = CURRENT_TIMESTAMP
+							SET json_data = ?, title = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
 							WHERE id = ? AND user_id = ?
 						`).bind(jsonData, title, scan_id, userId).run();
 
@@ -186,7 +186,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 							console.warn(`[AI Clean] Found existing scan for ISBN ${isbn}, updating ID: ${existing.id}`);
 							await db.prepare(`
 								UPDATE scans 
-								SET json_data = ?, title = ?, updated_at = CURRENT_TIMESTAMP
+								SET json_data = ?, title = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
 								WHERE id = ? AND user_id = ?
 							`).bind(jsonData, title, existing.id, userId).run();
 
@@ -222,7 +222,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 								// Update the existing row that won the race
 								await db.prepare(`
 									UPDATE scans 
-									SET json_data = ?, title = ?, updated_at = CURRENT_TIMESTAMP
+									SET json_data = ?, title = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
 									WHERE id = ? AND user_id = ?
 								`).bind(jsonData, title, fallback.id, userId).run();
 
