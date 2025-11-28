@@ -162,6 +162,7 @@ export const GET: RequestHandler = async ({
 
     // === STEP 3: Save to Database & Cache ===
     // Note: Database write is now BLOCKING to ensure history is saved reliably
+    // Uses UPSERT logic to prevent duplicates (see createScan in db.ts)
     if (platform?.env?.DB) {
       const db = getDB(platform);
 
@@ -170,8 +171,14 @@ export const GET: RequestHandler = async ({
         const jsonData = JSON.stringify(responseData);
 
         // ✅ Use authenticated user ID (Fix for saving to history)
-        await createScan(db, locals.user.id, isbn, title, jsonData);
-        logger.info("scan_created", { userId: locals.user.id });
+        // createScan now uses UPSERT logic - returns existing scan_id if found
+        const scanId = await createScan(db, locals.user.id, isbn, title, jsonData);
+        
+        // CRITICAL: Include scan_id in response so frontend can store it
+        // This prevents duplicates when user cleans the same book later
+        responseData.scan_id = scanId;
+        
+        logger.info("scan_created", { userId: locals.user.id, scanId });
       } catch (dbError) {
         logger.error("db_write_failed", { error: dbError });
         // We don't throw here to ensure the user still gets the book data

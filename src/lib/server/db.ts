@@ -125,7 +125,12 @@ export async function getScanById(
 }
 
 /**
- * Create a new scan (user-scoped)
+ * Create or update a scan (user-scoped with UPSERT logic)
+ *
+ * This function implements UPSERT logic to prevent duplicate scans:
+ * 1. First checks if a scan exists for this user+isbn
+ * 2. If exists, updates it with new data
+ * 3. If not exists, inserts new row
  *
  * @param db - D1 database instance
  * @param userId - User ID who owns this scan
@@ -133,7 +138,7 @@ export async function getScanById(
  * @param title - Book title
  * @param jsonData - Merged book metadata (serialized JSON)
  * @param status - Scan status (default: 'draft')
- * @returns Inserted scan ID
+ * @returns Scan ID (existing or newly created)
  */
 export async function createScan(
   db: D1Database,
@@ -143,41 +148,90 @@ export async function createScan(
   jsonData: string,
   status: "draft" | "published" | "archived" = "draft",
 ): Promise<number> {
-  const result = await db
-    .prepare(
-      `INSERT INTO scans (user_id, isbn, title, json_data, status, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-    )
-    .bind(userId, isbn, title, jsonData, status)
-    .run();
+  try {
+    // Check if scan already exists for this user+isbn
+    const existing = await db
+      .prepare(`SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1`)
+      .bind(userId, isbn)
+      .first<{ id: number }>();
 
-  // D1 doesn't return last_insert_id directly, but we can use meta
-  if (!result.success) {
-    throw new Error("Failed to create scan");
-  }
+    if (existing?.id) {
+      // UPDATE existing scan
+      await db
+        .prepare(
+          `UPDATE scans SET title = ?, json_data = ?, status = ?, updated_at = datetime('now')
+           WHERE id = ? AND user_id = ?`,
+        )
+        .bind(title, jsonData, status, existing.id, userId)
+        .run();
 
-  // Return a placeholder ID or fetch the actual ID
-  // In D1, we can query for the last inserted row
-  const lastInserted = await db
-    .prepare(`SELECT id FROM scans WHERE user_id = ? ORDER BY id DESC LIMIT 1`)
-    .bind(userId)
-    .first<{ id: number }>();
+      logger.info(LogEvents.SCAN_CREATED, {
+        userId,
+        scanId: existing.id,
+        isbn,
+        action: "updated",
+      });
 
-  if (lastInserted?.id) {
-    logger.info(LogEvents.SCAN_CREATED, {
-      userId,
-      scanId: lastInserted.id,
-      isbn,
-    });
-  } else {
+      return existing.id;
+    }
+
+    // INSERT new scan
+    const result = await db
+      .prepare(
+        `INSERT INTO scans (user_id, isbn, title, json_data, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+      )
+      .bind(userId, isbn, title, jsonData, status)
+      .run();
+
+    if (!result.success) {
+      throw new Error("Failed to create scan");
+    }
+
+    // Get the inserted ID
+    const lastInserted = await db
+      .prepare(`SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1`)
+      .bind(userId, isbn)
+      .first<{ id: number }>();
+
+    if (lastInserted?.id) {
+      logger.info(LogEvents.SCAN_CREATED, {
+        userId,
+        scanId: lastInserted.id,
+        isbn,
+        action: "inserted",
+      });
+      return lastInserted.id;
+    }
+
     logger.error(LogEvents.DB_WRITE_FAILED, {
       userId,
       isbn,
       context: "createScan",
     });
-  }
+    return 0;
+  } catch (err) {
+    // Handle race condition: UNIQUE constraint violation
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    if (errorMsg.includes("UNIQUE constraint failed") || errorMsg.includes("SQLITE_CONSTRAINT")) {
+      // Another request won the race, fetch that row
+      const fallback = await db
+        .prepare(`SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1`)
+        .bind(userId, isbn)
+        .first<{ id: number }>();
 
-  return lastInserted?.id || 0;
+      if (fallback?.id) {
+        logger.info(LogEvents.SCAN_CREATED, {
+          userId,
+          scanId: fallback.id,
+          isbn,
+          action: "race_resolved",
+        });
+        return fallback.id;
+      }
+    }
+    throw err;
+  }
 }
 
 /**

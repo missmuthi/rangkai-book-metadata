@@ -126,6 +126,7 @@ export interface MergedBookData {
     | "openlibrary-only";
   aiWarning?: string;
   ai_log?: { timestamp: number; model: string; changes: string[] }[];
+  scan_id?: number; // Database scan ID for upsert operations
   meta?: {
     sources?: {
       google: boolean;

@@ -102,7 +102,7 @@
 				saveStatus = 'saving';
 				
 				try {
-						// Pass scan_id if available for database update
+						// Pass scan_id if available for database update (prevents duplicates)
 						const payload = {
 								...book,
 								scan_id: book.scan_id || undefined
@@ -123,8 +123,14 @@
 						
 						const cleaned = await res.json();
 						
-						// Update local state with cleaned data
-						book = cleaned;
+						// CRITICAL: Store the returned scan_id so future operations update the same row
+						// This prevents duplicate scans when user cleans the same book multiple times
+						if (cleaned.scan_id && typeof cleaned.scan_id === 'number') {
+								book.scan_id = cleaned.scan_id;
+						}
+						
+						// Update local state with cleaned data (preserving scan_id)
+						book = { ...cleaned, scan_id: book.scan_id };
 						
 						// Check if save was successful
 						if (cleaned.saved === true || cleaned.scan_id) {

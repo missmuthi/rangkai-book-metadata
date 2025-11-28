@@ -77,16 +77,19 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			return String(val);
 		};
 
-		// Define all fields to monitor
+		// Define all fields to monitor (these are fields AI can modify)
 		const fieldsToCheck = [
 			'title', 'author', 'publisher', 'description', 
 			'ddc', 'lcc', 'classification',
 			'language', 'series', 'edition', 'subjects', 'date', 'publishedDate'
-		];
+		] as const;
+
+		type CheckableField = (typeof fieldsToCheck)[number];
 
 		fieldsToCheck.forEach(field => {
-			const oldVal = book[field as keyof MergedBookData];
-			const newVal = cleanedFields[field as keyof typeof cleanedFields];
+			// Use type assertion to safely access fields that may not be in cleanedFields
+			const oldVal = (book as Record<string, unknown>)[field];
+			const newVal = (cleanedFields as Record<string, unknown>)[field];
 
 			const oldEmpty = isEmptyOrInvalid(oldVal);
 			const newFilled = isFilledAndValid(newVal);
@@ -134,7 +137,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		};
 
 		// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-		// WRITE-THROUGH PERSISTENCE: Auto-save to D1 database
+		// WRITE-THROUGH PERSISTENCE: Upsert to D1 database (prevents duplicates)
 		// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 		let savedScanId: number | null = null;
 		let saveError: string | null = null;
@@ -146,10 +149,18 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			const isbn = cleanedBook.isbn13 || cleanedBook.isbn10 || cleanedBook.isbn || '';
 			const title = cleanedBook.title || 'Untitled';
 
-			const saveToDatabase = async () => {
+			/**
+			 * UPSERT LOGIC (prevents duplicate scans for same user+isbn):
+			 * 1. If scan_id provided → UPDATE that specific row (verify ownership)
+			 * 2. Else → Check if scan exists for this user+isbn → UPDATE if found
+			 * 3. Else → INSERT new scan
+			 * 4. Race condition handling: If INSERT fails due to UNIQUE constraint,
+			 *    catch the error and return the existing scan_id
+			 */
+			const upsertToDatabase = async (): Promise<{ scanId: number | null; error: string | null }> => {
 				try {
+					// CASE 1: scan_id provided → UPDATE existing (verify user ownership)
 					if (scan_id) {
-						// UPDATE existing scan (verify user ownership for RLS)
 						console.warn(`[AI Clean] Updating existing scan ID: ${scan_id}`);
 						const result = await db.prepare(`
 							UPDATE scans 
@@ -157,50 +168,89 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 							WHERE id = ? AND user_id = ?
 						`).bind(jsonData, title, scan_id, userId).run();
 
-						if (result.meta.changes === 0) {
-							console.error(`[AI Clean] Update failed - scan ${scan_id} not found or unauthorized`);
-							saveError = 'Scan not found or unauthorized';
-						} else {
-							savedScanId = scan_id;
+						if (result.meta.changes > 0) {
 							console.warn(`[AI Clean] ✅ Updated scan ID: ${scan_id}`);
+							return { scanId: scan_id, error: null };
 						}
-					} else {
-						// INSERT new scan
-						console.warn(`[AI Clean] Inserting new scan for ISBN: ${isbn}`);
-						const result = await db.prepare(`
-							INSERT INTO scans (user_id, isbn, title, json_data, status)
-							VALUES (?, ?, ?, ?, 'completed')
-						`).bind(userId, isbn, title, jsonData).run();
-
-						savedScanId = result.meta.last_row_id as number;
-						console.warn(`[AI Clean] ✅ Inserted new scan ID: ${savedScanId}`);
+						// scan_id not found for this user, fall through to lookup by isbn
+						console.warn(`[AI Clean] scan_id ${scan_id} not found, checking by ISBN`);
 					}
+
+					// CASE 2: No scan_id or update failed → Check if scan exists for this user+isbn
+					if (isbn) {
+						const existing = await db.prepare(`
+							SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1
+						`).bind(userId, isbn).first<{ id: number }>();
+
+						if (existing?.id) {
+							// Found existing scan → UPDATE it
+							console.warn(`[AI Clean] Found existing scan for ISBN ${isbn}, updating ID: ${existing.id}`);
+							await db.prepare(`
+								UPDATE scans 
+								SET json_data = ?, title = ?, updated_at = CURRENT_TIMESTAMP
+								WHERE id = ? AND user_id = ?
+							`).bind(jsonData, title, existing.id, userId).run();
+
+							console.warn(`[AI Clean] ✅ Updated existing scan ID: ${existing.id}`);
+							return { scanId: existing.id, error: null };
+						}
+					}
+
+					// CASE 3: No existing scan → INSERT new
+					console.warn(`[AI Clean] No existing scan found, inserting new for ISBN: ${isbn}`);
+					const result = await db.prepare(`
+						INSERT INTO scans (user_id, isbn, title, json_data, status)
+						VALUES (?, ?, ?, ?, 'completed')
+					`).bind(userId, isbn, title, jsonData).run();
+
+					const newId = result.meta.last_row_id as number;
+					console.warn(`[AI Clean] ✅ Inserted new scan ID: ${newId}`);
+					return { scanId: newId, error: null };
+
 				} catch (dbError) {
+					// CASE 4: Race condition - UNIQUE constraint violation
+					// Another request inserted while we were checking, fetch that row
+					const errorMsg = dbError instanceof Error ? dbError.message : String(dbError);
+					
+					if (errorMsg.includes('UNIQUE constraint failed') || errorMsg.includes('SQLITE_CONSTRAINT')) {
+						console.warn(`[AI Clean] Race condition detected, fetching existing scan for ISBN: ${isbn}`);
+						try {
+							const fallback = await db.prepare(`
+								SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1
+							`).bind(userId, isbn).first<{ id: number }>();
+
+							if (fallback?.id) {
+								// Update the existing row that won the race
+								await db.prepare(`
+									UPDATE scans 
+									SET json_data = ?, title = ?, updated_at = CURRENT_TIMESTAMP
+									WHERE id = ? AND user_id = ?
+								`).bind(jsonData, title, fallback.id, userId).run();
+
+								console.warn(`[AI Clean] ✅ Race resolved, updated scan ID: ${fallback.id}`);
+								return { scanId: fallback.id, error: null };
+							}
+						} catch (fallbackError) {
+							console.error('[AI Clean] Fallback lookup failed:', fallbackError);
+						}
+					}
+
 					console.error('[AI Clean] Database error:', dbError);
-					saveError = dbError instanceof Error ? dbError.message : 'Database write failed';
+					return { scanId: null, error: errorMsg };
 				}
 			};
 
-			// Use waitUntil for non-blocking background write (Cloudflare Workers pattern)
-			if (platform?.context?.waitUntil) {
-				platform.context.waitUntil(saveToDatabase());
-				// Return immediately, DB write happens in background
-				return json({ 
-					...cleanedBook, 
-					saved: true, 
-					scan_id: scan_id || 'pending',
-					_saveNote: 'Saving in background'
-				});
-			} else {
-				// Fallback: synchronous save (local dev)
-				await saveToDatabase();
-			}
+			// Execute upsert SYNCHRONOUSLY to ensure we return the correct scan_id
+			// (waitUntil would cause race conditions and return stale/pending IDs)
+			const result = await upsertToDatabase();
+			savedScanId = result.scanId;
+			saveError = result.error;
 		} else {
 			console.warn('[AI Clean] ⚠️ D1 database not available - skipping persistence');
 			saveError = 'Database not configured';
 		}
 
-		// Return cleaned book with save status
+		// Return cleaned book with save status and scan_id for frontend to store
 		return json({ 
 			...cleanedBook, 
 			saved: !saveError,
