@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import CameraScanner from '$lib/components/CameraScanner.svelte';
 	import BookDetailModal from '$lib/components/BookDetailModal.svelte';
 	import { BookApiService } from '$lib/api';
@@ -17,6 +18,13 @@
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 	let selectedBook = $state<MergedBookData | null>(null);
+
+	onMount(() => {
+		console.log('[MobileScanner] Component mounted, client-side rendering confirmed');
+		return () => {
+			console.log('[MobileScanner] Component unmounting');
+		};
+	});
 
 	$effect(() => {
 		if (!data.session) {
@@ -78,25 +86,44 @@
 	}
 
 	async function cleanData() {
-		if (!lastResult) return;
+		console.log('[MobileScanner] Clean Data button clicked');
+		console.log('[MobileScanner] lastResult:', lastResult);
+		
+		if (!lastResult) {
+			console.log('[MobileScanner] No lastResult, returning early');
+			return;
+		}
 
 		const original = { ...lastResult };
 		isLoading = true;
+		console.log('[MobileScanner] Starting AI clean process...');
 
 		try {
+			console.log('[MobileScanner] Sending POST to /api/ai/clean');
 			const res = await fetch('/api/ai/clean', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(lastResult)
 			});
 
-			if (!res.ok) throw new Error('AI Cleaning failed');
+			console.log('[MobileScanner] Response status:', res.status, res.statusText);
+
+			if (!res.ok) {
+				const errorText = await res.text();
+				console.error('[MobileScanner] Response not OK:', errorText);
+				throw new Error('AI Cleaning failed');
+			}
 
 			const cleaned = await res.json();
+			console.log('[MobileScanner] Received cleaned data:', cleaned);
+			console.log('[MobileScanner] Changes detected:', cleaned.ai_log?.[cleaned.ai_log.length - 1]?.changes);
+			
 			lastResult = cleaned;
+			console.log('[MobileScanner] lastResult updated successfully');
 
 			// Handle warnings
 			if (cleaned.aiWarning) {
+				console.log('[MobileScanner] AI warning:', cleaned.aiWarning);
 				toasts.add(cleaned.aiWarning, 'warning');
 			} else {
 				toasts.add('Metadata cleaned by AI ✨', 'success');
@@ -105,12 +132,14 @@
 			// Update selectedBook if it matches
 			if (selectedBook && (selectedBook.isbn13 === original.isbn13 || selectedBook.isbn10 === original.isbn10)) {
 				selectedBook = cleaned;
+				console.log('[MobileScanner] selectedBook also updated');
 			}
 		} catch (e) {
-			console.error(e);
+			console.error('[MobileScanner] Error during AI clean:', e);
 			toasts.add('Failed to clean metadata', 'error');
 		} finally {
 			isLoading = false;
+			console.log('[MobileScanner] AI clean process completed, isLoading set to false');
 		}
 	}
 </script>
@@ -247,7 +276,11 @@
 
 			<div class="mt-2 flex justify-end">
 				<button
-					onclick={cleanData}
+					type="button"
+					onclick={() => {
+						console.log('[MobileScanner] Clean Data button onclick triggered');
+						cleanData();
+					}}
 					class="text-sm flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors"
 					disabled={isLoading}
 				>

@@ -1,4 +1,5 @@
 <script lang="ts">
+        import { onMount } from 'svelte';
         import type { MergedBookData } from '$lib/types';
 
         let { book, onClose }: { book: MergedBookData; onClose: () => void } = $props();
@@ -9,11 +10,20 @@
         let isCleaning = $state(false);
         let toast = $state<string | null>(null);
         let copiedField = $state<string | null>(null);
+        let mounted = $state(false);
+
+        onMount(() => {
+                console.log('[BookDetailModal] Component mounted, client-side rendering confirmed');
+                mounted = true;
+                return () => {
+                        console.log('[BookDetailModal] Component unmounting');
+                };
+        });
 
         let coverUrl = $derived(getSecureProxyUrl(book.cover));
 
         // ISBD Publisher Format
-        let publisherISBD = $derived(() => {
+        let publisherISBD = $derived.by(() => {
                 const place = book.publishPlace || 'S.l.';
                 const publisher = book.publisher || 's.n.';
                 const year = book.publishYear || book.date || '[n.d.]';
@@ -21,13 +31,13 @@
         });
 
         // Format subjects with standard heading separator
-        let formattedSubjects = $derived(() => {
+        let formattedSubjects = $derived.by(() => {
                 if (!book.subjects || book.subjects === '-') return '-';
                 return book.subjects.split(',').map(s => s.trim()).join(' -- ');
         });
 
         // Statement of Responsibility
-        let responsibility = $derived(() => {
+        let responsibility = $derived.by(() => {
                 if (book.authors && book.authors !== '-') {
                         return book.authors.split(',').map(a => a.trim()).join(' ; ');
                 }
@@ -81,30 +91,55 @@
         }
 
         async function aiClean() {
-                if (isCleaning) return;
+                console.log('[BookDetailModal] AI Clean button clicked');
+                console.log('[BookDetailModal] Current isCleaning state:', isCleaning);
+                console.log('[BookDetailModal] Book data:', book);
+                
+                if (isCleaning) {
+                        console.log('[BookDetailModal] Already cleaning, returning early');
+                        return;
+                }
+                
                 isCleaning = true;
+                console.log('[BookDetailModal] Starting AI clean process...');
+                
                 try {
+                        console.log('[BookDetailModal] Sending POST to /api/ai/clean');
                         const res = await fetch('/api/ai/clean', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(book)
                         });
-                        if (!res.ok) throw new Error('AI clean failed');
+                        
+                        console.log('[BookDetailModal] Response status:', res.status, res.statusText);
+                        
+                        if (!res.ok) {
+                                const errorText = await res.text();
+                                console.error('[BookDetailModal] Response not OK:', errorText);
+                                throw new Error('AI clean failed');
+                        }
+                        
                         const cleaned = await res.json();
+                        console.log('[BookDetailModal] Received cleaned data:', cleaned);
+                        console.log('[BookDetailModal] Changes detected:', cleaned.ai_log?.[cleaned.ai_log.length - 1]?.changes);
+                        
                         book = cleaned;
+                        console.log('[BookDetailModal] Book updated successfully');
+                        
                         toast = 'Metadata cleaned & saved to network.';
                         setTimeout(() => (toast = null), 3000);
                 } catch (e) {
-                        console.error(e);
+                        console.error('[BookDetailModal] Error during AI clean:', e);
                         toast = 'Cleaning failed. Try again.';
                         setTimeout(() => (toast = null), 3000);
                 } finally {
                         isCleaning = false;
+                        console.log('[BookDetailModal] AI clean process completed, isCleaning set to false');
                 }
         }
 
         // AI History (Latest Log)
-        let latestAiLog = $derived(() => {
+        let latestAiLog = $derived.by(() => {
                 if (!book.ai_log || book.ai_log.length === 0) return null;
                 return book.ai_log[book.ai_log.length - 1];
         });
@@ -194,7 +229,7 @@
 						{@render row('Title', book.title, true)}
 						{@render row('Series Title', book.series)}
 						{@render row('Call Number', book.callNumber, true)}
-						{@render row('Publisher', publisherISBD())}
+						{@render row('Publisher', publisherISBD)}
 						{@render row('Collation', book.collation || book.physicalDescription || book.pages ? `${book.pages} p.` : undefined)}
 						{@render row('Language', book.language)}
 						{@render row('ISBN/ISSN', book.isbn13 || book.isbn10, true)}
@@ -203,9 +238,9 @@
 						{@render row('Media Type', 'unmediated')}
 						{@render row('Carrier Type', 'volume')}
 						{@render row('Edition', book.edition)}
-						{@render row('Subject(s)', formattedSubjects())}
+						{@render row('Subject(s)', formattedSubjects)}
 						{@render row('Specific Detail Info', book.specificDetail)}
-						{@render row('Statement of Responsibility', responsibility())}
+						{@render row('Statement of Responsibility', responsibility)}
 					</dl>
 
 					<!-- Description Section -->
@@ -266,18 +301,18 @@
 					</div>
 
 					<!-- AI History Section -->
-					{#if latestAiLog()}
-						{@const log = latestAiLog()}
+					{#if latestAiLog}
+						{@const log = latestAiLog}
 						<div class="rounded-lg bg-violet-50 p-4 ring-1 ring-violet-200">
 							<div class="flex items-center justify-between mb-2">
 								<h3 class="text-xs font-semibold uppercase tracking-wide text-violet-700">🤖 AI History</h3>
 								<span class="text-[10px] text-violet-500">
-									{new Date(log!.timestamp).toLocaleTimeString()}
+									{new Date(log.timestamp).toLocaleTimeString()}
 								</span>
 							</div>
-							{#if log!.changes && log!.changes.length > 0}
+							{#if log.changes && log.changes.length > 0}
 								<ul class="space-y-1">
-									{#each log!.changes as change}
+									{#each log.changes as change}
 										<li class="text-xs text-violet-900 flex items-start gap-1.5">
 											<span class="text-violet-400 mt-0.5">•</span>
 											{change}
@@ -300,7 +335,10 @@
 						<button
 							class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
 							type="button"
-							onclick={aiClean}
+							onclick={() => {
+								console.log('[BookDetailModal] Button onclick triggered');
+								aiClean();
+							}}
 							disabled={isCleaning}
 						>
 							{#if isCleaning}
