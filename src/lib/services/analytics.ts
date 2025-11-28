@@ -264,8 +264,8 @@ class AnalyticsService {
    * Dev mode logging with colors and emojis
    */
   private logDevMode(event: { name: string; properties: any }): void {
-    const emoji = this.getEventEmoji(event.name);
-    const color = this.getEventColor(event.name);
+    const _emoji = this.getEventEmoji(event.name);
+    const _color = this.getEventColor(event.name);
 
     // console.log(
     //   `%c${emoji} [Analytics] ${event.name}`,

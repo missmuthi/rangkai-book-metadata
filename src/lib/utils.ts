@@ -177,9 +177,7 @@ export async function retry<T>(
       // Exponential backoff for retryable errors (network issues, timeouts)
       if (i < maxRetries - 1) {
         const backoffDelay = initialDelay * Math.pow(2, i);
-        console.log(
-          `[Retry ${i + 1}/${maxRetries}] Waiting ${backoffDelay}ms before retry...`,
-        );
+        // console.log(`[Retry ${i + 1}/${maxRetries}] Waiting ${backoffDelay}ms before retry...`);
         await new Promise((resolve) => setTimeout(resolve, backoffDelay));
       }
     }
