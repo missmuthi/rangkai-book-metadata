@@ -1,6 +1,27 @@
 export interface GoogleBookItem {
   id: string;
-  volumeInfo: any;
+  volumeInfo: {
+    title?: string;
+    subtitle?: string;
+    authors?: string[];
+    publisher?: string;
+    publishedDate?: string;
+    pageCount?: number;
+    description?: string;
+    language?: string;
+    categories?: string[];
+    printType?: string;
+    industryIdentifiers?: Array<{
+      type: "ISBN_10" | "ISBN_13";
+      identifier: string;
+    }>;
+    imageLinks?: {
+      smallThumbnail?: string;
+      thumbnail?: string;
+    };
+    infoLink?: string;
+    [key: string]: unknown;
+  };
 }
 
 export interface GoogleBooksResponse {
@@ -14,7 +35,7 @@ export interface OpenLibraryBookData {
   publishers?: Array<{ name?: string }>;
   publish_date?: string | number;
   number_of_pages?: number;
-  description?: any;
+  description?: string | { value: string };
   languages?: Array<{ key: string }>;
   subjects?: string[];
   publish_places?: string[];
@@ -105,4 +126,12 @@ export interface MergedBookData {
     | "openlibrary-only";
   aiWarning?: string;
   ai_log?: { timestamp: number; model: string; changes: string[] }[];
+  meta?: {
+    sources?: {
+      google: boolean;
+      openlibrary: boolean;
+      loc: boolean;
+    };
+    [key: string]: unknown;
+  };
 }

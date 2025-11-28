@@ -75,6 +75,7 @@ export function getSecureImageUrl(url: string | null | undefined): string {
 /**
  * Debounce function calls to prevent excessive API calls during typing
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number,
@@ -90,6 +91,7 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Throttle function calls to limit execution frequency
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
   limit: number,
@@ -141,9 +143,15 @@ export async function retry<T>(
       lastError = error as Error;
 
       // Circuit Breaker: Don't retry on certain HTTP errors
-      if (error instanceof HttpError || (error as any).status) {
-        const status =
-          error instanceof HttpError ? error.status : (error as any).status;
+      const errorObj = error as Record<string, unknown>;
+      const status =
+        error instanceof HttpError
+          ? error.status
+          : typeof errorObj.status === "number"
+            ? errorObj.status
+            : undefined;
+
+      if (status) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
 

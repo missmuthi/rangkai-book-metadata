@@ -9,7 +9,7 @@
 		padding?: 'sm' | 'md' | 'lg';
 		class?: string;
 		onclick?: () => void;
-				children?: any;
+				children?: import('svelte').Snippet;
 	}
 	
 	let {
@@ -40,10 +40,14 @@
 		{onclick}
 		class="{classes} text-left"
 	>
-		{@render children()}
+		{#if children}
+			{@render children()}
+		{/if}
 	</button>
 {:else}
 	<div class={classes}>
-		{@render children()}
+		{#if children}
+			{@render children()}
+		{/if}
 	</div>
 {/if}

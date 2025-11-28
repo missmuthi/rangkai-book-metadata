@@ -41,7 +41,7 @@ export const handleError: HandleServerError = ({
     if (errorKeys.length > 0) {
       console.error("Additional Error Properties:");
       errorKeys.forEach((key) => {
-        console.error(`  ${key}:`, (error as any)[key]);
+        console.error(`  ${key}:`, (error as unknown as Record<string, unknown>)[key]);
       });
     }
   } else {

@@ -1,11 +1,11 @@
 <script lang="ts">
 		import { browser } from '$app/environment';
 		import { onMount, tick } from 'svelte';
-		import { checkGoogleBooksLimit as _checkGoogleBooksLimit, checkOpenLibraryLimit as _checkOpenLibraryLimit, getRateLimitStatus } from '$lib/rateLimiter';
+		import { checkGoogleBooksLimit as _checkGoogleBooksLimit, checkOpenLibraryLimit as _checkOpenLibraryLimit } from '$lib/rateLimiter';
         import { scanHistory } from '$lib/stores/history.svelte';
         import { processAndRenderMergedData } from '$lib/merge';
         import { BookApiService, googleCache, openLibraryCache, locCache } from '$lib/api';
-        import { retry, isOnline, getSecureImageUrl } from '$lib/utils';
+        import { retry, isOnline } from '$lib/utils';
         import { cleanISBN } from '$lib/isbn-helpers';
 	import SkeletonCard from '$lib/SkeletonCard.svelte';
 	import { Analytics } from '$lib/services/analytics';
@@ -32,11 +32,6 @@
 			};
 			infoLink?: string;
 		};
-	}
-
-	interface GoogleBooksResponse {
-		totalItems: number;
-		items?: GoogleBookItem[];
 	}
 
 	interface OpenLibraryBookData {
@@ -72,7 +67,7 @@
 			isbn?: string[];
 			first_publish_year?: number;
 			number_of_pages_median?: number;
-			[key: string]: any;
+			[key: string]: unknown;
 		}>;
 	}
 
@@ -187,9 +182,6 @@
 	let googleRaw = $state('');
 	let openLibraryRaw = $state('');
 
-	// Rate limit status
-	let rateLimitStatus = $state(getRateLimitStatus());
-
 	// Scanner Mode: Input reference for auto-focus
         let searchInputRef: HTMLInputElement | null = null;
         let scannerModeEnabled = $state(false);
@@ -222,10 +214,11 @@
 	 * Uses Web Audio API for non-intrusive beep sounds
 	 */
         function playFeedbackSound(type: 'success' | 'error') {
-                if (typeof window === 'undefined' || !window.AudioContext) return;
+                if (typeof window === 'undefined' || (!window.AudioContext && !(window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)) return;
 		
                 try {
-                        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+                        const audioContext = new AudioContextClass();
                         const oscillator = audioContext.createOscillator();
                         const gainNode = audioContext.createGain();
 			
@@ -542,7 +535,6 @@
                         }
 		} finally {
 			isLoading = false;
-			rateLimitStatus = getRateLimitStatus();
 			searchQuery = '';
 			await tick();
 			if (searchInputRef) {
@@ -1187,9 +1179,6 @@
 						{#each openLibraryResults as doc, index}
 							{@const title = doc.title || 'No Title'}
 							{@const author = doc.author_name ? doc.author_name[0] : 'Unknown Author'}
-							{@const coverID = doc.cover_i}
-							{@const cover = coverID ? `https://covers.openlibrary.org/b/id/${coverID}-S.jpg` : FALLBACK_COVER}
-							{@const secureProxiedCover = getSecureProxyUrl(cover)}							
 						<button type="button" onclick={() => handleOpenLibraryBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
 								<div>
 									<div class="font-semibold text-base text-green-700">{title}</div>

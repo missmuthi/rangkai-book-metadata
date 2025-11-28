@@ -19,8 +19,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const cleanedFields = await aiService.cleanMetadata(book);
 
 		// Extract internal changes array from AI response
-		const aiChanges = (cleanedFields as any)._changes || [];
-		delete (cleanedFields as any)._changes;
+		const aiChanges = (cleanedFields as MergedBookData & { _changes?: string[] })._changes || [];
+		delete (cleanedFields as MergedBookData & { _changes?: string[] })._changes;
 
 		// COMPREHENSIVE CHANGE DETECTION
 		// Track both NEW data (filling gaps) and UPDATED data (fixing errors)
