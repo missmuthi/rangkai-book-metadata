@@ -131,6 +131,10 @@ export async function createBookScan(
       metadata.title || "Unknown Title",
       JSON.stringify(metadata),
       "draft",
+      metadata.authors,
+      metadata.subjects,
+      metadata.ddc,
+      metadata.lcc,
     );
 
     return {

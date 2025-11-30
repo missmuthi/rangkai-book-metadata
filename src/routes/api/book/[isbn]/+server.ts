@@ -177,6 +177,11 @@ export const GET: RequestHandler = async ({
           isbn,
           title,
           jsonData,
+          "draft",
+          responseData.authors,
+          responseData.subjects,
+          responseData.ddc,
+          responseData.lcc,
         );
 
         // CRITICAL: Include scan_id in response so frontend can store it

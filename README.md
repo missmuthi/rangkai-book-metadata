@@ -137,7 +137,7 @@ These documents are being migrated to `/docs` but still contain valuable informa
 - `IMAGE_SECURITY.md` - Image proxy & SSRF protection
 - `PERFORMANCE_ANALYSIS.md` - Performance benchmarks
 - `MOBILE_SCANNER_IMPROVEMENTS.md` - Mobile barcode scanner features
-- `agents.md` - AI agents & automation documentation
+- `docs/meta/agents_full.md` - AI agents & automation documentation (moved from root `agents.md`)
 
 **Quick Reference:**
 

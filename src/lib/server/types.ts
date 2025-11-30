@@ -37,6 +37,10 @@ export interface Scan {
   user_id: string;
   isbn: string;
   title: string;
+  authors?: string; // New: comma-separated authors for search
+  subjects?: string; // New: comma-separated subjects for search
+  ddc?: string; // New: Dewey Decimal Classification
+  lcc?: string; // New: Library of Congress Classification
   json_data: string; // Serialized JSON
   status: "draft" | "published" | "archived";
   created_at: string; // ISO timestamp
