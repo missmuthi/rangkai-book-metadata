@@ -114,12 +114,22 @@
 								body: JSON.stringify(payload)
 						});
 						
-						if (!res.ok) {
-								const errorText = await res.text();
-								console.error('[BookDetailModal] AI clean failed:', errorText);
-								saveStatus = 'error';
-								throw new Error('AI clean failed');
-						}
+							if (!res.ok) {
+							let errorMessage = 'AI clean failed';
+							try {
+									const errorData = await res.json();
+									errorMessage = errorData.error || errorMessage;
+									console.error('[BookDetailModal] AI clean failed:', errorData);
+							} catch {
+									// If JSON parse fails, try text
+									const errorText = await res.text();
+									console.error('[BookDetailModal] AI clean failed:', errorText);
+									errorMessage = errorText || errorMessage;
+							}
+							saveStatus = 'error';
+							toast = errorMessage;
+							throw new Error(errorMessage);
+					}
 						
 						const cleaned = await res.json();
 						
@@ -149,9 +159,11 @@
 								saveStatus = 'idle';
 								toast = null;
 						}, 3000);
-				} catch (_e) {
+				} catch (e) {
 						saveStatus = 'error';
-						toast = 'Cleaning failed. Try again.';
+						const errorMsg = e instanceof Error ? e.message : 'Cleaning failed. Try again.';
+						toast = errorMsg;
+						console.error('[BookDetailModal] AI clean exception:', e);
 						setTimeout(() => {
 								saveStatus = 'idle';
 								toast = null;

@@ -108,15 +108,26 @@ export const handle: Handle = async ({ event, resolve }) => {
           event.locals.session = sessionData;
           event.locals.user = sessionData.user;
         } else {
+          // Session token exists but is invalid/expired
+          if (event.url.pathname.startsWith('/api/')) {
+            console.warn(`[Auth] Invalid/expired session token for ${event.url.pathname}`);
+          }
           event.locals.session = null;
           event.locals.user = null;
         }
       } else {
+        // No session token in cookies
+        if (event.url.pathname.startsWith('/api/') && !event.url.pathname.startsWith('/api/auth')) {
+          console.warn(`[Auth] No session token found for ${event.url.pathname}`);
+        }
         event.locals.session = null;
         event.locals.user = null;
       }
     } else {
       // No platform context (local dev without D1)
+      if (event.url.pathname.startsWith('/api/')) {
+        console.warn(`[Auth] No platform.env.DB available for ${event.url.pathname}`);
+      }
       event.locals.session = null;
       event.locals.user = null;
     }
@@ -126,6 +137,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   } catch (error) {
     // Session fetch failed - continue without session
     console.error("⚠️ Failed to fetch session:", error);
+    console.error("Path:", event.url.pathname);
     event.locals.session = null;
     event.locals.user = null;
 
