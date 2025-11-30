@@ -4,7 +4,7 @@ import {
   createSession,
   upsertUser,
 } from "$lib/auth-simple";
-import { redirect, isRedirect, error as kitError } from "@sveltejs/kit";
+import { redirect, isRedirect, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { logger } from "$lib/server/logger";
 import { z } from "zod";
@@ -88,7 +88,7 @@ export const GET: RequestHandler = async ({
   const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams));
   if (!queryResult.success) {
     logger.warn("oauth_invalid_params", { errors: queryResult.error.format() });
-    return kitError(400, "Invalid query parameters");
+    throw error(400, queryResult.error.format());
   }
   const { code, state, error: errorParam, error_description, debug } = queryResult.data;
 

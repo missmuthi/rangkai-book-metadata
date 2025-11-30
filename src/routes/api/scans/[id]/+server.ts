@@ -1,6 +1,7 @@
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import type { MergedBookData } from "$lib/types";
+import { bookSchema } from "$lib/schemas";
 
 /**
  * PATCH /api/scans/[id]
@@ -35,7 +36,14 @@ export const PATCH: RequestHandler = async ({
   const db = platform.env.DB;
 
   try {
-    const body = (await request.json()) as Partial<MergedBookData>;
+    const rawBody = await request.json();
+    // Validate that the update is valid Partial<MergedBookData> using the schema
+    const parseResult = bookSchema.partial().safeParse(rawBody);
+
+    if (!parseResult.success) {
+         throw error(400, parseResult.error.format());
+    }
+    const body = parseResult.data;
 
     if (!body || Object.keys(body).length === 0) {
       throw error(400, "No update data provided");
