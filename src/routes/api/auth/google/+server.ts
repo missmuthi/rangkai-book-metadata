@@ -88,6 +88,7 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
     };
 
     // Store state and code verifier for verification in callback
+    // Rotation: New values are generated for every request
     cookies.set("google_oauth_state", state, cookieOptions);
     cookies.set("google_code_verifier", codeVerifier, cookieOptions);
     // Store timestamp to prevent replay attacks

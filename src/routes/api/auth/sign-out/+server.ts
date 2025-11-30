@@ -16,7 +16,17 @@ function isSecureContext(url: URL): boolean {
  *
  * Deletes the session from D1 database and clears the session cookie.
  */
-export const POST: RequestHandler = async ({ platform, cookies, url }) => {
+export const POST: RequestHandler = async ({ platform, cookies, url, request }) => {
+  // CSRF Protection: Ensure Origin matches (if present)
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== url.origin) {
+    logger.warn("sign_out_csrf_blocked", {
+      expected: url.origin,
+      received: origin,
+    });
+    return new Response("Cross-site request blocked", { status: 403 });
+  }
+
   if (!platform?.env?.DB) {
     return new Response("Database not configured", { status: 500 });
   }
@@ -37,7 +47,7 @@ export const POST: RequestHandler = async ({ platform, cookies, url }) => {
     path: "/",
     httpOnly: true,
     secure: secureCookie,
-    sameSite: "lax",
+    sameSite: "strict",
   });
 
   // console.log("[Sign Out] ✅ Session cookie deleted");
