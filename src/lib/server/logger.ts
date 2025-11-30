@@ -8,7 +8,7 @@
  *
  * Usage:
  * ```ts
- * import { logger } from '$lib/server/log';
+ * import { logger } from '$lib/server/logger';
  *
  * logger.info('scan_created', { userId, isbn, provider: 'google' });
  * logger.error('metadata_fetch_failed', { isbn, provider: 'openlibrary', error: err.message });

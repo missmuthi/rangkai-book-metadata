@@ -24,19 +24,7 @@ import {
 import { getDB, createScan } from "$lib/server/db";
 import { fetchBookByIsbn } from "$lib/server/metadata";
 import { logger } from "$lib/server/logger";
-import { sanitizeBookData } from "$lib/utils";
-
-// Define the schema for ISBN validation
-const isbnSchema = z.string().refine((val) => {
-  // Simple regex check for ISBN-10 or ISBN-13 (ignoring hyphens for regex simplicity,
-  // but the refine could be more robust if needed. The prompt asked for zod validation).
-  // We can reuse the existing utils or rely on zod regex.
-  // Let's use a regex that matches loose ISBN formats, then rely on the existing strict validators if needed,
-  // or just trust the regex.
-  // Matches 10 or 13 digits, optionally with hyphens.
-  const clean = val.replace(/[-\s]/g, "");
-  return /^(?:\d{9}[\dX]|\d{13})$/.test(clean);
-}, "Invalid ISBN format. Must be valid ISBN-10 or ISBN-13.");
+import { isbnSchema } from "$lib/schemas";
 
 /**
  * Generate a simple hash for ETag
@@ -175,10 +163,6 @@ export const GET: RequestHandler = async ({
     // Note: Database write is now BLOCKING to ensure history is saved reliably
     // Uses UPSERT logic to prevent duplicates (see createScan in db.ts)
     if (platform?.env?.DB) {
-      // Sanitize before saving
-      const sanitized = sanitizeBookData(responseData);
-      Object.assign(responseData, sanitized);
-
       const db = getDB(platform);
 
       try {

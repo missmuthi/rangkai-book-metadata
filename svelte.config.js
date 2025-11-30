@@ -15,6 +15,20 @@ const config = {
       $lib: "./src/lib",
       $modules: "./src/modules",
     },
+    // Content Security Policy
+    csp: {
+      mode: "auto",
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": ["'self'"],
+        "img-src": ["'self'", "https:", "data:"],
+        "connect-src": [
+          "'self'",
+          "https://books.google.com",
+          "https://covers.openlibrary.org",
+        ],
+      },
+    },
   },
 };
 

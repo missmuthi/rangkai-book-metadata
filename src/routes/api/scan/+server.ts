@@ -13,10 +13,10 @@ import { requireSession } from "$lib/server/auth";
 import { logger } from "$lib/server/logger";
 import { createBookScan, validateISBN } from "$modules/scan";
 import { z } from "zod";
-import { sanitizeInput } from "$lib/utils";
+import { isbnSchema } from "$lib/schemas";
 
 const scanSchema = z.object({
-  isbn: z.string(),
+  isbn: isbnSchema,
 });
 
 export const POST: RequestHandler = async (event) => {
@@ -28,22 +28,20 @@ export const POST: RequestHandler = async (event) => {
 
   const parseResult = scanSchema.safeParse(body);
   if (!parseResult.success) {
-    throw error(400, "ISBN is required and must be a string");
+    throw error(400, parseResult.error.format());
   }
   const { isbn } = parseResult.data;
 
-  const sanitizedIsbn = sanitizeInput(isbn);
-
-  logger.info("scan_request_received", { userId: session.user.id, isbn: sanitizedIsbn });
+  logger.info("scan_request_received", { userId: session.user.id, isbn });
 
   // Validate ISBN format
-  const validation = validateISBN(sanitizedIsbn);
+  const validation = validateISBN(isbn);
   if (!validation.valid) {
     throw error(400, validation.message || "Invalid ISBN");
   }
 
   // Create scan using scan module
-  const result = await createBookScan(event, sanitizedIsbn);
+  const result = await createBookScan(event, isbn);
 
   if (!result.success) {
     throw error(500, result.error || "Failed to create scan");
