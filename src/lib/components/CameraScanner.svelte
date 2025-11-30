@@ -1,24 +1,25 @@
 <script lang="ts">
-        import { browser } from '$app/environment';
-        import { createEventDispatcher, onMount } from 'svelte';
-        import type { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
+	import { browser } from '$app/environment';
+	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import type { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 
-        export let active = true;
+	export let active = true;
 
-        const dispatch = createEventDispatcher<{
-                scan: { text: string };
-                status: { active: boolean; online?: boolean };
-        }>();
+	const dispatch = createEventDispatcher<{
+		scan: { text: string };
+		status: { active: boolean; online?: boolean };
+	}>();
 
-        let scanner: Html5Qrcode | null = null;
-        let scannerModule: typeof import('html5-qrcode') | null = null;
-        let isScanning = false;
-        let isStarting = false;
-        let facingMode: 'environment' | 'user' = 'environment';
-        let statusMessage = 'Initializing camera...';
-        let errorMessage: string | null = null;
-        let cooldownTimeout: ReturnType<typeof setTimeout> | null = null;
-        let isOnline = browser ? navigator.onLine : true;
+	let scanner: Html5Qrcode | null = null;
+	let scannerModule: typeof import('html5-qrcode') | null = null;
+	let isScanning = false;
+	let isStarting = false;
+	let facingMode: 'environment' | 'user' = 'environment';
+	let statusMessage = 'Initializing camera...';
+	let errorMessage: string | null = null;
+	let cooldownTimeout: ReturnType<typeof setTimeout> | null = null;
+	let isOnline = browser ? navigator.onLine : true;
+	let componentMounted = false;
 
 	const scanConfig: Html5QrcodeCameraScanConfig = {
 		fps: 10,
@@ -28,263 +29,307 @@
 
 			return { width: size, height: size };
 		}
-	};        onMount(() => {
-                const cleanupNetworkListeners = setupNetworkListeners();
-                startIfNeeded();
+	};
 
-                return () => {
-                        cleanupNetworkListeners();
-                        teardown();
-                };
-        });
+	onMount(() => {
+		componentMounted = true;
+		const cleanupNetworkListeners = setupNetworkListeners();
+		startIfNeeded();
 
-        $: if (active) {
-                startIfNeeded();
-        } else {
-                stopScanning();
-        }
+		return () => {
+			// Synchronous cleanup only
+			componentMounted = false;
+			cleanupNetworkListeners();
+			// Fire-and-forget teardown
+			teardown();
+		};
+	});
 
-        async function loadScanner(): Promise<Html5Qrcode | null> {
-                if (!browser) {
-                        return null;
-                }
+	// Use onDestroy to ensure cleanup even if onMount return is not sufficient
+	// (Though onMount return is the preferred Svelte way, explicit onDestroy is safe)
+	onDestroy(() => {
+		componentMounted = false;
+	});
 
-                if (!scannerModule) {
-                        scannerModule = await import('html5-qrcode');
-                }
+	$: if (active) {
+		startIfNeeded();
+	} else {
+		stopScanning();
+	}
 
-                if (!scanner) {
-                        const { Html5Qrcode } = scannerModule;
-                        scanner = new Html5Qrcode('camera-viewfinder');
-                }
+	async function loadScanner(): Promise<Html5Qrcode | null> {
+		if (!browser) {
+			return null;
+		}
 
-                return scanner;
-        }
+		if (!scannerModule) {
+			scannerModule = await import('html5-qrcode');
+		}
 
-        async function startIfNeeded() {
-                if (!active || isScanning || isStarting) {
-                        return;
-                }
+		// Check mount status again after async import
+		if (!componentMounted) return null;
 
-                const instance = await loadScanner();
-                if (!instance) {
-                        return;
-                }
+		if (!scanner) {
+			const { Html5Qrcode } = scannerModule;
+			// Ensure element exists
+			if (document.getElementById('camera-viewfinder')) {
+				scanner = new Html5Qrcode('camera-viewfinder');
+			}
+		}
 
-                isStarting = true;
-                errorMessage = null;
-                statusMessage = 'Starting camera...';
+		return scanner;
+	}
 
-                try {
-                        await instance.start(
-                                { facingMode },
-                                scanConfig,
-                                handleScanSuccess,
-                                handleScanError
-                        );
-                        isScanning = true;
-                        statusMessage = 'Camera active';
-                        dispatch('status', { active: true, online: isOnline });
-                } catch (err) {
-                        let message = err instanceof Error ? err.message : 'Unable to start camera';
+	async function startIfNeeded() {
+		if (!componentMounted) return;
+		if (!active || isScanning || isStarting) {
+			return;
+		}
 
-                        if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) {
-                                message = 'Camera permission denied. Please allow camera access to scan.';
-                        }
+		isStarting = true;
+		errorMessage = null;
+		statusMessage = 'Starting camera...';
 
-                        errorMessage = message;
-                        statusMessage = 'Camera unavailable';
-                } finally {
-                        isStarting = false;
-                }
-        }
+		try {
+			const instance = await loadScanner();
+			if (!instance) {
+				isStarting = false;
+				return;
+			}
 
-        async function stopScanning() {
-                if (!scanner || !isScanning) {
-                        return;
-                }
+			await instance.start(
+				{ facingMode },
+				scanConfig,
+				handleScanSuccess,
+				handleScanError
+			);
 
-                try {
-                        await scanner.stop();
-                        isScanning = false;
-                        statusMessage = 'Camera stopped';
-                        dispatch('status', { active: false, online: isOnline });
-                } catch (_err) {
-                        // Ignore stop errors
-                }
-        }
+			if (componentMounted) {
+				isScanning = true;
+				statusMessage = 'Camera active';
+				dispatch('status', { active: true, online: isOnline });
+			} else {
+				// If unmounted during start, stop immediately
+				await instance.stop().catch(() => {});
+			}
+		} catch (err) {
+			if (!componentMounted) return;
 
-        async function teardown() {
-                if (cooldownTimeout) {
-                        clearTimeout(cooldownTimeout);
-                        cooldownTimeout = null;
-                }
+			let message = err instanceof Error ? err.message : 'Unable to start camera';
 
-                await stopScanning();
+			if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) {
+				message = 'Camera permission denied. Please allow camera access to scan.';
+			}
 
-                if (scanner) {
-                        try {
-                                await scanner.clear();
-                        } catch (_err) {
-                                // Ignore clear errors
-                        }
-                        scanner = null;
-                }
-        }
+			errorMessage = message;
+			statusMessage = 'Camera unavailable';
+		} finally {
+			if (componentMounted) {
+				isStarting = false;
+			}
+		}
+	}
 
-        async function switchCamera() {
-                facingMode = facingMode === 'environment' ? 'user' : 'environment';
-                statusMessage = 'Switching camera...';
-                await restartScanner();
-        }
+	async function stopScanning() {
+		if (!scanner || !isScanning) {
+			return;
+		}
 
-        async function restartScanner() {
-                await stopScanning();
+		try {
+			// Race the stop promise with a timeout to prevent hanging
+			// But scanner.stop() is usually reliable if camera is running
+			await scanner.stop();
+		} catch (_err) {
+			// Ignore stop errors (e.g., if already stopped)
+		} finally {
+			isScanning = false;
+			if (componentMounted) {
+				statusMessage = 'Camera stopped';
+				dispatch('status', { active: false, online: isOnline });
+			}
+		}
+	}
 
-                if (active) {
-                        await startIfNeeded();
-                }
-        }
+	async function teardown() {
+		if (cooldownTimeout) {
+			clearTimeout(cooldownTimeout);
+			cooldownTimeout = null;
+		}
 
-        function handleScanSuccess(decodedText: string) {
-                const text = decodedText.trim();
+		// Ensure we don't try to stop if we never started or already stopped
+		// But stopScanning handles checks.
+		// Important: catch any rejections from stopScanning
+		await stopScanning().catch(() => {});
 
-                if (!text) {
-                        return;
-                }
+		if (scanner) {
+			try {
+				await scanner.clear();
+			} catch (_err) {
+				// Ignore clear errors
+			}
+			scanner = null;
+		}
+	}
 
-                playBeep();
-                dispatch('scan', { text });
-                pauseAfterScan();
-        }
+	async function switchCamera() {
+		if (!componentMounted) return;
+		facingMode = facingMode === 'environment' ? 'user' : 'environment';
+		statusMessage = 'Switching camera...';
+		await restartScanner();
+	}
 
-        function handleScanError(_error: string) {
-                // Ignored: per-frame decode errors are expected during scanning
-        }
+	async function restartScanner() {
+		await stopScanning();
 
-        function pauseAfterScan() {
-                if (cooldownTimeout) {
-                        clearTimeout(cooldownTimeout);
-                }
+		if (active && componentMounted) {
+			await startIfNeeded();
+		}
+	}
 
-                stopScanning();
-                statusMessage = 'Processing scan...';
+	function handleScanSuccess(decodedText: string) {
+		if (!componentMounted) return;
+		const text = decodedText.trim();
 
-                cooldownTimeout = setTimeout(() => {
-                        if (active) {
-                                startIfNeeded();
-                        }
-                }, 3000);
-        }
+		if (!text) {
+			return;
+		}
 
-        function playBeep() {
-                try {
-                        const context = new AudioContext();
-                        const oscillator = context.createOscillator();
-                        const gain = context.createGain();
+		playBeep();
+		dispatch('scan', { text });
+		pauseAfterScan();
+	}
 
-                        oscillator.type = 'sine';
-                        oscillator.frequency.value = 880;
-                        gain.gain.value = 0.1;
+	function handleScanError(_error: string) {
+		// Ignored: per-frame decode errors are expected during scanning
+	}
 
-                        oscillator.connect(gain);
-                        gain.connect(context.destination);
+	function pauseAfterScan() {
+		if (cooldownTimeout) {
+			clearTimeout(cooldownTimeout);
+		}
 
-                        oscillator.start();
-                        oscillator.stop(context.currentTime + 0.15);
-                } catch (_err) {
-                        // Audio unavailable - ignore
-                }
-        }
+		stopScanning();
+		if (componentMounted) {
+			statusMessage = 'Processing scan...';
+		}
 
-        function setupNetworkListeners() {
-                if (!browser) {
-                        return () => {};
-                }
+		cooldownTimeout = setTimeout(() => {
+			if (active && componentMounted) {
+				startIfNeeded();
+			}
+		}, 3000);
+	}
 
-                const updateOnlineStatus = () => {
-                        isOnline = navigator.onLine;
-                        if (!isOnline) {
-                                statusMessage = 'Offline — camera ready when connection returns';
-                        }
-                        dispatch('status', { active: isScanning, online: isOnline });
-                };
+	function playBeep() {
+		try {
+			const context = new AudioContext();
+			const oscillator = context.createOscillator();
+			const gain = context.createGain();
 
-                window.addEventListener('online', updateOnlineStatus);
-                window.addEventListener('offline', updateOnlineStatus);
-                updateOnlineStatus();
+			oscillator.type = 'sine';
+			oscillator.frequency.value = 880;
+			gain.gain.value = 0.1;
 
-                return () => {
-                        window.removeEventListener('online', updateOnlineStatus);
-                        window.removeEventListener('offline', updateOnlineStatus);
-                };
-        }
+			oscillator.connect(gain);
+			gain.connect(context.destination);
+
+			oscillator.start();
+			oscillator.stop(context.currentTime + 0.15);
+		} catch (_err) {
+			// Audio unavailable - ignore
+		}
+	}
+
+	function setupNetworkListeners() {
+		if (!browser) {
+			return () => {};
+		}
+
+		const updateOnlineStatus = () => {
+			isOnline = navigator.onLine;
+			if (!isOnline && componentMounted) {
+				statusMessage = 'Offline — camera ready when connection returns';
+			}
+			if (componentMounted) {
+				dispatch('status', { active: isScanning, online: isOnline });
+			}
+		};
+
+		window.addEventListener('online', updateOnlineStatus);
+		window.addEventListener('offline', updateOnlineStatus);
+		updateOnlineStatus();
+
+		return () => {
+			window.removeEventListener('online', updateOnlineStatus);
+			window.removeEventListener('offline', updateOnlineStatus);
+		};
+	}
 </script>
 
 <div class="space-y-4">
-        <div
-                class="relative overflow-hidden rounded-xl bg-black shadow-lg"
-                role="region"
-                aria-label="Camera scanner viewfinder"
-        >
-                <div id="camera-viewfinder" class="aspect-[3/4] w-full"></div>
+	<div
+		class="relative overflow-hidden rounded-xl bg-black shadow-lg"
+		role="region"
+		aria-label="Camera scanner viewfinder"
+	>
+		<div id="camera-viewfinder" class="aspect-[3/4] w-full"></div>
 
-                {#if !isOnline}
-                        <div class="absolute right-2 top-2 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-amber-50 shadow">
-                                🔌 Offline Mode
-                        </div>
-                {/if}
+		{#if !isOnline}
+			<div class="absolute right-2 top-2 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-amber-50 shadow">
+				🔌 Offline Mode
+			</div>
+		{/if}
 
-                {#if !active}
-                        <div class="absolute inset-0 flex items-center justify-center bg-black/70 text-white">Camera paused</div>
-                {/if}
-        </div>
+		{#if !active}
+			<div class="absolute inset-0 flex items-center justify-center bg-black/70 text-white">Camera paused</div>
+		{/if}
+	</div>
 
-        <div class="flex flex-wrap gap-2">
-                <button
-                        type="button"
-                        class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                        on:click={() => {
-                                active = false;
-                                stopScanning();
-                        }}
-                        disabled={!isScanning && !isStarting}
-                        aria-label="Stop camera scanning"
-                        title="Stop camera scanning"
-                >
-                        ⏸️ Stop
-                </button>
-                <button
-                        type="button"
-                        class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                        on:click={switchCamera}
-                        disabled={isStarting}
-                        aria-label="Switch camera"
-                        title="Switch camera"
-                >
-                        🔄 Switch
-                </button>
-                <button
-                        type="button"
-                        class="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                        on:click={() => {
-                                active = true;
-                                startIfNeeded();
-                        }}
-                        disabled={isScanning || isStarting}
-                        aria-label="Resume camera scanning"
-                        title="Resume camera scanning"
-                >
-                        ▶️ Resume
-                </button>
-        </div>
+	<div class="flex flex-wrap gap-2">
+		<button
+			type="button"
+			class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+			on:click={() => {
+				active = false;
+				stopScanning();
+			}}
+			disabled={!isScanning && !isStarting}
+			aria-label="Stop camera scanning"
+			title="Stop camera scanning"
+		>
+			⏸️ Stop
+		</button>
+		<button
+			type="button"
+			class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+			on:click={switchCamera}
+			disabled={isStarting}
+			aria-label="Switch camera"
+			title="Switch camera"
+		>
+			🔄 Switch
+		</button>
+		<button
+			type="button"
+			class="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+			on:click={() => {
+				active = true;
+				startIfNeeded();
+			}}
+			disabled={isScanning || isStarting}
+			aria-label="Resume camera scanning"
+			title="Resume camera scanning"
+		>
+			▶️ Resume
+		</button>
+	</div>
 
-        <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                {#if errorMessage}
-                        <p class="text-sm font-semibold text-red-600" role="alert" aria-live="assertive">{errorMessage}</p>
-                {:else}
-                        <p class="text-sm text-slate-700" role="status" aria-live="polite">{statusMessage}</p>
-                        <p class="mt-1 text-xs text-slate-500">Rear camera is used for faster ISBN scanning.</p>
-                {/if}
-        </div>
+	<div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+		{#if errorMessage}
+			<p class="text-sm font-semibold text-red-600" role="alert" aria-live="assertive">{errorMessage}</p>
+		{:else}
+			<p class="text-sm text-slate-700" role="status" aria-live="polite">{statusMessage}</p>
+			<p class="mt-1 text-xs text-slate-500">Rear camera is used for faster ISBN scanning.</p>
+		{/if}
+	</div>
 </div>

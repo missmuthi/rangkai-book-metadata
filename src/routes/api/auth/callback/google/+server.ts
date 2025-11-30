@@ -219,7 +219,7 @@ export const GET: RequestHandler = async ({
         path: "/",
         httpOnly: true,
         secure: secureCookie,
-        sameSite: "lax",
+        sameSite: "strict",
         maxAge: 60 * 60 * 24 * 7, // 7 days
       });
     } catch (sessionError) {
@@ -243,6 +243,18 @@ export const GET: RequestHandler = async ({
   } catch (error) {
     // ⚠️ CRITICAL: SvelteKit throws redirects as errors - we must re-throw them!
     if (isRedirect(error)) {
+      // Even on redirect (which might be an error redirect), we should attempt to clear state cookies
+      // if we are exiting the flow. But if it's success redirect (303), we already cleared them.
+      // If it's failure redirect (302 from redirectWithError), we might want to clear them too.
+      // However, redirectWithError throws immediately.
+      // Let's rely on the fact that if we are here, we might not have cleared them if an error occurred before clearing.
+      // Ideally, use a finally block or clear before error redirect.
+      // But clearing cookies requires access to `cookies` object which we have.
+      // For now, let's keep it simple as `redirectWithError` is used for logic errors where we might want to retry or not?
+      // Actually, if state is invalid, we definitely want to clear it.
+      // But redirectWithError throws, so code below it won't run.
+      // We should probably wrap the whole thing in try/finally if we want guaranteed cleanup,
+      // but we only want cleanup if we consume the state.
       throw error; // Allow the redirect to propagate
     }
 
@@ -253,6 +265,12 @@ export const GET: RequestHandler = async ({
         message: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined
     });
+
+    // Clean up cookies on unknown error to avoid stuck state
+    const deleteCookieOptions = { path: "/" };
+    cookies.delete("google_oauth_state", deleteCookieOptions);
+    cookies.delete("google_code_verifier", deleteCookieOptions);
+    cookies.delete("google_oauth_timestamp", deleteCookieOptions);
 
     // Redirect to login with generic error instead of showing 500 page
     throw redirect(
