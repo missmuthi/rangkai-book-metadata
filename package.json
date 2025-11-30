@@ -26,7 +26,7 @@
     "diagnostic:fast": "node diagnostic.js --fast"
   },
   "devDependencies": {
-    "@better-auth/cli": "^1.4.3",
+    "@better-auth/cli": "^1.4.4",
     "@eslint/js": "^9.39.1",
     "@sveltejs/adapter-cloudflare": "^7.2.4",
     "@sveltejs/kit": "^2.49.0",
@@ -59,7 +59,7 @@
     "@cloudflare/workers-types": "^4.20251121.0",
     "ai": "^5.0.103",
     "arctic": "^3.7.0",
-    "better-auth": "^1.4.3",
+    "better-auth": "^1.4.4",
     "html5-qrcode": "^2.3.8",
     "kysely": "^0.28.8",
     "kysely-d1": "^0.4.0",

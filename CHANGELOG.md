@@ -84,6 +84,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Performance Benchmarks**: Query timing meets sub-100ms targets
 - **Security Audit**: User isolation and input sanitization verified
 
+### 🛠️ Dependency Updates
+
+- **chore(deps):** Bumped `better-auth` and `@better-auth/cli` from `1.4.3` to `1.4.4`.
+  - Purpose: Apply minor security/bugfix releases from the Better Auth maintainers.
+  - Verification: `npm install` applied changes, `npm audit --audit-level=high` reports 0 high vulnerabilities, and `svelte-check` reports 0 errors.
+  - Notes: Linting still reports one existing `@ts-ignore` -> `@ts-expect-error` recommendation; this is unrelated to the dependency bump and will be addressed separately.
+
 ## [2.0.2] - 2025-11-21 - **OAuth Redirect Fix & Production Deployment** 🚀
 
 ### 🐛 Critical Fixes
