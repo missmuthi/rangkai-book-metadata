@@ -101,6 +101,14 @@
 				isCleaning = true;
 				saveStatus = 'saving';
 				
+				// 🔍 DIAGNOSTIC LOGGING - Visible in browser console (F12)
+				console.group('🤖 [AI Clean] Request Started');
+				console.log('📚 Book Title:', book.title);
+				console.log('📖 ISBN:', book.isbn13 || book.isbn10 || book.isbn || 'N/A');
+				console.log('🆔 Scan ID:', book.scan_id || 'New scan');
+				console.log('⏱️ Timestamp:', new Date().toISOString());
+				console.groupEnd();
+				
 				try {
 						// Pass scan_id if available for database update (prevents duplicates)
 						const payload = {
@@ -108,22 +116,38 @@
 								scan_id: book.scan_id || undefined
 						};
 						
+						console.log('📤 [AI Clean] Sending request to /api/ai/clean...');
+						const startTime = performance.now();
+						
 						const res = await fetch('/api/ai/clean', {
 								method: 'POST',
 								headers: { 'Content-Type': 'application/json' },
 								body: JSON.stringify(payload)
 						});
 						
-							if (!res.ok) {
+						const duration = Math.round(performance.now() - startTime);
+						console.log(`⏱️ [AI Clean] Response received in ${duration}ms, status: ${res.status}`);
+						
+						if (!res.ok) {
 							let errorMessage = 'AI clean failed';
+							let errorCode = 'UNKNOWN';
 							try {
 									const errorData = await res.json();
-									errorMessage = errorData.error || errorMessage;
-									console.error('[BookDetailModal] AI clean failed:', errorData);
+									errorCode = errorData.code || errorData.error || 'UNKNOWN';
+									errorMessage = errorData.message || errorData.error || errorMessage;
+									
+									// 🔍 DIAGNOSTIC: Show full error details in console
+									console.group('❌ [AI Clean] Request Failed');
+									console.error('Status:', res.status);
+									console.error('Error Code:', errorCode);
+									console.error('Error Message:', errorMessage);
+									console.error('Full Response:', errorData);
+									console.log('💡 TIP: Check Cloudflare Pages → Settings → Environment Variables → GOOGLE_GENERATIVE_AI_API_KEY');
+									console.groupEnd();
 							} catch {
 									// If JSON parse fails, try text
 									const errorText = await res.text();
-									console.error('[BookDetailModal] AI clean failed:', errorText);
+									console.error('❌ [AI Clean] Non-JSON error response:', errorText);
 									errorMessage = errorText || errorMessage;
 							}
 							saveStatus = 'error';
@@ -132,6 +156,15 @@
 					}
 						
 						const cleaned = await res.json();
+						
+						// 🔍 DIAGNOSTIC: Log successful response
+						console.group('✅ [AI Clean] Success');
+						console.log('📋 Cleaned Title:', cleaned.title);
+						console.log('📊 DDC:', cleaned.ddc);
+						console.log('🏛️ LCC:', cleaned.lcc);
+						console.log('💾 Saved:', cleaned.saved);
+						console.log('🆔 Scan ID:', cleaned.scan_id);
+						console.groupEnd();
 						
 						// CRITICAL: Store the returned scan_id so future operations update the same row
 						// This prevents duplicate scans when user cleans the same book multiple times
@@ -163,7 +196,7 @@
 						saveStatus = 'error';
 						const errorMsg = e instanceof Error ? e.message : 'Cleaning failed. Try again.';
 						toast = errorMsg;
-						console.error('[BookDetailModal] AI clean exception:', e);
+						console.error('❌ [AI Clean] Exception:', e);
 						setTimeout(() => {
 								saveStatus = 'idle';
 								toast = null;

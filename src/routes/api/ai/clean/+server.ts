@@ -96,41 +96,93 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
       book.isbn || "N/A",
     );
 
-    // 1. AGGRESSIVE SYSTEM PROMPT
-    const systemPrompt = `
-			You are an expert Library Cataloger. Your job is to COMPLETE bibliographic records.
-			
-			CRITICAL RULES:
-			1. NEVER return empty strings for 'ddc' or 'lcc'. 
-			2. If exact classification is unknown, ESTIMATE based on Title/Subject.
-			3. Infer 'language' from the title text.
-			4. Format Publisher as "Place : Publisher, Year".
-			5. Clean "json_data" is better than empty "json_data".
-			
-			Current Book Data: ${JSON.stringify(book)}
-		`;
+    // 1. SLIMS SENIOR LIBRARIAN SYSTEM PROMPT (Optimized for Indonesian libraries)
+    const systemPrompt = `You are a **Senior Librarian & SLiMS Cataloging Expert** with 20+ years of experience in Indonesian academic libraries.
+
+Your mission: Transform raw book metadata into **SLiMS-ready bibliographic records** that comply with international cataloging standards (AACR2, RDA, MARC21).
+
+## CRITICAL CATALOGING RULES:
+
+### 1. Classification Codes (MANDATORY - NEVER leave empty)
+- **DDC (Dewey Decimal)**: Use 3-digit base with optional decimal extensions
+  - Examples: "005.133" (Java programming), "610.73" (Nursing), "330" (Economics)
+  - ESTIMATE from title/subjects if not provided
+- **LCC (Library of Congress)**: Use letter(s) + number + optional decimal
+  - Examples: "QA76.73.J38" (Java), "RT41" (Nursing), "HB171" (Economics)
+  - ESTIMATE from title/subjects if not provided
+
+### 2. Publisher Format (ISBD Standard)
+Format: "Place : Publisher, Year"
+- Example: "Jakarta : Gramedia Pustaka Utama, 2024"
+- Use "S.l." for unknown place, "s.n." for unknown publisher, "[n.d.]" for unknown year
+
+### 3. Author Names
+- Clean academic titles (remove Ph.D, M.Sc, Dr., Prof.)
+- Format: "Surname, Given Name" (Western) or natural order for Indonesian names
+- Multiple authors: Use semicolon separator
+
+### 4. Language Codes (ISO 639-2)
+- Indonesian: "ind", English: "eng", Arabic: "ara", Javanese: "jav"
+- INFER from title if not provided
+
+### 5. Subject Headings
+- Use semicolon-separated terms
+- Follow LCSH or Indonesian subject heading conventions
+- Example: "Computer programming; Java (Programming language); Software development"
+
+### 6. Description
+- Maximum 2 sentences summarizing the book's content and purpose
+- Focus on what the reader will learn or gain
+
+## INPUT DATA:
+${JSON.stringify(book, null, 2)}
+
+## YOUR TASK:
+Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missing field must be filled with your best professional estimate.`;
 
     // 2. GENERATE DATA (defensive: handle failures in production)
     let rawAiResult: unknown = null;
     try {
+      console.warn("[AI Clean] Calling Gemini API...");
+      const startTime = Date.now();
+      
       const gen = await generateObject({
         model: google("gemini-2.0-flash-exp"),
         schema: metadataSchema,
         system: systemPrompt,
-        prompt: `Fix and Complete metadata for: "${book.title}" by ${book.author || "Unknown"}`,
+        prompt: `Complete the bibliographic record for: "${book.title || "Unknown Title"}" by ${book.author || "Unknown Author"}. ISBN: ${book.isbn13 || book.isbn10 || book.isbn || "N/A"}`,
       });
 
       rawAiResult = gen?.object ?? null;
+      
+      const duration = Date.now() - startTime;
+      console.warn(`[AI Clean] ✅ Gemini API success in ${duration}ms`);
     } catch (aiError) {
-      console.error("[AI Clean] AI generation failed:", aiError);
+      const errorMessage = aiError instanceof Error ? aiError.message : String(aiError);
+      console.error("[AI Clean] ❌ Gemini API failed:", errorMessage);
+      
+      // Check for common issues
+      let userMessage = "AI metadata service is currently unavailable.";
+      let errorCode = "AI_SERVICE_UNAVAILABLE";
+      
+      if (errorMessage.includes("API key") || errorMessage.includes("authentication") || errorMessage.includes("401")) {
+        userMessage = "AI service not configured. Please contact the administrator to set up GOOGLE_GENERATIVE_AI_API_KEY.";
+        errorCode = "AI_NOT_CONFIGURED";
+        console.error("[AI Clean] 💡 FIX: Add GOOGLE_GENERATIVE_AI_API_KEY to Cloudflare Pages → Settings → Environment Variables → Secrets");
+      } else if (errorMessage.includes("quota") || errorMessage.includes("429")) {
+        userMessage = "AI service quota exceeded. Please try again later.";
+        errorCode = "AI_QUOTA_EXCEEDED";
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("ECONNREFUSED")) {
+        userMessage = "AI service timed out. Please try again.";
+        errorCode = "AI_TIMEOUT";
+      }
 
-      // Return a helpful error to the frontend so the user sees a clear message
-      // (Do NOT expose secrets; provide minimal diagnostics.)
       return json(
         {
-          error: "AI_SERVICE_UNAVAILABLE",
-          message:
-            "AI metadata service is currently unavailable. Please try again later.",
+          error: userMessage,
+          code: errorCode,
+          message: userMessage,
+          debug: process.env.NODE_ENV === "development" ? errorMessage : undefined,
         },
         { status: 503 },
       );
