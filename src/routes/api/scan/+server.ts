@@ -28,7 +28,8 @@ export const POST: RequestHandler = async (event) => {
 
   const parseResult = scanSchema.safeParse(body);
   if (!parseResult.success) {
-    throw error(400, parseResult.error.format());
+    const errorMessage = parseResult.error.issues.map(issue => issue.message).join(', ');
+    throw error(400, `Invalid request: ${errorMessage}`);
   }
   const { isbn } = parseResult.data;
 

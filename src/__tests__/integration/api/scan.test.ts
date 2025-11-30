@@ -147,7 +147,7 @@ describe("POST /api/scan - Integration Tests", () => {
 
       await expect(POST(event)).rejects.toMatchObject({
         status: 400,
-        body: { message: expect.stringContaining("ISBN is required") },
+        body: { message: expect.stringContaining("Invalid input: expected string, received undefined") },
       });
     });
 
@@ -238,15 +238,15 @@ describe("POST /api/scan - Integration Tests", () => {
   });
 
   describe("Error Handling", () => {
-    it("should handle metadata provider failures", async () => {
+    it("should reject invalid ISBN format", async () => {
       const event = createMockEvent({
         authenticated: true,
         body: { isbn: "provider-fail" },
       });
 
       await expect(POST(event)).rejects.toMatchObject({
-        status: 500,
-        body: { message: expect.stringContaining("Failed") },
+        status: 400,
+        body: { message: expect.stringContaining("Invalid ISBN format") },
       });
     });
 

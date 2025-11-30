@@ -87,8 +87,8 @@ export const GET: RequestHandler = async ({
   // Validate query parameters
   const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams));
   if (!queryResult.success) {
-    logger.warn("oauth_invalid_params", { errors: queryResult.error.format() });
-    throw error(400, queryResult.error.format());
+    logger.warn("oauth_invalid_params", { errors: queryResult.error.message });
+    throw error(400, "Invalid OAuth parameters");
   }
   const { code, state, error: errorParam, error_description, debug } = queryResult.data;
 

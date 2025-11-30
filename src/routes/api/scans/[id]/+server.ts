@@ -41,7 +41,8 @@ export const PATCH: RequestHandler = async ({
     const parseResult = bookSchema.partial().safeParse(rawBody);
 
     if (!parseResult.success) {
-         throw error(400, parseResult.error.format());
+         const errorMessage = parseResult.error.issues.map(issue => issue.message).join(', ');
+         throw error(400, `Invalid update data: ${errorMessage}`);
     }
     const body = parseResult.data;
 
