@@ -1,6 +1,12 @@
 import { createGoogleAuth } from "$lib/auth-simple";
-import { redirect } from "@sveltejs/kit";
+import { redirect, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import { logger } from "$lib/server/logger";
+import { z } from "zod";
+
+const querySchema = z.object({
+  debug: z.string().optional().transform((val) => val === "true"),
+});
 
 /**
  * Generate PKCE code verifier (base64url, 43-128 chars)
@@ -38,13 +44,18 @@ function isSecureContext(url: URL): boolean {
  */
 export const GET: RequestHandler = async ({ platform, cookies, url }) => {
   if (!platform?.env) {
-    console.error("❌ [OAuth] Platform environment not available");
+    logger.error("oauth_platform_error", { message: "Platform environment not available" });
     return new Response("Platform not configured", { status: 500 });
   }
 
+  // Validate query parameters
+  const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams));
+  if (!queryResult.success) {
+    return error(400, "Invalid query parameters");
+  }
+  const { debug } = queryResult.data;
+
   try {
-    // Enable debug mode for troubleshooting (check URL param or env)
-    const debug = url.searchParams.get("debug") === "true";
     const google = createGoogleAuth(platform.env, { debug });
 
     const state = crypto.randomUUID();
@@ -59,13 +70,11 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
 
     // Log for debugging (redact sensitive info)
     if (debug) {
-      console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.warn("🔐 [OAuth] Initiating Google login flow");
-      console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.warn("State:", state.substring(0, 8) + "...");
-      console.warn("Authorization URL hostname:", authUrl.hostname);
-      console.warn("Secure cookies:", isSecureContext(url));
-      console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      logger.debug("oauth_init", {
+        state: state.substring(0, 8) + "...",
+        hostname: authUrl.hostname,
+        secure: isSecureContext(url)
+      });
     }
 
     // Cookie options with environment-aware security
@@ -85,19 +94,16 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
     cookies.set("google_oauth_timestamp", Date.now().toString(), cookieOptions);
 
     throw redirect(302, authUrl.toString());
-  } catch (error) {
+  } catch (err) {
     // Re-throw redirects (they're not actually errors)
     if (
-      error instanceof Response ||
-      (error as { status?: number })?.status === 302
+      err instanceof Response ||
+      (err as { status?: number })?.status === 302
     ) {
-      throw error;
+      throw err;
     }
 
-    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.error("🔴 [OAuth] Failed to initiate login");
-    console.error("Error:", error instanceof Error ? error.message : error);
-    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    logger.error("oauth_init_failed", { error: err instanceof Error ? err.message : err });
 
     // Redirect to login with error
     throw redirect(302, "/login?error=oauth_init_failed");

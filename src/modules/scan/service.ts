@@ -9,7 +9,7 @@
  */
 
 import type { RequestEvent } from "@sveltejs/kit";
-import { isValidISBN13, isValidISBN10 } from "$lib/utils";
+import { isValidISBN13, isValidISBN10, sanitizeBookData } from "$lib/utils";
 import {
   getDB,
   createScan,
@@ -24,7 +24,7 @@ import {
   CacheTTL,
 } from "$lib/server/cache";
 import { fetchBookByIsbn } from "$lib/server/metadata";
-import { logger, LogEvents } from "$lib/server/log";
+import { logger, LogEvents } from "$lib/server/logger";
 import type { Scan } from "$lib/server/types";
 import type { MergedBookData } from "$lib/types";
 
@@ -121,6 +121,9 @@ export async function createBookScan(
     if (!metadata) {
       throw new Error("Metadata not found");
     }
+
+    // Sanitize metadata before saving
+    metadata = sanitizeBookData(metadata);
 
     // Save scan to database (user-scoped)
     const db = getDB(event.platform);

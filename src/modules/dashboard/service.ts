@@ -9,7 +9,7 @@
 
 import type { RequestEvent } from "@sveltejs/kit";
 import { getDB, getUserScans, getUserStats } from "$lib/server/db";
-import { logger, LogEvents } from "$lib/server/log";
+import { logger, LogEvents } from "$lib/server/logger";
 import type { Scan } from "$lib/server/types";
 
 /**

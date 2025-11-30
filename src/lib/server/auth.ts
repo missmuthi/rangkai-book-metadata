@@ -71,7 +71,7 @@ import { redirect } from "@sveltejs/kit";
 import type { RequestEvent } from "@sveltejs/kit";
 import type { SessionData, User } from "./types";
 import { getSession as getSessionPrimitive } from "$lib/auth-simple";
-import { logger, LogEvents } from "./log";
+import { logger, LogEvents } from "./logger";
 
 /**
  * Get the current session from the request event

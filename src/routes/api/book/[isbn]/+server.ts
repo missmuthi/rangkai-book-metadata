@@ -23,7 +23,8 @@ import {
 } from "$lib/server/cache";
 import { getDB, createScan } from "$lib/server/db";
 import { fetchBookByIsbn } from "$lib/server/metadata";
-import { logger } from "$lib/server/log";
+import { logger } from "$lib/server/logger";
+import { sanitizeBookData } from "$lib/utils";
 
 // Define the schema for ISBN validation
 const isbnSchema = z.string().refine((val) => {
@@ -174,6 +175,10 @@ export const GET: RequestHandler = async ({
     // Note: Database write is now BLOCKING to ensure history is saved reliably
     // Uses UPSERT logic to prevent duplicates (see createScan in db.ts)
     if (platform?.env?.DB) {
+      // Sanitize before saving
+      const sanitized = sanitizeBookData(responseData);
+      Object.assign(responseData, sanitized);
+
       const db = getDB(platform);
 
       try {

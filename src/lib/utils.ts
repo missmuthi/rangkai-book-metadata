@@ -1,3 +1,5 @@
+import type { MergedBookData } from "./types";
+
 /**
  * Utility functions for performance optimization
  */
@@ -70,6 +72,37 @@ export function getSecureImageUrl(url: string | null | undefined): string {
   }
 
   return secureUrl;
+}
+
+/**
+ * Sanitize input string to prevent stored XSS
+ * Escapes HTML characters: < > & " '
+ */
+export function sanitizeInput(str: unknown): string {
+  if (typeof str !== "string") {
+    return "";
+  }
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Sanitize entire book data object
+ */
+export function sanitizeBookData(data: MergedBookData): MergedBookData {
+  const sanitized = { ...data };
+  for (const key of Object.keys(sanitized) as Array<keyof MergedBookData>) {
+    const value = sanitized[key];
+    if (typeof value === "string") {
+      // @ts-ignore - Valid assignment for string properties
+      sanitized[key] = sanitizeInput(value);
+    }
+  }
+  return sanitized;
 }
 
 /**

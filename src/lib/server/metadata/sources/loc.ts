@@ -8,7 +8,7 @@
 
 import type { LoCBookData } from "$lib/types";
 import { Analytics } from "$lib/services/analytics";
-import { logger, LogEvents } from "$lib/server/log";
+import { logger, LogEvents } from "$lib/server/logger";
 import { CircuitBreaker, withTimeout } from "$lib/server/utils/resilience";
 import { getKV } from "$lib/server/cache";
 

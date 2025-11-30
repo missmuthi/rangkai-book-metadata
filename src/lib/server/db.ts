@@ -6,7 +6,7 @@
  */
 
 import type { D1Database, Scan, User } from "./types";
-import { logger, LogEvents } from "./log";
+import { logger, LogEvents } from "./logger";
 
 /**
  * Get D1 database from platform context
