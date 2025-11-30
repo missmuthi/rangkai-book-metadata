@@ -68,7 +68,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
       scan_id?: number;
       mode?: string;
     };
-    const { scan_id, mode = "fill_gaps", ...book } = body;
+    const { scan_id, mode: _mode = "fill_gaps", ...book } = body;
 
     if (!book) {
       console.error("[AI Clean] ❌ No book data provided in request");
@@ -189,7 +189,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
     }
 
     // 3. NORMALIZE & OPTIMIZE
-    const aiResult = normalizeKeys(rawAiResult);
+    const aiResult = normalizeKeys(rawAiResult as import("$lib/utils/metadata").AIResultInput);
     const cleanAiResult = deepClean(aiResult);
 
     // 4. DEEP MERGE (The Fix for Data Loss)
@@ -228,11 +228,15 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
     // 5. AUDIT LOG (Smart Tracking)
     const changes: string[] = [];
+    const bookRecord = book as Record<string, unknown>;
+    const existingRecord = existingJson as Record<string, unknown>;
+    const cleanRecord = cleanAiResult as Record<string, unknown>;
+    
     Object.keys(cleanAiResult).forEach((key) => {
-      const oldVal = (book as any)[key] || (existingJson as any)[key];
-      const newVal = (cleanAiResult as any)[key];
+      const oldVal = bookRecord[key] || existingRecord[key];
+      const newVal = cleanRecord[key];
       if (newVal && oldVal !== newVal) {
-        changes.push(`Updated ${key}: ${newVal}`);
+        changes.push(`Updated ${key}: ${String(newVal)}`);
       }
     });
 
@@ -243,15 +247,15 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
     };
 
     // Parse existing ai_log
-    let existingLog: any[] = [];
+    let existingLog: Array<{ timestamp: number; model: string; changes: string[] }> = [];
     try {
       if (book.ai_log) {
         existingLog = Array.isArray(book.ai_log)
           ? book.ai_log
-          : JSON.parse(book.ai_log as any);
+          : JSON.parse(String(book.ai_log));
       }
-    } catch (e) {
-      console.error("Failed to parse ai_log:", e);
+    } catch (_e) {
+      console.error("Failed to parse ai_log:", _e);
     }
 
     const auditLog = [...existingLog, logEntry];
@@ -413,14 +417,14 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
     saveError = result.error;
 
     // Merge cleaned fields with original data
-    const cleanedBook: MergedBookData = {
+    const cleanedBook = {
       ...book,
       ...finalJsonData,
-      json_data: finalJsonData,
+      json_data: finalJsonData as unknown,
       is_ai_enhanced: true,
       enhanced_at: Date.now(),
       ai_log: auditLog,
-    };
+    } as MergedBookData & { json_data: unknown; is_ai_enhanced: boolean; enhanced_at: number; ai_log: typeof auditLog };
 
     // Return cleaned book with save status
     return json({

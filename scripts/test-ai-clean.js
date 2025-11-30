@@ -67,11 +67,11 @@ function parseArgs() {
     });
 
     const text = await res.text();
-    console.log("HTTP", res.status, res.statusText);
+    console.warn("HTTP", res.status, res.statusText);
     try {
-      console.log("Response JSON:", JSON.stringify(JSON.parse(text), null, 2));
-    } catch (e) {
-      console.log("Response Text:", text);
+      console.warn("Response JSON:", JSON.stringify(JSON.parse(text), null, 2));
+    } catch (_e) {
+      console.warn("Response Text:", text);
     }
 
     process.exit(res.ok ? 0 : 1);

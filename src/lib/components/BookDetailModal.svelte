@@ -102,12 +102,11 @@
 				saveStatus = 'saving';
 				
 				// 🔍 DIAGNOSTIC LOGGING - Visible in browser console (F12)
-				console.group('🤖 [AI Clean] Request Started');
-				console.log('📚 Book Title:', book.title);
-				console.log('📖 ISBN:', book.isbn13 || book.isbn10 || book.isbn || 'N/A');
-				console.log('🆔 Scan ID:', book.scan_id || 'New scan');
-				console.log('⏱️ Timestamp:', new Date().toISOString());
-				console.groupEnd();
+				console.warn('🤖 [AI Clean] Request Started');
+				console.warn('📚 Book Title:', book.title);
+				console.warn('📖 ISBN:', book.isbn13 || book.isbn10 || book.isbn || 'N/A');
+				console.warn('🆔 Scan ID:', book.scan_id || 'New scan');
+				console.warn('⏱️ Timestamp:', new Date().toISOString());
 				
 				try {
 						// Pass scan_id if available for database update (prevents duplicates)
@@ -116,7 +115,7 @@
 								scan_id: book.scan_id || undefined
 						};
 						
-						console.log('📤 [AI Clean] Sending request to /api/ai/clean...');
+						console.warn('📤 [AI Clean] Sending request to /api/ai/clean...');
 						const startTime = performance.now();
 						
 						const res = await fetch('/api/ai/clean', {
@@ -126,7 +125,7 @@
 						});
 						
 						const duration = Math.round(performance.now() - startTime);
-						console.log(`⏱️ [AI Clean] Response received in ${duration}ms, status: ${res.status}`);
+						console.warn(`⏱️ [AI Clean] Response received in ${duration}ms, status: ${res.status}`);
 						
 						if (!res.ok) {
 							let errorMessage = 'AI clean failed';
@@ -137,13 +136,12 @@
 									errorMessage = errorData.message || errorData.error || errorMessage;
 									
 									// 🔍 DIAGNOSTIC: Show full error details in console
-									console.group('❌ [AI Clean] Request Failed');
+									console.error('❌ [AI Clean] Request Failed');
 									console.error('Status:', res.status);
 									console.error('Error Code:', errorCode);
 									console.error('Error Message:', errorMessage);
 									console.error('Full Response:', errorData);
-									console.log('💡 TIP: Check Cloudflare Pages → Settings → Environment Variables → GOOGLE_GENERATIVE_AI_API_KEY');
-									console.groupEnd();
+									console.warn('💡 TIP: Check Cloudflare Pages → Settings → Environment Variables → GOOGLE_GENERATIVE_AI_API_KEY');
 							} catch {
 									// If JSON parse fails, try text
 									const errorText = await res.text();
@@ -158,13 +156,12 @@
 						const cleaned = await res.json();
 						
 						// 🔍 DIAGNOSTIC: Log successful response
-						console.group('✅ [AI Clean] Success');
-						console.log('📋 Cleaned Title:', cleaned.title);
-						console.log('📊 DDC:', cleaned.ddc);
-						console.log('🏛️ LCC:', cleaned.lcc);
-						console.log('💾 Saved:', cleaned.saved);
-						console.log('🆔 Scan ID:', cleaned.scan_id);
-						console.groupEnd();
+						console.warn('✅ [AI Clean] Success');
+						console.warn('📋 Cleaned Title:', cleaned.title);
+						console.warn('📊 DDC:', cleaned.ddc);
+						console.warn('🏛️ LCC:', cleaned.lcc);
+						console.warn('💾 Saved:', cleaned.saved);
+						console.warn('🆔 Scan ID:', cleaned.scan_id);
 						
 						// CRITICAL: Store the returned scan_id so future operations update the same row
 						// This prevents duplicate scans when user cleans the same book multiple times

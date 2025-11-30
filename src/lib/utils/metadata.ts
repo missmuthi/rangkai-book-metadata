@@ -11,28 +11,42 @@ export function deepClean<T>(obj: T): T {
   }
 
   if (obj !== null && typeof obj === "object") {
-    return Object.entries(obj).reduce((acc, [key, value]) => {
-      const cleaned = deepClean(value as any);
-      // Keep boolean false or number 0, but remove empty strings/dashes
-      if (
-        cleaned !== null &&
-        cleaned !== undefined &&
-        cleaned !== "" &&
-        cleaned !== "-"
-      ) {
-        acc[key as any] = cleaned;
-      }
-      return acc;
-    }, {} as any) as T;
+    return Object.entries(obj).reduce(
+      (acc, [key, value]) => {
+        const cleaned = deepClean(value);
+        // Keep boolean false or number 0, but remove empty strings/dashes
+        if (
+          cleaned !== null &&
+          cleaned !== undefined &&
+          cleaned !== "" &&
+          cleaned !== "-"
+        ) {
+          (acc as Record<string, unknown>)[key] = cleaned;
+        }
+        return acc;
+      },
+      {} as Record<string, unknown>,
+    ) as T;
   }
 
   return obj;
 }
 
+export interface AIResultInput {
+  ddc?: string;
+  dewey?: string;
+  DDC?: string;
+  lcc?: string;
+  LCC?: string;
+  isbn?: string;
+  ISBN?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Standardize Keys: Ensures 'Dewey' becomes 'ddc', etc.
  */
-export const normalizeKeys = (aiResult: any) => {
+export const normalizeKeys = (aiResult: AIResultInput): AIResultInput => {
   return {
     ...aiResult,
     ddc: aiResult.ddc || aiResult.dewey || aiResult.DDC,
