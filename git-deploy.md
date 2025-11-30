@@ -57,3 +57,48 @@ Post-Deploy: output the live URL.
 Action:
 
 Begin the sequence. Report status at each step.
+
+---
+
+## Notes & Safe Enhancements
+
+- **Node / npm check:** Ensure expected runtime is used. Example:
+
+```bash
+node --version
+npm --version
+```
+
+- **Remote verification:** Confirm `origin` points to the intended repository before deploy:
+
+```bash
+git remote -v
+git remote show origin
+```
+
+- **CI status:** If you use CI, verify the main branch build and tests passed for the commit you are deploying.
+
+- **Preview step:** After `npm run build`, consider running `npm run preview` to manually smoke-test the production build locally before deploying.
+
+- **Deploy commands (explicit):**
+
+```bash
+# Preferred helper (project script)
+npm run deploy
+
+# Direct wrangler command (explicit flags)
+wrangler pages deploy .svelte-kit/cloudflare --project-name=rangkai-book-metadata --branch main
+```
+
+- **Post-deploy smoke tests (suggested):**
+
+```bash
+curl -I https://<your-pages-url>.pages.dev/
+curl -sS https://<your-pages-url>.pages.dev/api/health | jq .
+```
+
+- **Rollback plan (brief):** Keep a known-good git tag for previous releases and be prepared to redeploy that tag's build artifact. Document the tag and rollback steps in your runbook.
+
+---
+
+Follow the Execution Protocol above exactly. Stop on any failure and document the error and remediation steps.

@@ -57,3 +57,52 @@ If the error is a Merge Conflict during pull, STOP and ask for help.
 Action:
 
 Start by running git status and analyzing the situation.
+
+---
+
+## Safety & Practical Enhancements
+
+- **Secret detection:** Before staging, look for untracked secrets that may be accidentally committed:
+
+```bash
+git status --porcelain
+git ls-files --others --exclude-standard | grep -E '(^|/)(\.env|credentials|secrets|.*\.key)$' || true
+```
+
+- **Inspect diffs before staging:** Avoid `git add .` blindly. Use:
+
+```bash
+git diff --name-only
+git diff
+# Stage interactively
+git add -p
+```
+
+- **Conventional commit guidance:** Use concise semantic messages. Examples:
+
+```
+feat(scanner): add unjammable scanner debounce
+fix(api): handle LoC timeout gracefully
+chore(lint): fix ESLint warnings
+```
+
+- **Pre-push checks (optional but recommended):**
+
+```bash
+npm run check
+npm test
+```
+
+- **Push error handling (scripted):** If `git push` fails, handle common cases:
+
+```bash
+git push || {
+	# if no upstream
+	git push -u origin HEAD 2>/dev/null || {
+		# if remote has changes, rebase and retry
+		git pull --rebase origin "$(git symbolic-ref --short HEAD)" && git push
+	}
+}
+```
+
+- **Recommendation:** Prefer feature branches + PRs for non-trivial changes instead of pushing directly to `main`.
