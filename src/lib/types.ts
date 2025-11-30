@@ -124,6 +124,7 @@ export interface MergedBookData {
     | "google-only"
     | "loc-only"
     | "openlibrary-only";
+  classificationTrust?: "high" | "medium" | "low"; // Trust level for classification data
   aiWarning?: string;
   ai_log?: { timestamp: number; model: string; changes: string[] }[];
   scan_id?: number; // Database scan ID for upsert operations

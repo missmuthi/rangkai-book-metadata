@@ -89,6 +89,152 @@ export async function getUserScans(
 }
 
 /**
+ * Search user scans by author (partial match, case-insensitive)
+ */
+export async function searchUserScansByAuthor(
+  db: D1Database,
+  userId: string,
+  authorQuery: string,
+  limit: number = 50,
+): Promise<Scan[]> {
+  const result = await db
+    .prepare(
+      `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
+       FROM scans
+       WHERE user_id = ? AND authors LIKE ?
+       ORDER BY created_at DESC
+       LIMIT ?`,
+    )
+    .bind(userId, `%${authorQuery}%`, limit)
+    .all<Scan>();
+
+  logger.info("scan_search_by_author", {
+    userId,
+    query: authorQuery,
+    count: result.results?.length || 0,
+  });
+  return result.results || [];
+}
+
+/**
+ * Search user scans by subject (partial match, case-insensitive)
+ */
+export async function searchUserScansBySubject(
+  db: D1Database,
+  userId: string,
+  subjectQuery: string,
+  limit: number = 50,
+): Promise<Scan[]> {
+  const result = await db
+    .prepare(
+      `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
+       FROM scans
+       WHERE user_id = ? AND subjects LIKE ?
+       ORDER BY created_at DESC
+       LIMIT ?`,
+    )
+    .bind(userId, `%${subjectQuery}%`, limit)
+    .all<Scan>();
+
+  logger.info("scan_search_by_subject", {
+    userId,
+    query: subjectQuery,
+    count: result.results?.length || 0,
+  });
+  return result.results || [];
+}
+
+/**
+ * Search user scans by DDC classification (exact or prefix match)
+ */
+export async function searchUserScansByDDC(
+  db: D1Database,
+  userId: string,
+  ddcQuery: string,
+  limit: number = 50,
+): Promise<Scan[]> {
+  const result = await db
+    .prepare(
+      `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
+       FROM scans
+       WHERE user_id = ? AND ddc LIKE ?
+       ORDER BY created_at DESC
+       LIMIT ?`,
+    )
+    .bind(userId, `${ddcQuery}%`, limit)
+    .all<Scan>();
+
+  logger.info("scan_search_by_ddc", {
+    userId,
+    query: ddcQuery,
+    count: result.results?.length || 0,
+  });
+  return result.results || [];
+}
+
+/**
+ * Search user scans by LCC classification (exact or prefix match)
+ */
+export async function searchUserScansByLCC(
+  db: D1Database,
+  userId: string,
+  lccQuery: string,
+  limit: number = 50,
+): Promise<Scan[]> {
+  const result = await db
+    .prepare(
+      `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
+       FROM scans
+       WHERE user_id = ? AND lcc LIKE ?
+       ORDER BY created_at DESC
+       LIMIT ?`,
+    )
+    .bind(userId, `${lccQuery}%`, limit)
+    .all<Scan>();
+
+  logger.info("scan_search_by_lcc", {
+    userId,
+    query: lccQuery,
+    count: result.results?.length || 0,
+  });
+  return result.results || [];
+}
+
+/**
+ * General search across title, authors, subjects, and ISBN
+ */
+export async function searchUserScansGeneral(
+  db: D1Database,
+  userId: string,
+  query: string,
+  limit: number = 50,
+): Promise<Scan[]> {
+  const searchTerm = `%${query}%`;
+  const result = await db
+    .prepare(
+      `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
+       FROM scans
+       WHERE user_id = ? AND (
+         title LIKE ? OR
+         authors LIKE ? OR
+         subjects LIKE ? OR
+         isbn LIKE ?
+       )
+       ORDER BY created_at DESC
+       LIMIT ?`,
+    )
+    .bind(userId, searchTerm, searchTerm, searchTerm, searchTerm, limit)
+    .all<Scan>();
+
+  logger.info("scan_search_general", {
+    userId,
+    query,
+    count: result.results?.length || 0,
+  });
+  return result.results || [];
+}
+
+/**
  * Count total scans for a user
  */
 export async function countUserScans(
@@ -147,6 +293,10 @@ export async function createScan(
   title: string,
   jsonData: string,
   status: "draft" | "published" | "archived" = "draft",
+  authors?: string,
+  subjects?: string,
+  ddc?: string,
+  lcc?: string,
 ): Promise<number> {
   try {
     // Check if scan already exists for this user+isbn
@@ -159,10 +309,10 @@ export async function createScan(
       // UPDATE existing scan
       await db
         .prepare(
-          `UPDATE scans SET title = ?, json_data = ?, status = ?, updated_at = datetime('now')
+          `UPDATE scans SET title = ?, json_data = ?, status = ?, authors = ?, subjects = ?, ddc = ?, lcc = ?, updated_at = datetime('now')
            WHERE id = ? AND user_id = ?`,
         )
-        .bind(title, jsonData, status, existing.id, userId)
+        .bind(title, jsonData, status, authors, subjects, ddc, lcc, existing.id, userId)
         .run();
 
       logger.info(LogEvents.SCAN_CREATED, {
@@ -178,10 +328,10 @@ export async function createScan(
     // INSERT new scan
     const result = await db
       .prepare(
-        `INSERT INTO scans (user_id, isbn, title, json_data, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        `INSERT INTO scans (user_id, isbn, title, json_data, status, authors, subjects, ddc, lcc, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       )
-      .bind(userId, isbn, title, jsonData, status)
+      .bind(userId, isbn, title, jsonData, status, authors, subjects, ddc, lcc)
       .run();
 
     if (!result.success) {

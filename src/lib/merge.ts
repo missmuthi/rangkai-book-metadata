@@ -452,6 +452,24 @@ export function processAndRenderMergedData(
   const hasOpenLib = !!openlib;
   const hasLoC = !!locResult;
 
+  // === CLASSIFICATION TRUST LEVEL CALCULATION ===
+  // High Trust: LCC from LoC (authoritative source)
+  if (merged.lcc !== "-" && hasLoC && locCallNumber) {
+    merged.classificationTrust = "high";
+  }
+  // Medium Trust: DDC/LCC from OpenLibrary (community-contributed)
+  else if ((merged.ddc !== "-" || merged.lcc !== "-") && hasOpenLib && !hasLoC) {
+    merged.classificationTrust = "medium";
+  }
+  // Low Trust: Classification derived from subjects (fallback mapping)
+  else if (merged.classification !== "NONE" && merged.classification !== "-") {
+    merged.classificationTrust = "low";
+  }
+  // No classification available
+  else {
+    merged.classificationTrust = undefined;
+  }
+
   if (hasGoogle && hasOpenLib && hasLoC) {
     merged.dataSource = "all-three";
     merged.isPartialData = false;

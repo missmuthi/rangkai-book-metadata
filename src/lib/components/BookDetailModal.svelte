@@ -50,6 +50,37 @@
                 return book.author.split(',').map(a => a.trim()).join(' ; ');
         });
 
+        // Classification Trust Badge
+        function getTrustBadge(trust: string | undefined) {
+                if (!trust) return null;
+
+                switch (trust) {
+                        case 'high':
+                                return {
+                                        icon: '🏛️',
+                                        label: 'Official LoC',
+                                        color: 'bg-blue-100 text-blue-800',
+                                        tooltip: 'Data directly from Library of Congress'
+                                };
+                        case 'medium':
+                                return {
+                                        icon: '📚',
+                                        label: 'Community Data',
+                                        color: 'bg-yellow-100 text-yellow-800',
+                                        tooltip: 'Data sourced from OpenLibrary contributors'
+                                };
+                        case 'low':
+                                return {
+                                        icon: '⚠️',
+                                        label: 'Estimated',
+                                        color: 'bg-gray-100 text-gray-800',
+                                        tooltip: 'Inferred from keywords/subjects'
+                                };
+                        default:
+                                return null;
+                }
+        }
+
         function getSecureProxyUrl(url: string | null | undefined): string {
                 if (!url || url === '' || url === '-') {
                         return FALLBACK_COVER;
@@ -214,7 +245,7 @@
         }
 </script>
 
-{#snippet row(label: string, value: string | undefined, copyable = false)}
+{#snippet row(label: string, value: string | undefined, copyable = false, trust?: string)}
         <div class="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-x-4 gap-y-1 px-4 py-2.5 even:bg-gray-50">
                 <dt class="text-xs font-semibold uppercase tracking-wide text-gray-600">
                         {label}
@@ -222,10 +253,16 @@
                 <dd class="text-sm text-gray-900 break-words flex items-start justify-between group">
                         <span class={label === 'Title' ? 'font-bold' : ''}>
                                 {value || '-'}
-                                {#if label === 'Call Number' && book.dataSource?.includes('loc') && value && value !== '-'}
-                                        <span class="ml-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900 ring-1 ring-green-200">
-                                                🏛️ LoC
-                                        </span>
+                                {#if trust && value && value !== '-'}
+                                        {@const badge = getTrustBadge(trust)}
+                                        {#if badge}
+                                                <span
+                                                        class="ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 {badge.color}"
+                                                        title={badge.tooltip}
+                                                >
+                                                        {badge.icon} {badge.label}
+                                                </span>
+                                        {/if}
                                 {/if}
                         </span>
                         {#if copyable && value && value !== '-'}
@@ -296,7 +333,7 @@
 						{@render row('Collation', book.collation || book.physicalDescription || book.pages ? `${book.pages} p.` : undefined)}
 						{@render row('Language', book.language)}
 						{@render row('ISBN/ISSN', book.isbn13 || book.isbn10, true)}
-						{@render row('Classification', book.ddc || book.lcc)}
+						{@render row('Classification', book.ddc || book.lcc, false, book.classificationTrust)}
 						{@render row('Content Type', 'text')}
 						{@render row('Media Type', 'unmediated')}
 						{@render row('Carrier Type', 'volume')}

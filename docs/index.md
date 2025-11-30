@@ -27,7 +27,7 @@
 ### For Contributing
 
 6. [Contributing Guide](../CONTRIBUTING.md) - Code standards and workflow
-7. [Agents Documentation](../agents.md) - AI-assisted development patterns
+7. [Agents Documentation](meta/agents_full.md) - AI-assisted development patterns
 
 ---
 
@@ -42,6 +42,7 @@
 | **[ARCHITECTURE.md](ARCHITECTURE.md)**                   | Detailed technical architecture, components, data flow | Planning features or debugging     |
 | **[AUTH.md](AUTH.md)**                                   | Authentication system, OAuth flow, troubleshooting     | Working with Google login          |
 | **[API_INTEGRATION_GUIDE.md](API_INTEGRATION_GUIDE.md)** | Google Books, OpenLibrary, LoC API details             | Working with metadata sources      |
+| **[SMART_SEARCH_API.md](SMART_SEARCH_API.md)**          | Search API endpoints, classification systems           | Implementing search functionality  |
 | **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)**           | Production deployment, secrets, D1/KV setup            | Deploying to Cloudflare Pages      |
 | **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)**             | Common commands, file locations                        | Quick lookups during development   |
 
@@ -52,7 +53,7 @@
 | **[README.md](../README.md)**                            | Project overview, features, quick start      |
 | **[CHANGELOG.md](../CHANGELOG.md)**                      | Version history, release notes               |
 | **[CONTRIBUTING.md](../CONTRIBUTING.md)**                | Contribution guidelines, code standards      |
-| **[agents.md](../agents.md)**                            | AI agents documentation, automation patterns |
+| **[agents_full.md](meta/agents_full.md)**                | AI agents documentation, automation patterns |
 | **[copilot-instructions.md](../copilot-instruction.md)** | GitHub Copilot instructions                  |
 
 ### Legacy/Reference Documentation (Root)
@@ -111,7 +112,7 @@ All documentation should:
 ### 🔧 Feature Developer
 
 **Goal:** Add new functionality or fix bugs  
-**Path:** ARCHITECTURE.md → API_INTEGRATION_GUIDE.md → agents.md  
+**Path:** ARCHITECTURE.md → API_INTEGRATION_GUIDE.md → meta/agents_full.md  
 **Time:** 30 min - 1 hour (reference as needed)
 
 ### 🚀 DevOps Engineer

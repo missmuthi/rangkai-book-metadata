@@ -33,6 +33,11 @@ export {
   deleteScan,
   getRecentScansGlobal,
   getUserStats,
+  searchUserScansByAuthor,
+  searchUserScansBySubject,
+  searchUserScansByDDC,
+  searchUserScansByLCC,
+  searchUserScansGeneral,
 } from "./db";
 
 // Cache operations

@@ -93,7 +93,7 @@ When you add new features, always think:
 
 ## 3. How to Use the Internal Agent Prompts
 
-This repo has **specialized AI prompts** defined in `AGENTS.md`. They describe domain-specific “personas” like:
+This repo has **specialized AI prompts** defined in `docs/meta/agents_full.md`. They describe domain-specific “personas” like:
 
 - **Svelte 5 Architect** – frontend, SvelteKit, runes, Tailwind, component structure.
 - **Backend Resilience Engineer** – API aggregation, caching, timeouts, multi-source waterfall, Cloudflare-friendly patterns.
