@@ -98,8 +98,8 @@ export function sanitizeBookData(data: MergedBookData): MergedBookData {
   for (const key of Object.keys(sanitized) as Array<keyof MergedBookData>) {
     const value = sanitized[key];
     if (typeof value === "string") {
-      // @ts-ignore - Valid assignment for string properties
-      sanitized[key] = sanitizeInput(value);
+      // @ts-expect-error - Valid assignment for string properties
+        sanitized[key] = sanitizeInput(value);
     }
   }
   return sanitized;

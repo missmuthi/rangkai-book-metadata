@@ -13,7 +13,7 @@
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import type { MergedBookData } from "$lib/types";
-import { z } from "zod";
+// zod import removed (not used in this route)
 import {
   getKV,
   CacheKeys,

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import type { ComponentType } from 'svelte';
 	import { BookApiService } from '$lib/api';
 	import { normalizeISBN } from '$lib/isbn-helpers';
 	import type { MergedBookData } from '$lib/types';
@@ -10,8 +11,8 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	let CameraScanner = $state<any>(null);
-	let BookDetailModal = $state<any>(null);
+	let CameraScanner = $state<ComponentType | null>(null);
+	let BookDetailModal = $state<ComponentType | null>(null);
 
 	let cameraActive = $state(false); // Start inactive so user can trigger it
 	let lastScanned = $state<string | null>(null);
@@ -24,10 +25,10 @@
 		let mounted = true;
 		// Client-side component mounted
 		(async () => {
-			const [cameraMod, modalMod] = await Promise.all([
+			const [cameraMod, modalMod] = (await Promise.all([
 				import('$lib/components/CameraScanner.svelte'),
 				import('$lib/components/BookDetailModal.svelte')
-			]);
+			])) as unknown as [ { default: ComponentType }, { default: ComponentType } ];
 			if (mounted) {
 				CameraScanner = cameraMod.default;
 				BookDetailModal = modalMod.default;

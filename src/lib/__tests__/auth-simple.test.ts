@@ -1,6 +1,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createGoogleAuth, upsertUser, createSession, deleteSession, getSession } from '../auth-simple';
+import { createGoogleAuth, upsertUser, createSession as _createSession, deleteSession as _deleteSession, getSession as _getSession } from '../auth-simple';
 
 // Mock D1 Database
 const mockD1 = {
