@@ -73,13 +73,13 @@ Rangkai uses a lightweight, custom authentication system built on:
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/lib/auth-simple.ts` | Core auth functions (session management, OAuth client) |
-| `src/hooks.server.ts` | Request interception, session injection |
-| `src/routes/api/auth/google/+server.ts` | OAuth initiation endpoint |
-| `src/routes/api/auth/callback/google/+server.ts` | OAuth callback handler |
-| `src/routes/api/auth/sign-out/+server.ts` | Session termination |
+| File                                             | Purpose                                                |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| `src/lib/auth-simple.ts`                         | Core auth functions (session management, OAuth client) |
+| `src/hooks.server.ts`                            | Request interception, session injection                |
+| `src/routes/api/auth/google/+server.ts`          | OAuth initiation endpoint                              |
+| `src/routes/api/auth/callback/google/+server.ts` | OAuth callback handler                                 |
+| `src/routes/api/auth/sign-out/+server.ts`        | Session termination                                    |
 
 ---
 
@@ -151,6 +151,7 @@ throw redirect(302, authUrl.toString());
 #### Step 4-5: Google Authentication
 
 User authenticates with Google and grants consent. Google redirects to:
+
 ```
 https://your-app.pages.dev/api/auth/callback/google?code=...&state=...
 ```
@@ -187,12 +188,12 @@ throw redirect(303, "/");
 
 ### Required Variables
 
-| Variable | Description | Example (Dev) | Example (Prod) |
-|----------|-------------|---------------|----------------|
-| `BETTER_AUTH_URL` | Your app's public URL (no trailing slash) | `http://localhost:5173` | `https://rangkai-book-metadata.pages.dev` |
-| `GOOGLE_CLIENT_ID` | OAuth client ID from Google Cloud Console | `123...apps.googleusercontent.com` | Same |
-| `GOOGLE_CLIENT_SECRET` | OAuth client secret | `GOCSPX-...` | Same (use Cloudflare secrets) |
-| `BETTER_AUTH_SECRET` | Secret for session encryption (32+ chars) | `dev-secret-32-chars-minimum` | Use cryptographically random value |
+| Variable               | Description                               | Example (Dev)                      | Example (Prod)                            |
+| ---------------------- | ----------------------------------------- | ---------------------------------- | ----------------------------------------- |
+| `BETTER_AUTH_URL`      | Your app's public URL (no trailing slash) | `http://localhost:5173`            | `https://rangkai-book-metadata.pages.dev` |
+| `GOOGLE_CLIENT_ID`     | OAuth client ID from Google Cloud Console | `123...apps.googleusercontent.com` | Same                                      |
+| `GOOGLE_CLIENT_SECRET` | OAuth client secret                       | `GOCSPX-...`                       | Same (use Cloudflare secrets)             |
+| `BETTER_AUTH_SECRET`   | Secret for session encryption (32+ chars) | `dev-secret-32-chars-minimum`      | Use cryptographically random value        |
 
 ### Setting Environment Variables
 
@@ -227,11 +228,13 @@ wrangler pages secret put BETTER_AUTH_SECRET
 4. Add **Authorized redirect URIs**:
 
 **Development:**
+
 ```
 http://localhost:5173/api/auth/callback/google
 ```
 
 **Production:**
+
 ```
 https://rangkai-book-metadata.pages.dev/api/auth/callback/google
 https://your-custom-domain.com/api/auth/callback/google
@@ -245,17 +248,17 @@ https://your-custom-domain.com/api/auth/callback/google
 
 ### OAuth State Cookies (Temporary)
 
-| Cookie | Purpose | Max Age | Secure | HttpOnly | SameSite |
-|--------|---------|---------|--------|----------|----------|
-| `google_oauth_state` | CSRF protection | 10 min | Context-aware* | Yes | Lax |
-| `google_code_verifier` | PKCE verification | 10 min | Context-aware* | Yes | Lax |
-| `google_oauth_timestamp` | Replay attack prevention | 10 min | Context-aware* | Yes | Lax |
+| Cookie                   | Purpose                  | Max Age | Secure          | HttpOnly | SameSite |
+| ------------------------ | ------------------------ | ------- | --------------- | -------- | -------- |
+| `google_oauth_state`     | CSRF protection          | 10 min  | Context-aware\* | Yes      | Lax      |
+| `google_code_verifier`   | PKCE verification        | 10 min  | Context-aware\* | Yes      | Lax      |
+| `google_oauth_timestamp` | Replay attack prevention | 10 min  | Context-aware\* | Yes      | Lax      |
 
 ### Session Cookie (Persistent)
 
-| Cookie | Purpose | Max Age | Secure | HttpOnly | SameSite |
-|--------|---------|---------|--------|----------|----------|
-| `session` | User authentication | 7 days | Context-aware* | Yes | Lax |
+| Cookie    | Purpose             | Max Age | Secure          | HttpOnly | SameSite |
+| --------- | ------------------- | ------- | --------------- | -------- | -------- |
+| `session` | User authentication | 7 days  | Context-aware\* | Yes      | Lax      |
 
 **\* Context-aware:** Secure=true for HTTPS (production), Secure=false for HTTP (localhost).
 
@@ -320,9 +323,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 ```svelte
 <script lang="ts">
   import type { PageData } from "./$types";
-  
+
   let { data } = $props<{ data: PageData }>();
-  
+
   // Reactive authentication check
   let isLoggedIn = $derived(!!data.user);
 </script>
@@ -339,7 +342,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 ```svelte
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
-  
+
   async function handleSignOut() {
     await fetch("/api/auth/sign-out", { method: "POST" });
     await invalidateAll();
@@ -385,6 +388,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 **Symptoms:** Google shows error page about redirect URI.
 
 **Solution:**
+
 1. Enable debug logging: `?debug=true` on the login URL
 2. Copy the **exact** redirect URI from server logs
 3. Add it to Google Cloud Console → Credentials → OAuth 2.0 Client IDs
@@ -416,6 +420,7 @@ https://rangkai-book-metadata.pages.dev/api/auth/callback/google
 **Symptoms:** OAuth endpoints return 500 error.
 
 **Solution:**
+
 - Ensure you're running with Cloudflare bindings:
   ```bash
   npm run dev  # Uses wrangler pages dev
@@ -432,6 +437,7 @@ Append `?debug=true` to OAuth endpoints for verbose logging:
 ```
 
 This logs:
+
 - Raw vs normalized `BETTER_AUTH_URL`
 - Computed redirect URI
 - OAuth state comparison
@@ -493,18 +499,18 @@ if (url.searchParams.get("state") !== cookies.get("google_oauth_state")) {
 
 ### OAuth Endpoints
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/auth/google` | GET | Initiate OAuth flow |
-| `/api/auth/callback/google` | GET | Handle OAuth callback |
-| `/api/auth/sign-out` | POST | Terminate session |
+| Endpoint                    | Method | Purpose               |
+| --------------------------- | ------ | --------------------- |
+| `/api/auth/google`          | GET    | Initiate OAuth flow   |
+| `/api/auth/callback/google` | GET    | Handle OAuth callback |
+| `/api/auth/sign-out`        | POST   | Terminate session     |
 
 ### SvelteKit Locals
 
 ```typescript
 // Available in +page.server.ts, +server.ts, hooks
-event.locals.session  // SessionData | null
-event.locals.user     // User | null
+event.locals.session; // SessionData | null
+event.locals.user; // User | null
 ```
 
 ### Session Data Structure

@@ -22,11 +22,13 @@
 ## Post-Deployment Testing
 
 ### 1. Basic Functionality Test
+
 - [ ] Visit production URL
 - [ ] Login with GitHub OAuth (if configured)
 - [ ] Navigate to scanner or search
 
 ### 2. AI Cleaning Feature Test
+
 - [ ] Scan a book with ISBN (e.g., 9780134685991)
 - [ ] Open book details modal
 - [ ] Verify "Clean with AI" button is visible
@@ -36,6 +38,7 @@
 - [ ] Verify cleaned data is saved (reload and check)
 
 ### 3. Edge Cases
+
 - [ ] Test with invalid ISBN
 - [ ] Test with book not in Google Books
 - [ ] Test without AI API key (should show error)
@@ -43,6 +46,7 @@
 - [ ] Test cache hit (clean same book twice)
 
 ### 4. Performance Testing
+
 - [ ] Measure initial load time
 - [ ] Measure API response time (first call)
 - [ ] Measure API response time (cached)
@@ -51,18 +55,21 @@
 ## Monitoring Checklist
 
 ### Day 1: Initial Monitoring
+
 - [ ] Check deployment logs for errors
 - [ ] Verify AI API calls are working
 - [ ] Monitor error rates in Cloudflare Analytics
 - [ ] Check Google AI API usage quota
 
 ### Week 1: Usage Patterns
+
 - [ ] Review total AI cleaning requests
 - [ ] Identify most cleaned books
 - [ ] Check cache hit rate
 - [ ] Monitor API costs
 
 ### Ongoing Monitoring
+
 - [ ] Set up Cloudflare alerts for high error rates
 - [ ] Monitor Google AI quota usage weekly
 - [ ] Review user feedback
@@ -71,11 +78,13 @@
 ## Rate Limits & Quotas
 
 ### Google AI API (Free Tier)
+
 - **Requests per minute**: 60 RPM
 - **Requests per day**: 1,500 RPD
 - **Tokens per minute**: 32,000 TPM
 
 ### Mitigation Strategies
+
 1. **Caching**: 30-day KV cache reduces repeat requests
 2. **Debouncing**: Button has 2-second cooldown
 3. **Error handling**: Graceful fallback to original data
@@ -84,6 +93,7 @@
 ## Troubleshooting
 
 ### API Key Issues
+
 ```bash
 # Verify environment variable is set
 wrangler pages deployment list --project-name=rangkai-book-metadata
@@ -91,6 +101,7 @@ wrangler pages deployment list --project-name=rangkai-book-metadata
 ```
 
 ### Build Failures
+
 ```bash
 # Test build locally
 npm run build
@@ -98,12 +109,14 @@ npm run build
 ```
 
 ### Runtime Errors
+
 ```bash
 # Tail production logs
 wrangler pages deployment tail --project-name=rangkai-book-metadata
 ```
 
 ### D1/KV Access Issues
+
 ```bash
 # Verify D1 binding
 wrangler d1 execute rangkai-scans --command="SELECT * FROM scans LIMIT 1"

@@ -41,7 +41,10 @@ export const handleError: HandleServerError = ({
     if (errorKeys.length > 0) {
       console.error("Additional Error Properties:");
       errorKeys.forEach((key) => {
-        console.error(`  ${key}:`, (error as unknown as Record<string, unknown>)[key]);
+        console.error(
+          `  ${key}:`,
+          (error as unknown as Record<string, unknown>)[key],
+        );
       });
     }
   } else {
@@ -109,24 +112,33 @@ export const handle: Handle = async ({ event, resolve }) => {
           event.locals.user = sessionData.user;
         } else {
           // Session token exists but is invalid/expired
-          if (event.url.pathname.startsWith('/api/')) {
-            console.warn(`[Auth] Invalid/expired session token for ${event.url.pathname}`);
+          if (event.url.pathname.startsWith("/api/")) {
+            console.warn(
+              `[Auth] Invalid/expired session token for ${event.url.pathname}`,
+            );
           }
           event.locals.session = null;
           event.locals.user = null;
         }
       } else {
         // No session token in cookies
-        if (event.url.pathname.startsWith('/api/') && !event.url.pathname.startsWith('/api/auth')) {
-          console.warn(`[Auth] No session token found for ${event.url.pathname}`);
+        if (
+          event.url.pathname.startsWith("/api/") &&
+          !event.url.pathname.startsWith("/api/auth")
+        ) {
+          console.warn(
+            `[Auth] No session token found for ${event.url.pathname}`,
+          );
         }
         event.locals.session = null;
         event.locals.user = null;
       }
     } else {
       // No platform context (local dev without D1)
-      if (event.url.pathname.startsWith('/api/')) {
-        console.warn(`[Auth] No platform.env.DB available for ${event.url.pathname}`);
+      if (event.url.pathname.startsWith("/api/")) {
+        console.warn(
+          `[Auth] No platform.env.DB available for ${event.url.pathname}`,
+        );
       }
       event.locals.session = null;
       event.locals.user = null;

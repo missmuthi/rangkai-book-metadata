@@ -10,8 +10,19 @@
 
 import type { RequestEvent } from "@sveltejs/kit";
 import { isValidISBN13, isValidISBN10 } from "$lib/utils";
-import { getDB, createScan, getUserScans, countUserScans } from "$lib/server/db";
-import { getKV, CacheKeys, cacheGet, cacheSet, CacheTTL } from "$lib/server/cache";
+import {
+  getDB,
+  createScan,
+  getUserScans,
+  countUserScans,
+} from "$lib/server/db";
+import {
+  getKV,
+  CacheKeys,
+  cacheGet,
+  cacheSet,
+  CacheTTL,
+} from "$lib/server/cache";
 import { fetchBookByIsbn } from "$lib/server/metadata";
 import { logger, LogEvents } from "$lib/server/log";
 import type { Scan } from "$lib/server/types";
@@ -90,7 +101,8 @@ export async function createBookScan(
       // - new: fetchBookByIsbn(platform, fetchFn, isbn)
       if (
         typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown).length >= 3
+        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown)
+          .length >= 3
       ) {
         metadata = await fetchBookByIsbn(event.platform, event.fetch, isbn);
       } else {

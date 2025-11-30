@@ -5,15 +5,21 @@ export function deepClean<T>(obj: T): T {
   if (Array.isArray(obj)) {
     return obj
       .map((v) => deepClean(v))
-      .filter((v) => v !== null && v !== undefined && v !== '' && v !== '-') as unknown as T;
+      .filter(
+        (v) => v !== null && v !== undefined && v !== "" && v !== "-",
+      ) as unknown as T;
   }
 
-  if (obj !== null && typeof obj === 'object') {
+  if (obj !== null && typeof obj === "object") {
     return Object.entries(obj).reduce((acc, [key, value]) => {
       const cleaned = deepClean(value as any);
       // Keep boolean false or number 0, but remove empty strings/dashes
-      if (cleaned !== null && cleaned !== undefined && cleaned !== '' && cleaned !== '-') {
-        // @ts-ignore assign dynamically
+      if (
+        cleaned !== null &&
+        cleaned !== undefined &&
+        cleaned !== "" &&
+        cleaned !== "-"
+      ) {
         acc[key as any] = cleaned;
       }
       return acc;

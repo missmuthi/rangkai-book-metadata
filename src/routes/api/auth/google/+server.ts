@@ -87,7 +87,10 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
     throw redirect(302, authUrl.toString());
   } catch (error) {
     // Re-throw redirects (they're not actually errors)
-    if (error instanceof Response || (error as { status?: number })?.status === 302) {
+    if (
+      error instanceof Response ||
+      (error as { status?: number })?.status === 302
+    ) {
       throw error;
     }
 

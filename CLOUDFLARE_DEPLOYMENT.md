@@ -1,6 +1,7 @@
 # Cloudflare Pages Deployment Guide
 
 ## Prerequisites
+
 - GitHub repository: `missmuthi/rangkai-book-metadata`
 - Cloudflare account with Pages access
 - D1 database: `rangkai-scans` (ID: c3d6dcc2-e7b8-4537-8b23-67d8921b3233)
@@ -46,6 +47,7 @@ AUTH_SECRET=<random-secret-for-auth-sessions>
 ```
 
 **Note**: You can generate AUTH_SECRET with:
+
 ```bash
 openssl rand -base64 32
 ```
@@ -56,21 +58,25 @@ openssl rand -base64 32
 2. Under **Bindings**, add:
 
 ### D1 Database Binding
+
 - **Variable name**: `DB`
 - **D1 database**: Select `rangkai-scans`
 
 ### KV Namespace Binding
+
 - **Variable name**: `BOOK_CACHE`
 - **KV namespace**: Select the KV namespace with ID `0844494af5e74ac1b28600f686a060c2`
 
 ## Step 5: Deploy
 
 Once configured, Cloudflare Pages will automatically:
+
 1. Deploy on every push to `main` branch
 2. Create preview deployments for pull requests
 3. Run the build command and deploy the output
 
 To trigger the first deployment:
+
 ```bash
 git push origin main
 ```
@@ -88,11 +94,13 @@ git push origin main
 ## Step 7: Monitor AI Usage
 
 ### Check Google AI API Usage
+
 1. Go to [Google AI Studio](https://aistudio.google.com/)
 2. Navigate to API settings
 3. Monitor your request count and rate limits
 
 ### Cloudflare Analytics
+
 1. In Cloudflare Pages dashboard
 2. Go to **Analytics** tab
 3. Monitor:
@@ -101,6 +109,7 @@ git push origin main
    - Error rates
 
 ### Check Logs
+
 ```bash
 # View recent logs
 wrangler pages deployment tail
@@ -112,21 +121,25 @@ wrangler pages deployment tail --project-name=rangkai-book-metadata
 ## Troubleshooting
 
 ### Build Failures
+
 - Check build logs in Cloudflare dashboard
 - Ensure all dependencies are in `package.json`
 - Verify Node version compatibility
 
 ### Environment Variable Issues
+
 - Ensure `GOOGLE_AI_API_KEY` is set correctly
 - Check for typos in variable names
 - Verify API key is active in Google AI Studio
 
 ### D1/KV Binding Issues
+
 - Ensure bindings are correctly configured
 - Check database ID matches `wrangler.toml`
 - Verify KV namespace exists and ID is correct
 
 ### AI API Rate Limits
+
 - Google AI has rate limits (default: 60 requests/minute)
 - Implement caching to reduce API calls
 - Consider upgrading to paid tier if needed

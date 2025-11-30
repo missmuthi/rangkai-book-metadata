@@ -213,7 +213,10 @@ export async function createScan(
   } catch (err) {
     // Handle race condition: UNIQUE constraint violation
     const errorMsg = err instanceof Error ? err.message : String(err);
-    if (errorMsg.includes("UNIQUE constraint failed") || errorMsg.includes("SQLITE_CONSTRAINT")) {
+    if (
+      errorMsg.includes("UNIQUE constraint failed") ||
+      errorMsg.includes("SQLITE_CONSTRAINT")
+    ) {
       // Another request won the race, fetch that row
       const fallback = await db
         .prepare(`SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1`)

@@ -110,7 +110,11 @@ export const GET: RequestHandler = async ({
     const elapsed = Date.now() - parseInt(timestamp);
     if (elapsed > 600000) {
       // 10 minutes
-      console.warn("⚠️ [OAuth Callback] State expired, elapsed:", elapsed, "ms");
+      console.warn(
+        "⚠️ [OAuth Callback] State expired, elapsed:",
+        elapsed,
+        "ms",
+      );
       redirectWithError("state_expired");
     }
   }
@@ -172,10 +176,15 @@ export const GET: RequestHandler = async ({
         picture: string;
       };
     } catch (userInfoError) {
-      console.error("❌ [OAuth Callback] User info fetch failed:", userInfoError);
+      console.error(
+        "❌ [OAuth Callback] User info fetch failed:",
+        userInfoError,
+      );
       redirectWithError(
         "user_info_failed",
-        userInfoError instanceof Error ? userInfoError.message : "Unknown error",
+        userInfoError instanceof Error
+          ? userInfoError.message
+          : "Unknown error",
       );
     }
 
@@ -211,7 +220,10 @@ export const GET: RequestHandler = async ({
         maxAge: 60 * 60 * 24 * 7, // 7 days
       });
     } catch (sessionError) {
-      console.error("❌ [OAuth Callback] Session creation failed:", sessionError);
+      console.error(
+        "❌ [OAuth Callback] Session creation failed:",
+        sessionError,
+      );
       redirectWithError(
         "session_failed",
         sessionError instanceof Error ? sessionError.message : "Session error",
@@ -251,6 +263,9 @@ export const GET: RequestHandler = async ({
     console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Redirect to login with generic error instead of showing 500 page
-    throw redirect(302, `/login?error=${encodeURIComponent(ERROR_MESSAGES.unknown)}`);
+    throw redirect(
+      302,
+      `/login?error=${encodeURIComponent(ERROR_MESSAGES.unknown)}`,
+    );
   }
 };

@@ -1,6 +1,7 @@
 # AI Clean Feature - Write-Through Caching Implementation
 
 ## Overview
+
 The AI Clean feature allows librarians to enhance book metadata using Google Gemini AI. The cleaned metadata is automatically saved to both KV Cache and D1 Database for future users.
 
 ## Implementation Summary
@@ -8,6 +9,7 @@ The AI Clean feature allows librarians to enhance book metadata using Google Gem
 ### 1. Backend Architecture (`src/routes/api/ai/clean/+server.ts`)
 
 **Flow:**
+
 1. Receive raw book data from client
 2. Call Gemini AI to clean/enhance metadata (Indonesian librarian standards)
 3. Inject `is_ai_enhanced: true` and `enhanced_at: timestamp`
@@ -17,6 +19,7 @@ The AI Clean feature allows librarians to enhance book metadata using Google Gem
    - Update D1 `scans` table `json_data` column
 
 **Key Features:**
+
 - ✅ Non-blocking async writes (no response delay)
 - ✅ Error handling for cache writes (logged but don't fail request)
 - ✅ Proper ISBN key lookup (tries isbn13 → isbn10 → isbn)
@@ -102,12 +105,12 @@ isbn10 TEXT
 ```typescript
 export interface MergedBookData {
   // ... existing fields ...
-  publishPlace?: string;       // NEW: For ISBD format
-  publishYear?: string;        // NEW: For ISBD format
+  publishPlace?: string; // NEW: For ISBD format
+  publishYear?: string; // NEW: For ISBD format
   physicalDescription?: string; // NEW: For collation
-  authors?: string;            // NEW: Comma-separated authors
-  is_ai_enhanced?: boolean;    // NEW: AI flag
-  enhanced_at?: number;        // NEW: Timestamp
+  authors?: string; // NEW: Comma-separated authors
+  is_ai_enhanced?: boolean; // NEW: AI flag
+  enhanced_at?: number; // NEW: Timestamp
 }
 ```
 
@@ -156,6 +159,7 @@ export interface MergedBookData {
 ## Monitoring & Debugging
 
 **Console Logs:**
+
 ```
 [AI Clean] KV Cache updated for ISBN: 9781234567890
 [AI Clean] D1 Database updated for ISBN: 9781234567890, rows affected: 1

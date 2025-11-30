@@ -263,7 +263,10 @@ class AnalyticsService {
   /**
    * Dev mode logging with colors and emojis
    */
-  private logDevMode(event: { name: string; properties: Record<string, unknown> }): void {
+  private logDevMode(event: {
+    name: string;
+    properties: Record<string, unknown>;
+  }): void {
     const _emoji = this.getEventEmoji(event.name);
     const _color = this.getEventColor(event.name);
 
@@ -278,7 +281,10 @@ class AnalyticsService {
    * Production mode logging (console.info with prefix)
    * Future: Replace with actual analytics service (Plausible, GA, PostHog)
    */
-  private logProdMode(event: { name: string; properties: Record<string, unknown> }): void {
+  private logProdMode(event: {
+    name: string;
+    properties: Record<string, unknown>;
+  }): void {
     // eslint-disable-next-line no-console
     console.info("[Analytics]", event.name, event.properties);
 
@@ -339,7 +345,10 @@ class AnalyticsService {
   /**
    * Remove or hash sensitive values before logging
    */
-  private sanitizeEvent(event: { name: string; properties: Record<string, unknown> }) {
+  private sanitizeEvent(event: {
+    name: string;
+    properties: Record<string, unknown>;
+  }) {
     return {
       ...event,
       properties: this.sanitizeProperties(event.properties),
@@ -357,13 +366,12 @@ class AnalyticsService {
           return value.map((item) => sanitizeValue(item));
         }
 
-        return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>(
-          (acc, [childKey, childValue]) => {
-            acc[childKey] = sanitizeValue(childValue, childKey);
-            return acc;
-          },
-          {},
-        );
+        return Object.entries(value as Record<string, unknown>).reduce<
+          Record<string, unknown>
+        >((acc, [childKey, childValue]) => {
+          acc[childKey] = sanitizeValue(childValue, childKey);
+          return acc;
+        }, {});
       }
 
       if (key && this.isSensitiveKey(key)) {

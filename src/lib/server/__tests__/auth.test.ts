@@ -170,9 +170,8 @@ describe("Auth Helpers - Integration Tests", () => {
     });
 
     it("should handle DB errors gracefully", async () => {
-      const { getSession: getSessionPrimitive } = await import(
-        "$lib/auth-simple"
-      );
+      const { getSession: getSessionPrimitive } =
+        await import("$lib/auth-simple");
       vi.mocked(getSessionPrimitive).mockRejectedValueOnce(
         new Error("Database error"),
       );

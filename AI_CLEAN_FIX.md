@@ -1,15 +1,18 @@
 # AI Clean "One Phase Fix" - Implementation Complete
 
 ## Overview
+
 Implemented the Smart Metadata Overhaul that consolidates Logic, Type Safety, and Database Persistence into a single, robust workflow with **Deep Merging** (to prevent data loss) and **Aggressive Completion** (to ensure AI fills gaps).
 
 ## Files Created/Modified
 
 ### 1. New Utility File: `src/lib/utils/metadata.ts`
+
 - **`deepClean()`**: Recursively removes null, undefined, "-", and empty string values to keep database JSON optimized
 - **`normalizeKeys()`**: Standardizes AI response keys (e.g., 'Dewey' → 'ddc', 'LCC' → 'lcc')
 
 ### 2. Updated API Handler: `src/routes/api/ai/clean/+server.ts`
+
 Complete rewrite with the following improvements:
 
 #### Key Features:
@@ -49,23 +52,29 @@ Complete rewrite with the following improvements:
 ## How It Fixes Previous Issues
 
 ### Problem 1: Missing DDC/LCC Classifications
+
 **Solution**: Aggressive prompt instructs AI to ESTIMATE if unknown, never return empty strings
 
 ### Problem 2: Data Loss During Updates
+
 **Solution**: Deep merge preserves existing data, only adds/updates specific fields
 
 ### Problem 3: Empty AI Log/No History
+
 **Solution**: Comprehensive change tracking saves all modifications to `ai_log` field
 
 ### Problem 4: Ghost Columns
+
 **Solution**: All data stored in `json_data` JSON blob, no dependency on physical SQL columns
 
 ### Problem 5: Duplicate Scans
+
 **Solution**: UPSERT logic with unique constraint on `user_id + isbn`
 
 ## Database Schema Requirements
 
 The implementation expects these columns in the `scans` table:
+
 - `id` (PRIMARY KEY)
 - `user_id` (for ownership)
 - `isbn` (for duplicate prevention)
@@ -80,6 +89,7 @@ The implementation expects these columns in the `scans` table:
 ## API Usage
 
 ### Request Format
+
 ```json
 POST /api/ai/clean
 {
@@ -95,6 +105,7 @@ POST /api/ai/clean
 ```
 
 ### Response Format
+
 ```json
 {
   "title": "Example Book",
@@ -108,10 +119,7 @@ POST /api/ai/clean
     {
       "timestamp": 1732786548000,
       "model": "Gemini 2.0 Flash",
-      "changes": [
-        "Updated ddc: 005.1",
-        "Updated lcc: QA76"
-      ]
+      "changes": ["Updated ddc: 005.1", "Updated lcc: QA76"]
     }
   ],
   "saved": true,

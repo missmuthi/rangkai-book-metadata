@@ -116,13 +116,13 @@ describe("SLiMS CSV Export", () => {
 
     const csv = generateSLiMSCSV(bookWithPlaceholder);
     const lines = csv.split("\n");
-    
+
     // The cover column (index 13) should be empty for placeholder
     const columns = lines[1].split('","');
-    const coverColumn = columns[13].replace(/"/g, ''); // Remove quotes
-    
+    const coverColumn = columns[13].replace(/"/g, ""); // Remove quotes
+
     expect(coverColumn).toBe(""); // Cover URL should be empty for placeholder
-    
+
     // Item code (last column) should still be generated
     const lastColumn = lines[1].split(",").pop();
     expect(lastColumn).toMatch(/^"RNG-\d{4}-\d{5}-\d+"/); // Should have item code

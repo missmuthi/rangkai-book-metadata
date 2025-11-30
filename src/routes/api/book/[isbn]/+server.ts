@@ -14,7 +14,13 @@ import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import type { MergedBookData } from "$lib/types";
 import { z } from "zod";
-import { getKV, CacheKeys, CacheTTL, cacheGet, cacheSet } from "$lib/server/cache";
+import {
+  getKV,
+  CacheKeys,
+  CacheTTL,
+  cacheGet,
+  cacheSet,
+} from "$lib/server/cache";
 import { getDB, createScan } from "$lib/server/db";
 import { fetchBookByIsbn } from "$lib/server/metadata";
 import { logger } from "$lib/server/log";
@@ -84,7 +90,9 @@ export const GET: RequestHandler = async ({
 
   // === STEP 1: Cache Check (KV) ===
   const kv = getKV(platform);
-  let responseData: (MergedBookData & { meta?: Record<string, unknown> }) | null = null;
+  let responseData:
+    | (MergedBookData & { meta?: Record<string, unknown> })
+    | null = null;
   let cacheHit = false;
 
   if (kv) {
@@ -116,12 +124,14 @@ export const GET: RequestHandler = async ({
       // - legacy: fetchBookByIsbn(isbn)
       if (
         typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown).length >= 3
+        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown)
+          .length >= 3
       ) {
         mergedData = await fetchBookByIsbn(platform, fetch, isbn);
       } else if (
         typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown).length === 2
+        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown)
+          .length === 2
       ) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mergedData = await (fetchBookByIsbn as any)(fetch, isbn);
@@ -172,12 +182,18 @@ export const GET: RequestHandler = async ({
 
         // ✅ Use authenticated user ID (Fix for saving to history)
         // createScan now uses UPSERT logic - returns existing scan_id if found
-        const scanId = await createScan(db, locals.user.id, isbn, title, jsonData);
-        
+        const scanId = await createScan(
+          db,
+          locals.user.id,
+          isbn,
+          title,
+          jsonData,
+        );
+
         // CRITICAL: Include scan_id in response so frontend can store it
         // This prevents duplicates when user cleans the same book later
         responseData.scan_id = scanId;
-        
+
         logger.info("scan_created", { userId: locals.user.id, scanId });
       } catch (dbError) {
         logger.error("db_write_failed", { error: dbError });
