@@ -1,6 +1,6 @@
 import type { PageServerLoad } from "./$types";
 import { requireSession } from "$lib/server/auth";
-import { logger } from "$lib/server/log";
+import { logger } from "$lib/server/logger";
 import { getScanHistory } from "$modules/scan";
 
 export const load: PageServerLoad = async (event) => {

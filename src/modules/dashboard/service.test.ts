@@ -19,7 +19,7 @@ vi.mock("$lib/server/db", () => ({
   }),
 }));
 
-vi.mock("$lib/server/log", () => ({
+vi.mock("$lib/server/logger", () => ({
   logger: {
     info: vi.fn(),
     error: vi.fn(),

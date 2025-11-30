@@ -1,5 +1,6 @@
 import { deleteSession } from "$lib/auth-simple";
 import type { RequestHandler } from "./$types";
+import { logger } from "$lib/server/logger";
 
 /**
  * Determine if cookies should be secure based on environment
@@ -24,15 +25,9 @@ export const POST: RequestHandler = async ({ platform, cookies, url }) => {
   if (sessionToken) {
     try {
       await deleteSession(platform.env.DB, sessionToken);
-      // console.log(
-      //   "[Sign Out] ✅ Session deleted from database:",
-      //   sessionToken.substring(0, 8) + "...",
-      // );
+      logger.info("sign_out_success", { sessionToken: sessionToken.substring(0, 8) + "..." });
     } catch (error) {
-      console.error(
-        "[Sign Out] ❌ Failed to delete session from database:",
-        error,
-      );
+      logger.error("sign_out_failed", { error: error instanceof Error ? error.message : error });
     }
   }
 

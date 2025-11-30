@@ -52,7 +52,7 @@ vi.mock("$lib/server/cache", () => ({
   cacheSet: vi.fn((_kv, _key, _value, _ttl) => Promise.resolve()),
 }));
 
-vi.mock("$lib/server/log", () => ({
+vi.mock("$lib/server/logger", () => ({
   logger: {
     info: vi.fn(),
     error: vi.fn(),

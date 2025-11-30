@@ -145,6 +145,13 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
 
     const response = await resolve(event);
+
+    // Security Headers
+    response.headers.set("Content-Security-Policy", "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://apis.google.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;");
+    response.headers.set("X-Frame-Options", "DENY");
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+
     return response;
   } catch (error) {
     // Session fetch failed - continue without session

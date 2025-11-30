@@ -4,8 +4,18 @@ import {
   createSession,
   upsertUser,
 } from "$lib/auth-simple";
-import { redirect, isRedirect } from "@sveltejs/kit";
+import { redirect, isRedirect, error as kitError } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import { logger } from "$lib/server/logger";
+import { z } from "zod";
+
+const querySchema = z.object({
+  code: z.string().optional(),
+  state: z.string().optional(),
+  error: z.string().optional(),
+  error_description: z.string().optional(),
+  debug: z.string().optional().transform((val) => val === "true"),
+});
 
 /**
  * OAuth Error Types for user-friendly error messages
@@ -47,7 +57,7 @@ function isSecureContext(url: URL): boolean {
  * Redirect to login with an error message (never returns)
  */
 function redirectWithError(code: OAuthErrorCode, details?: string): never {
-  console.warn(`⚠️ [OAuth Callback] Error: ${code}`, details || "");
+  logger.warn("oauth_callback_error", { code, details });
   const errorParam = encodeURIComponent(ERROR_MESSAGES[code]);
   throw redirect(302, `/login?error=${errorParam}`);
 }
@@ -70,19 +80,22 @@ export const GET: RequestHandler = async ({
   request,
 }): Promise<Response> => {
   if (!platform?.env) {
-    console.error("❌ [OAuth Callback] Platform not configured");
+    logger.error("oauth_platform_error", { message: "Platform not configured" });
     return new Response("Platform not configured", { status: 500 });
   }
 
-  // Extract OAuth parameters from callback URL
-  const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
-  const errorParam = url.searchParams.get("error");
+  // Validate query parameters
+  const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams));
+  if (!queryResult.success) {
+    logger.warn("oauth_invalid_params", { errors: queryResult.error.format() });
+    return kitError(400, "Invalid query parameters");
+  }
+  const { code, state, error: errorParam, error_description, debug } = queryResult.data;
 
   // Check if Google returned an error (e.g., user denied consent)
   if (errorParam) {
-    console.warn("⚠️ [OAuth Callback] Google returned error:", errorParam);
-    const errorDesc = url.searchParams.get("error_description") || errorParam;
+    logger.warn("oauth_provider_error", { error: errorParam, description: error_description });
+    const errorDesc = error_description || errorParam;
     throw redirect(302, `/login?error=${encodeURIComponent(errorDesc)}`);
   }
 
@@ -92,17 +105,14 @@ export const GET: RequestHandler = async ({
   const timestamp = cookies.get("google_oauth_timestamp");
 
   // Debug logging (only in callback to avoid sensitive data exposure)
-  const debug = url.searchParams.get("debug") === "true";
   if (debug) {
-    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.warn("🔐 [OAuth Callback] Processing callback");
-    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.warn("Has code:", !!code);
-    console.warn("Has state:", !!state);
-    console.warn("Has stored state:", !!storedState);
-    console.warn("Has code verifier:", !!codeVerifier);
-    console.warn("State matches:", state === storedState);
-    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    logger.debug("oauth_callback_process", {
+        hasCode: !!code,
+        hasState: !!state,
+        hasStoredState: !!storedState,
+        hasVerifier: !!codeVerifier,
+        stateMatch: state === storedState
+    });
   }
 
   // Validate state freshness (prevent replay attacks)
@@ -110,11 +120,7 @@ export const GET: RequestHandler = async ({
     const elapsed = Date.now() - parseInt(timestamp);
     if (elapsed > 600000) {
       // 10 minutes
-      console.warn(
-        "⚠️ [OAuth Callback] State expired, elapsed:",
-        elapsed,
-        "ms",
-      );
+      logger.warn("oauth_state_expired", { elapsed });
       redirectWithError("state_expired");
     }
   }
@@ -149,7 +155,7 @@ export const GET: RequestHandler = async ({
     try {
       tokens = await google.validateAuthorizationCode(code, codeVerifier);
     } catch (tokenError) {
-      console.error("❌ [OAuth Callback] Token exchange failed:", tokenError);
+      logger.error("oauth_token_exchange_failed", { error: tokenError instanceof Error ? tokenError.message : "Unknown error" });
       redirectWithError(
         "token_exchange_failed",
         tokenError instanceof Error ? tokenError.message : "Unknown error",
@@ -176,10 +182,7 @@ export const GET: RequestHandler = async ({
         picture: string;
       };
     } catch (userInfoError) {
-      console.error(
-        "❌ [OAuth Callback] User info fetch failed:",
-        userInfoError,
-      );
+      logger.error("oauth_user_info_failed", { error: userInfoError instanceof Error ? userInfoError.message : "Unknown error" });
       redirectWithError(
         "user_info_failed",
         userInfoError instanceof Error
@@ -198,7 +201,7 @@ export const GET: RequestHandler = async ({
         googleUser.picture,
       );
     } catch (dbError) {
-      console.error("❌ [OAuth Callback] User upsert failed:", dbError);
+      logger.error("oauth_user_upsert_failed", { error: dbError instanceof Error ? dbError.message : "Database error" });
       redirectWithError(
         "session_failed",
         dbError instanceof Error ? dbError.message : "Database error",
@@ -220,10 +223,7 @@ export const GET: RequestHandler = async ({
         maxAge: 60 * 60 * 24 * 7, // 7 days
       });
     } catch (sessionError) {
-      console.error(
-        "❌ [OAuth Callback] Session creation failed:",
-        sessionError,
-      );
+      logger.error("oauth_session_creation_failed", { error: sessionError instanceof Error ? sessionError.message : "Session error" });
       redirectWithError(
         "session_failed",
         sessionError instanceof Error ? sessionError.message : "Session error",
@@ -236,7 +236,7 @@ export const GET: RequestHandler = async ({
     cookies.delete("google_code_verifier", deleteCookieOptions);
     cookies.delete("google_oauth_timestamp", deleteCookieOptions);
 
-    console.warn("✅ [OAuth Callback] Login successful for:", googleUser.email);
+    logger.info("oauth_login_success", { email: googleUser.email });
 
     // Redirect to home page (stable route)
     throw redirect(303, "/");
@@ -247,20 +247,12 @@ export const GET: RequestHandler = async ({
     }
 
     // Log actual errors
-    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.error("🔴 OAUTH CALLBACK ERROR");
-    console.error("Timestamp:", new Date().toISOString());
-    console.error("Route: /api/auth/callback/google");
-
-    if (error instanceof Error) {
-      console.error("Error Type:", error.constructor.name);
-      console.error("Error Message:", error.message);
-      console.error("Stack Trace:", error.stack);
-    } else {
-      console.error("Unknown Error:", error);
-    }
-
-    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    logger.error("oauth_callback_error", {
+        route: "/api/auth/callback/google",
+        errorType: error instanceof Error ? error.constructor.name : "Unknown",
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+    });
 
     // Redirect to login with generic error instead of showing 500 page
     throw redirect(

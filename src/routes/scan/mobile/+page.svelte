@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import CameraScanner from '$lib/components/CameraScanner.svelte';
-	import BookDetailModal from '$lib/components/BookDetailModal.svelte';
 	import { BookApiService } from '$lib/api';
 	import { normalizeISBN } from '$lib/isbn-helpers';
 	import type { MergedBookData } from '$lib/types';
@@ -12,6 +10,9 @@
 
 	let { data } = $props<{ data: PageData }>();
 
+	let CameraScanner = $state<any>(null);
+	let BookDetailModal = $state<any>(null);
+
 	let cameraActive = $state(false); // Start inactive so user can trigger it
 	let lastScanned = $state<string | null>(null);
 	let lastResult = $state<MergedBookData | null>(null);
@@ -20,8 +21,21 @@
 	let selectedBook = $state<MergedBookData | null>(null);
 
 	onMount(() => {
+		let mounted = true;
 		// Client-side component mounted
+		(async () => {
+			const [cameraMod, modalMod] = await Promise.all([
+				import('$lib/components/CameraScanner.svelte'),
+				import('$lib/components/BookDetailModal.svelte')
+			]);
+			if (mounted) {
+				CameraScanner = cameraMod.default;
+				BookDetailModal = modalMod.default;
+			}
+		})();
+
 		return () => {
+			mounted = false;
 			// Component unmounting
 		};
 	});
@@ -149,7 +163,13 @@
 
 		<!-- Camera Section -->
 		<section class="relative rounded-2xl overflow-hidden shadow-lg bg-black aspect-[3/4] sm:aspect-video">
-			<CameraScanner bind:active={cameraActive} on:scan={handleScan} />
+			{#if CameraScanner}
+				<CameraScanner bind:active={cameraActive} on:scan={handleScan} />
+			{:else}
+				<div class="absolute inset-0 flex items-center justify-center text-white/50">
+					Loading camera...
+				</div>
+			{/if}
 
 			<!-- Scan Line Animation -->
 			{#if cameraActive}
@@ -313,7 +333,7 @@
 		{/if}
 	</button>
 
-	{#if selectedBook}
+	{#if selectedBook && BookDetailModal}
 		<BookDetailModal book={selectedBook} onClose={() => (selectedBook = null)} />
 	{/if}
 </div>
