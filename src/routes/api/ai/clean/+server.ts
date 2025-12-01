@@ -29,6 +29,10 @@ const metadataSchema = z.object({
   edition: z.string().optional(),
 });
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * AI Clean Endpoint with Write-Through Persistence
  *
@@ -130,63 +134,114 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
     // 2. GENERATE DATA (defensive: handle failures in production)
     let rawAiResult: unknown = null;
-    try {
-      logger.debug("ai_clean_gemini_call_started", {});
-      const startTime = Date.now();
+    let usedCache = false;
 
-      const gen = await generateObject({
-        model: googleProvider("gemini-2.0-flash-exp"),
-        schema: metadataSchema,
-        system: systemPrompt,
-        prompt: `Complete the bibliographic record for: "${book.title || "Unknown Title"}" by ${book.author || "Unknown Author"}. ISBN: ${book.isbn13 || book.isbn10 || book.isbn || "N/A"}`,
-      });
+    // CHECK CACHE FIRST
+    const isbn = book.isbn13 || book.isbn10 || book.isbn;
+    const cacheKey = isbn ? `book-clean:${isbn}` : null;
 
-      rawAiResult = gen?.object ?? null;
-
-      const duration = Date.now() - startTime;
-      logger.info("ai_clean_gemini_success", { duration });
-    } catch (aiError) {
-      const errorMessage =
-        aiError instanceof Error ? aiError.message : String(aiError);
-      logger.error("ai_clean_gemini_failed", { errorMessage });
-
-      // Check for common issues
-      let userMessage = "AI metadata service is currently unavailable.";
-      let errorCode = "AI_SERVICE_UNAVAILABLE";
-
-      if (
-        errorMessage.includes("API key") ||
-        errorMessage.includes("authentication") ||
-        errorMessage.includes("401")
-      ) {
-        userMessage =
-          "AI service not configured. Please contact the administrator to set up GOOGLE_GENERATIVE_AI_API_KEY.";
-        errorCode = "AI_NOT_CONFIGURED";
-        logger.warn("ai_clean_fix_suggestion", { suggestion: 'Add GOOGLE_GENERATIVE_AI_API_KEY to Cloudflare Pages env' });
-      } else if (
-        errorMessage.includes("quota") ||
-        errorMessage.includes("429")
-      ) {
-        userMessage = "AI service quota exceeded. Please try again later.";
-        errorCode = "AI_QUOTA_EXCEEDED";
-      } else if (
-        errorMessage.includes("timeout") ||
-        errorMessage.includes("ECONNREFUSED")
-      ) {
-        userMessage = "AI service timed out. Please try again.";
-        errorCode = "AI_TIMEOUT";
+    if (cacheKey && platform?.env?.BOOK_CACHE) {
+      try {
+        const cached = await platform.env.BOOK_CACHE.get(cacheKey, "json");
+        if (cached) {
+          logger.info("ai_clean_cache_hit", { isbn });
+          rawAiResult = cached;
+          usedCache = true;
+        }
+      } catch (cacheErr) {
+        logger.warn("ai_clean_cache_read_failed", { error: cacheErr });
       }
+    }
 
-      return json(
-        {
-          error: userMessage,
-          code: errorCode,
-          message: userMessage,
-          debug:
-            process.env.NODE_ENV === "development" ? errorMessage : undefined,
-        },
-        { status: 503 },
-      );
+    if (!usedCache) {
+      try {
+        logger.debug("ai_clean_gemini_call_started", {});
+        const startTime = Date.now();
+
+        let attempt = 0;
+        let gen;
+
+        // RETRY LOGIC for 429 Errors
+        while (attempt < 3) {
+          try {
+            gen = await generateObject({
+              model: googleProvider("gemini-2.0-flash-exp"),
+              schema: metadataSchema,
+              system: systemPrompt,
+              prompt: `Complete the bibliographic record for: "${book.title || "Unknown Title"}" by ${book.author || "Unknown Author"}. ISBN: ${book.isbn13 || book.isbn10 || book.isbn || "N/A"}`,
+            });
+            break; // Success
+          } catch (e: any) {
+            attempt++;
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            const isRateLimit = errorMessage.includes("quota") || errorMessage.includes("429");
+
+            if (isRateLimit && attempt < 3) {
+              const waitTime = 2000 * Math.pow(2, attempt - 1); // 2s, 4s
+              logger.warn("ai_clean_rate_limit_retry", { attempt, waitTime });
+              await delay(waitTime);
+              continue;
+            }
+            throw e; // Non-retriable or retries exhausted
+          }
+        }
+
+        rawAiResult = gen?.object ?? null;
+
+        // WRITE TO CACHE (Aggressive: 7 days)
+        if (rawAiResult && cacheKey && platform?.env?.BOOK_CACHE) {
+          platform.context.waitUntil(
+            platform.env.BOOK_CACHE.put(cacheKey, JSON.stringify(rawAiResult), {
+              expirationTtl: 60 * 60 * 24 * 7, // 7 days
+            })
+          );
+        }
+
+        const duration = Date.now() - startTime;
+        logger.info("ai_clean_gemini_success", { duration });
+      } catch (aiError) {
+        const errorMessage =
+          aiError instanceof Error ? aiError.message : String(aiError);
+        logger.error("ai_clean_gemini_failed", { errorMessage });
+
+        // Check for common issues
+        let userMessage = "AI metadata service is currently unavailable.";
+        let errorCode = "AI_SERVICE_UNAVAILABLE";
+
+        if (
+          errorMessage.includes("API key") ||
+          errorMessage.includes("authentication") ||
+          errorMessage.includes("401")
+        ) {
+          userMessage =
+            "AI service not configured. Please contact the administrator to set up GOOGLE_GENERATIVE_AI_API_KEY.";
+          errorCode = "AI_NOT_CONFIGURED";
+          logger.warn("ai_clean_fix_suggestion", { suggestion: 'Add GOOGLE_GENERATIVE_AI_API_KEY to Cloudflare Pages env' });
+        } else if (
+          errorMessage.includes("quota") ||
+          errorMessage.includes("429")
+        ) {
+          userMessage = "System busy (Free Tier limit). Please wait 30 seconds and try again.";
+          errorCode = "AI_QUOTA_EXCEEDED";
+        } else if (
+          errorMessage.includes("timeout") ||
+          errorMessage.includes("ECONNREFUSED")
+        ) {
+          userMessage = "AI service timed out. Please try again.";
+          errorCode = "AI_TIMEOUT";
+        }
+
+        return json(
+          {
+            error: userMessage,
+            code: errorCode,
+            message: userMessage,
+            debug:
+              process.env.NODE_ENV === "development" ? errorMessage : undefined,
+          },
+          { status: 503 },
+        );
+      }
     }
 
     // 3. NORMALIZE & OPTIMIZE
@@ -242,7 +297,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
     const logEntry = {
       timestamp: Date.now(),
-      model: "Gemini 2.0 Flash",
+      model: usedCache ? "Gemini 2.0 Flash (Cached)" : "Gemini 2.0 Flash",
       changes: changes.length > 0 ? changes : ["No changes detected"],
     };
 
