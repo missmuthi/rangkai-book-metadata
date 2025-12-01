@@ -52,6 +52,8 @@ export const scans = sqliteTable("scans", {
   isbn: text("isbn").notNull(),
   title: text("title"),
   json_data: text("json_data"),
+  // AI log: structured JSON log for AI operations (optional)
+  ai_log: text("ai_log"),
   status: text("status").default("draft"),
   authors: text("authors"),
   subjects: text("subjects"),
