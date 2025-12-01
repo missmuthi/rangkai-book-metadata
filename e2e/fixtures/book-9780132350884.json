@@ -1,0 +1,28 @@
+{
+  "isbn13": "9780132350884",
+  "isbn10": "0132350882",
+  "title": "Clean Code",
+  "author": "Robert C. Martin",
+  "authors": ["Robert C. Martin"],
+  "publisherString": "Prentice Hall",
+  "publishedDate": "2008",
+  "gmd": "book",
+  "callNumber": "005.133 B87 E 2008",
+  "collation": "464 pages",
+  "language": "en",
+  "ddc": "005.133",
+  "lcc": "QA76.73.J38",
+  "classification": "005.133",
+  "description": "Clean Code: A Handbook of Agile Software Craftsmanship",
+  "subjects": "Computer programming; Software engineering",
+  "infoLink": "https://books.google.com/books?id=clean-code",
+  "cover": "https://books.google.com/books/content?id=clean-code&printsec=frontcover&img=1&zoom=1&source=gbs_api",
+  "dataSource": "google",
+  "meta": {
+    "isbn": "9780132350884",
+    "sources": { "google": true, "openlibrary": false, "loc": false },
+    "fetchDuration": 10,
+    "totalDuration": 12,
+    "timestamp": "2025-12-01T00:00:00.000Z"
+  }
+}

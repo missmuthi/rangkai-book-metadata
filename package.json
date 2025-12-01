@@ -20,6 +20,8 @@
     "validate": "./validate-all.sh",
     "deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare",
     "typegen": "wrangler types && svelte-kit sync",
+    "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test --reporter=list --workers=1",
     "db:migrate:local": "wrangler d1 execute DB --local --file=./schema.sql",
     "db:migrate:prod": "wrangler d1 execute DB --remote --file=./schema.sql",
     "diagnostic": "node diagnostic.js",
@@ -52,6 +54,7 @@
     "typescript-eslint": "^8.48.0",
     "vite": "^7.2.4",
     "vitest": "^4.0.14",
+    "@playwright/test": "^1.44.0",
     "wrangler": "^4.51.0"
   },
   "dependencies": {
