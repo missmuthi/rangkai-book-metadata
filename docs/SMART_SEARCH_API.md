@@ -46,15 +46,18 @@ CREATE INDEX idx_scans_lcc ON scans(lcc);
 Searches across multiple fields simultaneously.
 
 **Parameters:**
+
 - `q` (required): Search term (minimum 2 characters)
 - `limit` (optional): Maximum results (default: 50, max: 100)
 
 **Example:**
+
 ```bash
 GET /api/search?q=javascript&limit=25
 ```
 
 **Response:**
+
 ```json
 {
   "query": "javascript",
@@ -74,7 +77,7 @@ GET /api/search?q=javascript&limit=25
       "metadata": {
         "title": "JavaScript: The Good Parts",
         "author": "Douglas Crockford",
-        "publisher": "O'Reilly Media",
+        "publisher": "O'Reilly Media"
         // ... full metadata
       }
     }
@@ -89,10 +92,12 @@ GET /api/search?q=javascript&limit=25
 Searches for books by author name.
 
 **Parameters:**
+
 - `query` (required): Author name (minimum 2 characters)
 - `limit` (optional): Maximum results (default: 50, max: 100)
 
 **Example:**
+
 ```bash
 GET /api/search/author/crockford
 GET /api/search/author/douglas%20crockford
@@ -105,10 +110,12 @@ GET /api/search/author/douglas%20crockford
 Searches for books by subject/category.
 
 **Parameters:**
+
 - `query` (required): Subject term (minimum 2 characters)
 - `limit` (optional): Maximum results (default: 50, max: 100)
 
 **Example:**
+
 ```bash
 GET /api/search/subject/programming
 GET /api/search/subject/computer%20science
@@ -121,12 +128,14 @@ GET /api/search/subject/computer%20science
 Searches for books by Dewey Decimal Classification.
 
 **Parameters:**
+
 - `query` (required): DDC code (minimum 1 character, numeric)
 - `limit` (optional): Maximum results (default: 50, max: 100)
 
 **Validation:** Must match `/^\d+(\.\d+)?$/` (e.g., `005`, `510.1`)
 
 **Examples:**
+
 ```bash
 GET /api/search/ddc/005        # Computer Programming
 GET /api/search/ddc/510        # Mathematics
@@ -141,12 +150,14 @@ GET /api/search/ddc/005.133    # JavaScript specifically
 Searches for books by Library of Congress Classification.
 
 **Parameters:**
+
 - `query` (required): LCC code (minimum 1 character)
 - `limit` (optional): Maximum results (default: 50, max: 100)
 
 **Validation:** Must match `/^[A-Z]+[A-Z0-9]*(\.[A-Z0-9]+)?$/` (converted to uppercase)
 
 **Examples:**
+
 ```bash
 GET /api/search/lcc/qa         # Science (general)
 GET /api/search/lcc/qa76       # Computer Science
@@ -156,33 +167,34 @@ GET /api/search/lcc/qa76.73    # Programming Languages
 
 ## Common DDC Classifications
 
-| DDC Code | Category | Example Search |
-|----------|----------|---------------|
-| 000 | Computer Science & Information | `/api/search/ddc/000` |
-| 005 | Computer Programming | `/api/search/ddc/005` |
-| 510 | Mathematics | `/api/search/ddc/510` |
-| 530 | Physics | `/api/search/ddc/530` |
-| 610 | Medicine | `/api/search/ddc/610` |
-| 800 | Literature | `/api/search/ddc/800` |
-| 900 | History & Geography | `/api/search/ddc/900` |
+| DDC Code | Category                       | Example Search        |
+| -------- | ------------------------------ | --------------------- |
+| 000      | Computer Science & Information | `/api/search/ddc/000` |
+| 005      | Computer Programming           | `/api/search/ddc/005` |
+| 510      | Mathematics                    | `/api/search/ddc/510` |
+| 530      | Physics                        | `/api/search/ddc/530` |
+| 610      | Medicine                       | `/api/search/ddc/610` |
+| 800      | Literature                     | `/api/search/ddc/800` |
+| 900      | History & Geography            | `/api/search/ddc/900` |
 
 ## Common LCC Classifications
 
-| LCC Code | Category | Example Search |
-|----------|----------|---------------|
-| Q | Science | `/api/search/lcc/q` |
-| QA | Mathematics | `/api/search/lcc/qa` |
-| QB | Astronomy | `/api/search/lcc/qb` |
-| QC | Physics | `/api/search/lcc/qc` |
-| P | Language & Literature | `/api/search/lcc/p` |
-| H | Social Sciences | `/api/search/lcc/h` |
-| J | Political Science | `/api/search/lcc/j` |
+| LCC Code | Category              | Example Search       |
+| -------- | --------------------- | -------------------- |
+| Q        | Science               | `/api/search/lcc/q`  |
+| QA       | Mathematics           | `/api/search/lcc/qa` |
+| QB       | Astronomy             | `/api/search/lcc/qb` |
+| QC       | Physics               | `/api/search/lcc/qc` |
+| P        | Language & Literature | `/api/search/lcc/p`  |
+| H        | Social Sciences       | `/api/search/lcc/h`  |
+| J        | Political Science     | `/api/search/lcc/j`  |
 
 ## Authentication
 
 All endpoints require authentication. Include session cookies or authorization headers.
 
 **Error Response (401):**
+
 ```json
 {
   "error": "Unauthorized: Please log in to search"
@@ -217,13 +229,13 @@ All endpoints require authentication. Include session cookies or authorization h
 
 ### Query Performance
 
-| Search Type | Index Used | Typical Response Time | Notes |
-|-------------|------------|----------------------|-------|
-| General | Multiple indexes | ~50-200ms | UNION of LIKE queries |
-| Author | `idx_scans_authors` | ~20-50ms | Direct index lookup |
-| Subject | `idx_scans_subjects` | ~20-50ms | Direct index lookup |
-| DDC | `idx_scans_ddc` | ~10-30ms | Prefix matching |
-| LCC | `idx_scans_lcc` | ~10-30ms | Prefix matching |
+| Search Type | Index Used           | Typical Response Time | Notes                 |
+| ----------- | -------------------- | --------------------- | --------------------- |
+| General     | Multiple indexes     | ~50-200ms             | UNION of LIKE queries |
+| Author      | `idx_scans_authors`  | ~20-50ms              | Direct index lookup   |
+| Subject     | `idx_scans_subjects` | ~20-50ms              | Direct index lookup   |
+| DDC         | `idx_scans_ddc`      | ~10-30ms              | Prefix matching       |
+| LCC         | `idx_scans_lcc`      | ~10-30ms              | Prefix matching       |
 
 ### Caching Strategy
 
@@ -237,18 +249,18 @@ All endpoints require authentication. Include session cookies or authorization h
 
 ```typescript
 // General search
-const response = await fetch('/api/search?q=javascript&limit=20');
+const response = await fetch("/api/search?q=javascript&limit=20");
 const data = await response.json();
 
 // Author search
-const authors = await fetch('/api/search/author/tolkien');
+const authors = await fetch("/api/search/author/tolkien");
 
 // Subject search
-const subjects = await fetch('/api/search/subject/fantasy');
+const subjects = await fetch("/api/search/subject/fantasy");
 
 // Classification search
-const programming = await fetch('/api/search/ddc/005');
-const literature = await fetch('/api/search/lcc/p');
+const programming = await fetch("/api/search/ddc/005");
+const literature = await fetch("/api/search/lcc/p");
 ```
 
 ### Search UI Patterns
@@ -266,8 +278,7 @@ function handleSearch(query: string) {
 
 // Classification filter
 function filterByDDC(ddc: string) {
-  return fetch(`/api/search/ddc/${ddc}`)
-    .then(r => r.json());
+  return fetch(`/api/search/ddc/${ddc}`).then((r) => r.json());
 }
 ```
 
@@ -282,36 +293,36 @@ export async function searchUserScansByAuthor(
   db: D1Database,
   userId: string,
   authorQuery: string,
-  limit: number = 50
-): Promise<Scan[]>
+  limit: number = 50,
+): Promise<Scan[]>;
 
 export async function searchUserScansBySubject(
   db: D1Database,
   userId: string,
   subjectQuery: string,
-  limit: number = 50
-): Promise<Scan[]>
+  limit: number = 50,
+): Promise<Scan[]>;
 
 export async function searchUserScansByDDC(
   db: D1Database,
   userId: string,
   ddcQuery: string,
-  limit: number = 50
-): Promise<Scan[]>
+  limit: number = 50,
+): Promise<Scan[]>;
 
 export async function searchUserScansByLCC(
   db: D1Database,
   userId: string,
   lccQuery: string,
-  limit: number = 50
-): Promise<Scan[]>
+  limit: number = 50,
+): Promise<Scan[]>;
 
 export async function searchUserScansGeneral(
   db: D1Database,
   userId: string,
   query: string,
-  limit: number = 50
-): Promise<Scan[]>
+  limit: number = 50,
+): Promise<Scan[]>;
 ```
 
 ## Migration Notes
@@ -335,10 +346,10 @@ await createScan(
   title,
   jsonData,
   status,
-  metadata.authors,    // New: searchable author field
-  metadata.subjects,   // New: searchable subject field
-  metadata.ddc,        // New: searchable DDC field
-  metadata.lcc         // New: searchable LCC field
+  metadata.authors, // New: searchable author field
+  metadata.subjects, // New: searchable subject field
+  metadata.ddc, // New: searchable DDC field
+  metadata.lcc, // New: searchable LCC field
 );
 ```
 

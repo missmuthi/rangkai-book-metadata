@@ -42,7 +42,7 @@
 | **[ARCHITECTURE.md](ARCHITECTURE.md)**                   | Detailed technical architecture, components, data flow | Planning features or debugging     |
 | **[AUTH.md](AUTH.md)**                                   | Authentication system, OAuth flow, troubleshooting     | Working with Google login          |
 | **[API_INTEGRATION_GUIDE.md](API_INTEGRATION_GUIDE.md)** | Google Books, OpenLibrary, LoC API details             | Working with metadata sources      |
-| **[SMART_SEARCH_API.md](SMART_SEARCH_API.md)**          | Search API endpoints, classification systems           | Implementing search functionality  |
+| **[SMART_SEARCH_API.md](SMART_SEARCH_API.md)**           | Search API endpoints, classification systems           | Implementing search functionality  |
 | **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)**           | Production deployment, secrets, D1/KV setup            | Deploying to Cloudflare Pages      |
 | **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)**             | Common commands, file locations                        | Quick lookups during development   |
 

@@ -72,6 +72,39 @@ Tracks cache hits and misses for all three API sources.
 
 ---
 
+### 2a. **Cache Set** (`cache_set`)
+
+Tracks when we write to KV cache (success or failure).
+
+Properties:
+
+- `cache_type`: 'google' | 'openlibrary' | 'loc' | 'kv'
+- `key`: string (full cache key or truncated)
+- `key_type`: 'book' | 'metadata' | 'userSession' | 'apiRateLimit' (optional)
+- `is_isbn`: boolean (true if book cache)
+- `ttl`: number (seconds) optional
+- `success`: boolean
+- `message`: string (error message on failure, optional)
+- `timestamp`: ISO 8601 string
+
+When Triggered:
+
+- After a KV:// set operation (cache write). Both successful and failed sets are tracked.
+
+Example Dev Console Output:
+
+```
+⚡ [Analytics] cache_set { cache_type: 'kv', key: 'book:9780134092669', key_type: 'book', is_isbn: true, ttl: 86400, success: true, timestamp: '2025-11-20T10:30:45.123Z' }
+```
+
+Analytics Insights:
+
+- Track cache write failures to detect KV quota or permission issues
+- Monitor how often cache writes succeed for book metadata
+- Measure cache TTL distribution across keys
+
+---
+
 ### 3. **Data Source Attribution** (`data_source_used`)
 
 Tracks which combination of API sources provided the final merged data.
@@ -180,6 +213,44 @@ Tracks all API errors, network failures, and parsing issues.
 - Which API is most error-prone?
 - Are we hitting rate limits?
 - Network stability patterns
+
+---
+
+### 5a. **Metadata Source Degraded** (`metadata_source_degraded`)
+
+Tracks when a metadata source (LoC, OpenLibrary, Google) returns degraded status (503/429/404) or is otherwise unreliable.
+
+Properties:
+
+- `provider`: 'google' | 'openlibrary' | 'loc' | 'other'
+- `status`: number | string (HTTP status code or short message)
+- `reason`: string (optional)
+- `fallback`: string (suggested fallback source, optional)
+- `isbn`: string (optional, when applicable)
+- `query`: string (optional, when applicable)
+- `timestamp`: ISO 8601 string
+
+When Triggered:
+
+- Any time we detect a degraded response from a provider (503/429/404) or returned errors indicating unavailability.
+
+Example Dev Console Output:
+
+```
+⚠️ [Analytics] metadata_source_degraded {
+  provider: 'openlibrary',
+  status: 503,
+  reason: '503 Service Temporarily Unavailable',
+  fallback: 'google_books',
+  query: '9780134092669'
+}
+```
+
+Analytics Insights:
+
+- Which providers degrade frequently?
+- How often do we need to fallback from LoC/OpenLibrary to Google?
+- Use this to alert on provider outages or rate-limiting events
 
 ---
 
