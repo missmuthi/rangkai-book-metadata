@@ -68,7 +68,11 @@ export const PATCH: RequestHandler = async ({
     }
 
     if (existing.user_id !== userId) {
-      logger.warn("scans_api_update_forbidden_attempt", { userId, scanId, ownerId: existing.user_id });
+      logger.warn("scans_api_update_forbidden_attempt", {
+        userId,
+        scanId,
+        ownerId: existing.user_id,
+      });
       throw error(403, "Forbidden: You do not own this scan");
     }
 

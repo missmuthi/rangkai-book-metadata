@@ -13,6 +13,7 @@ Reduce library catalogers' metadata entry time from 5-10 minutes per book to ~30
 ## 🎯 Key Features
 
 ### Core Capabilities
+
 - **Triple-Source Search** - ISBN or title lookup from Google Books + OpenLibrary + Library of Congress
 - **Intelligent Data Merging** - "Waterfall of Data" prioritization for optimal accuracy
 - **Authoritative Classification** - DDC (Dewey Decimal) + LCC (Library of Congress Classification)
@@ -24,6 +25,7 @@ Reduce library catalogers' metadata entry time from 5-10 minutes per book to ~30
 - **Analytics & Telemetry** - Comprehensive event tracking for optimization
 
 ### Technical Strengths
+
 - ⚡ **Performance:** <100ms cache hits, sub-2.5s ISBN searches
 - 🔒 **Security:** Zero-Trust policy, XSS/SSRF protection, user data isolation
 - 📊 **Reliability:** Graceful degradation (works with 1-3 sources)
@@ -35,6 +37,7 @@ Reduce library catalogers' metadata entry time from 5-10 minutes per book to ~30
 ## 🏗️ Technical Architecture
 
 ### Tech Stack
+
 - **Frontend:** SvelteKit 2.x + Svelte 5 Runes + TypeScript Strict
 - **Styling:** Tailwind CSS 3.x (utility-first approach)
 - **Backend:** Cloudflare Workers (serverless compute)
@@ -69,6 +72,7 @@ Reduce library catalogers' metadata entry time from 5-10 minutes per book to ~30
 ```
 
 ### Serverless Advantages
+
 - **No infrastructure management** - Cloudflare handles scaling
 - **Global distribution** - Edge computing for <50ms latency
 - **Pay-per-use** - Cost-effective for variable traffic
@@ -81,11 +85,11 @@ Reduce library catalogers' metadata entry time from 5-10 minutes per book to ~30
 
 ### 3-Source Data Harvesting
 
-| Source              | Primary Use | Timeout | Priority |
-| ------------------- | ----------- | ------- | -------- |
-| Google Books API    | Title/Authors/Publisher/Dates/Cover | 10s | Primary |
-| OpenLibrary API     | DDC Classification/Subjects | 10s | Primary |
-| Library of Congress | LCC (Authoritative) | 5s | Authoritative |
+| Source              | Primary Use                         | Timeout | Priority      |
+| ------------------- | ----------------------------------- | ------- | ------------- |
+| Google Books API    | Title/Authors/Publisher/Dates/Cover | 10s     | Primary       |
+| OpenLibrary API     | DDC Classification/Subjects         | 10s     | Primary       |
+| Library of Congress | LCC (Authoritative)                 | 5s      | Authoritative |
 
 ### Waterfall Prioritization Example
 
@@ -135,12 +139,14 @@ DDC: "005.133"
 ## 🔐 Security Highlights
 
 ### Authentication & Authorization
+
 - Better Auth v2.x with Google OAuth
 - Session-based auth (no JWT tokens in local storage)
 - User data isolation: `WHERE user_id = ? ` on all queries
 - Session expiration: graceful redirect to login
 
 ### Data Protection
+
 - User-scoped database queries (prevents cross-user data leaks)
 - SSRF protection on image URLs (wsrv.nl proxy)
 - CSP headers enforcement
@@ -148,6 +154,7 @@ DDC: "005.133"
 - CORS validation on all API endpoints
 
 ### Deployment Security
+
 - Environment variables in Cloudflare Pages secrets (not in code)
 - Zero API keys in client-side code
 - User-Agent headers on all external API calls
@@ -158,6 +165,7 @@ DDC: "005.133"
 ## 📚 Documentation Structure
 
 ### Core Documentation (`/docs`)
+
 - `SYSTEM_OVERVIEW.md` - High-level architecture
 - `GETTING_STARTED.md` - Local setup guide
 - `ARCHITECTURE.md` - Technical deep dive
@@ -170,7 +178,9 @@ DDC: "005.133"
 - Plus: AUTH, SERVERLESS_ARCHITECTURE, LOC_INTEGRATION, MOBILE_FIELD_AGENT, etc.
 
 ### Root-Level Policy
+
 ✅ **Only these in root:**
+
 - `README.md`
 - `CONTRIBUTING.md`
 - `CHANGELOG.md`
@@ -178,6 +188,7 @@ DDC: "005.133"
 - `SECURITY.md`
 
 ❌ **All other `.md` files go to:**
+
 - `/docs/` (core documentation)
 - `/docs/meta/` (AI agent prompts, Copilot instructions)
 - `/docs/legacy/` (historical documentation)
@@ -205,20 +216,24 @@ This project uses **7 specialized AI agents** for different development domains:
 ## 🚀 Release Protocol
 
 ### Tier 1: Git Push (Routine)
+
 ```bash
 npm run check    # TypeScript validation
 npm run build    # Build verification
 git push origin main
 ```
+
 - Multiple times per day
 - No version bump needed
 
 ### Tier 2: Production Deploy (Deliberate)
+
 ```bash
 npm run check && npm test  # All checks pass
 npm version minor          # Bump version
 npm run deploy             # Build & deploy to Cloudflare Pages
 ```
+
 - Only when Version + Documentation synchronized
 - Weekly or bi-weekly cadence
 - Pre-deploy checklist required
@@ -243,12 +258,14 @@ npm run deploy             # Build & deploy to Cloudflare Pages
 ## 🧪 Testing Strategy
 
 ### Test Coverage
+
 - **Unit Tests:** Vitest (data merging, ISBN validation, classification logic)
 - **Integration Tests:** API endpoint mocking and error scenarios
 - **E2E Tests:** Playwright (scanner mode, user flows, auth boundaries)
 - **Manual Testing:** Network failures, malformed data, edge cases
 
 ### Critical Test Scenarios
+
 1. All 3 APIs success (happy path)
 2. Partial failures (1-2 sources down)
 3. ISBN edge cases (malformed, invalid check digits)
@@ -262,21 +279,25 @@ npm run deploy             # Build & deploy to Cloudflare Pages
 ## 📦 Dependencies & Versions
 
 ### Runtime
+
 - Node.js 18.x or higher
 - TypeScript 5.x (strict mode mandatory)
 
 ### Frontend
+
 - SvelteKit 2.x
 - Svelte 5.x (with runes)
 - Tailwind CSS 3.x
 - Better Auth 2.x
 
 ### Backend
+
 - Cloudflare Workers API
 - Cloudflare D1 (SQLite)
 - Cloudflare KV Storage
 
 ### Testing
+
 - Vitest (unit tests)
 - Playwright (E2E tests)
 
@@ -313,16 +334,19 @@ npm run db:migrate:prod  # Run migrations in production
 ## 📞 Getting Help
 
 ### New Developers: Start Here
+
 1. Read `/docs/SYSTEM_OVERVIEW.md` (15 min)
 2. Run `npm install && npm run dev` (local setup)
 3. Read `/docs/ARCHITECTURE.md` (30 min technical deep dive)
 4. Check `/docs/QUICK_REFERENCE.md` for common commands
 
 ### Developers: Agent Frameworks
+
 - Need to code a feature? → Use appropriate AI agent from `agents.md`
 - Example: "I'm building a frontend component" → Use **Svelte 5 Architect** prompt
 
 ### Contributing
+
 - See `CONTRIBUTING.md` for code standards
 - Follow `agents.md` agent guidelines
 - Use Tier 1 (push) and Tier 2 (deploy) protocols
@@ -344,6 +368,7 @@ npm run db:migrate:prod  # Run migrations in production
 ## 📝 Version History
 
 ### v3.0.0 (December 2025) - Current
+
 - ✅ Serverless architecture (Cloudflare Workers)
 - ✅ Svelte 5 runes
 - ✅ Better Auth integration
@@ -353,16 +378,19 @@ npm run db:migrate:prod  # Run migrations in production
 - ✅ SSRF-protected images
 
 ### v1.3.0 (November 2025)
+
 - KV caching layer
 - Background audit logging via `waitUntil`
 - Edge optimization
 
 ### v1.2.1 (November 2025)
+
 - SSRF protection (wsrv.nl proxy)
 - D1 database integration
 - Security audit passed
 
 ### v1.1.0 (November 2025)
+
 - Library of Congress API integration
 - Fixed CORS issues
 - Image security improvements

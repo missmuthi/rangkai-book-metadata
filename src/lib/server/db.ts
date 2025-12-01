@@ -299,7 +299,7 @@ export async function createScan(
   lcc?: string,
 ): Promise<number> {
   // Normalize authors to string if array
-  const authorsStr = Array.isArray(authors) ? authors.join('; ') : authors;
+  const authorsStr = Array.isArray(authors) ? authors.join("; ") : authors;
 
   try {
     // Check if scan already exists for this user+isbn
@@ -344,7 +344,17 @@ export async function createScan(
         `INSERT INTO scans (user_id, isbn, title, json_data, status, authors, subjects, ddc, lcc, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       )
-      .bind(userId, isbn, title, jsonData, status, authorsStr || null, subjects || null, ddc || null, lcc || null)
+      .bind(
+        userId,
+        isbn,
+        title,
+        jsonData,
+        status,
+        authorsStr || null,
+        subjects || null,
+        ddc || null,
+        lcc || null,
+      )
       .run();
 
     if (!result.success) {

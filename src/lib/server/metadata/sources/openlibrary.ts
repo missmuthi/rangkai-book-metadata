@@ -175,7 +175,11 @@ export async function fetchOpenLibraryWithTimeout(
     await breaker.failure();
     // Return null on failure instead of throwing, to allow other sources to succeed
     // But log the error
-    logger.error("openlibrary_request_failed", { query, isIsbn, error: error instanceof Error ? error.message : String(error) });
+    logger.error("openlibrary_request_failed", {
+      query,
+      isIsbn,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }

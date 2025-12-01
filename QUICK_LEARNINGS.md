@@ -33,20 +33,21 @@ Browser → SvelteKit (SSR) → Cloudflare Workers → APIs
 
 ## Important Files
 
-| File | Purpose |
-|------|---------|
-| `agents.md` | AI agent framework (7 agents with specific roles) |
-| `.gitignore` | Git ignore rules (updated for v3.0.0) |
-| `src/hooks.server.ts` | Global request handler + auth |
-| `src/lib/merge.ts` | Data merging logic (waterfall) |
-| `src/routes/api/book/[isbn]/+server.ts` | Book search API endpoint |
-| `/docs/SYSTEM_OVERVIEW.md` | High-level architecture |
-| `/docs/ARCHITECTURE.md` | Technical deep dive |
-| `/docs/API_INTEGRATION_GUIDE.md` | API details |
+| File                                    | Purpose                                           |
+| --------------------------------------- | ------------------------------------------------- |
+| `agents.md`                             | AI agent framework (7 agents with specific roles) |
+| `.gitignore`                            | Git ignore rules (updated for v3.0.0)             |
+| `src/hooks.server.ts`                   | Global request handler + auth                     |
+| `src/lib/merge.ts`                      | Data merging logic (waterfall)                    |
+| `src/routes/api/book/[isbn]/+server.ts` | Book search API endpoint                          |
+| `/docs/SYSTEM_OVERVIEW.md`              | High-level architecture                           |
+| `/docs/ARCHITECTURE.md`                 | Technical deep dive                               |
+| `/docs/API_INTEGRATION_GUIDE.md`        | API details                                       |
 
 ## Key Concepts
 
 ### Waterfall Prioritization
+
 ```
 Field: Title
 Priority: Google Books > OpenLibrary > LoC
@@ -54,14 +55,17 @@ Use: First source that has the data
 ```
 
 ### 3-Source APIs
-| Source | Strength | Timeout |
-|--------|----------|---------|
-| Google Books | Titles, authors, publishers | 10s |
-| OpenLibrary | DDC classification, subjects | 10s |
-| Library of Congress | Authoritative LCC | 5s |
+
+| Source              | Strength                     | Timeout |
+| ------------------- | ---------------------------- | ------- |
+| Google Books        | Titles, authors, publishers  | 10s     |
+| OpenLibrary         | DDC classification, subjects | 10s     |
+| Library of Congress | Authoritative LCC            | 5s      |
 
 ### Data Merge Example
+
 If searching for ISBN "9780132350884":
+
 1. Query all 3 APIs in parallel
 2. Google returns: title, authors, publisher, cover
 3. OpenLibrary returns: DDC classification, subjects
@@ -69,6 +73,7 @@ If searching for ISBN "9780132350884":
 5. Merge them intelligently → Complete book record
 
 ### SLiMS CSV Export
+
 ```csv
 Title,Authors,ISBN,Publisher,Year,Classification,CallNumber,Collation,GMD,Language
 "Clean Code","Robert C. Martin","9780132350884","Prentice Hall","2008","005.133","005.133 M38 C 2008","464 pages","book","English"
@@ -77,26 +82,31 @@ Title,Authors,ISBN,Publisher,Year,Classification,CallNumber,Collation,GMD,Langua
 ## Release Protocol (CRITICAL)
 
 ### Tier 1: Git Push (Routine)
+
 ```bash
 npm run check    # Must pass
 npm run build    # Must succeed
 git push         # Save progress
 ```
+
 - Multiple times per day
 - No version bump needed
 
 ### Tier 2: Production Deploy (Deliberate)
+
 ```bash
 npm test         # 100% pass required
 npm version minor  # Bump version
 npm run deploy   # Deploy to Cloudflare
 ```
+
 - Only when docs + version synchronized
 - **RULE:** "We do NOT deploy on every push. We ONLY deploy when Version and Docs are synchronized."
 
 ## Security Highlights
 
 ✅ **Always Do:**
+
 - Check `event.locals.session` on protected routes
 - Include `user_id` in all DB queries (prevent cross-user leaks)
 - Use `getSecureImageUrl()` for external images (SSRF protection)
@@ -104,6 +114,7 @@ npm run deploy   # Deploy to Cloudflare
 - Log suspicious access attempts
 
 ❌ **Never Do:**
+
 - Commit `.env` files with secrets
 - Use `any` types in TypeScript
 - Expose one user's data to another
@@ -186,21 +197,25 @@ See `agents.md` for detailed system prompts and responsibilities.
 ## Common Issues & Solutions
 
 ### "Cannot find module" errors
+
 - Run `npm run check` to validate TypeScript
 - Check imports use correct paths from `/src`
 - Verify file extensions (`.ts`, `.svelte`)
 
 ### Build fails
+
 - Run `npm run check` first
 - Clear `.svelte-kit` cache: `rm -rf .svelte-kit`
 - Ensure all types are imported correctly
 
 ### Tests fail
+
 - Check database mocks are set up
 - Verify test data matches API response format
 - Use `--watch` mode to debug: `npm test -- --watch`
 
 ### E2E tests fail
+
 - Ensure preview server is running: `npm run build && npm run preview`
 - Check Playwright browser installed: `npx playwright install`
 - Use `--debug` flag: `npx playwright test --debug`
@@ -208,6 +223,7 @@ See `agents.md` for detailed system prompts and responsibilities.
 ## Documentation Policy
 
 ✅ **Root-level files (only these):**
+
 - `README.md`
 - `CONTRIBUTING.md`
 - `CHANGELOG.md`
@@ -215,6 +231,7 @@ See `agents.md` for detailed system prompts and responsibilities.
 - `SECURITY.md`
 
 ❌ **Everything else goes to:**
+
 - `/docs/` - Core documentation
 - `/docs/meta/` - AI agent prompts
 - `/docs/legacy/` - Historical docs

@@ -77,7 +77,10 @@ async function testAIService(book) {
       date: book.input.date,
     });
 
-    const groq = createOpenAI({ baseURL: 'https://api.groq.com/openai/v1', apiKey: process.env.GROQ_API_KEY });
+    const groq = createOpenAI({
+      baseURL: "https://api.groq.com/openai/v1",
+      apiKey: process.env.GROQ_API_KEY,
+    });
     const { object } = await generateObject({
       model: groq("llama-3.3-70b-versatile"),
       schema: cleanedBookSchema,

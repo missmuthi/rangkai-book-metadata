@@ -32,12 +32,12 @@ test("Search by ISBN displays merged metadata card", async ({ page }) => {
 
   // Wait for the result card to appear with the book title
   // The new UI shows the title in an h2 tag in the result card
-  await expect(
-    page.locator('h2:has-text("Clean Code")'),
-  ).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('h2:has-text("Clean Code")')).toBeVisible({
+    timeout: 5000,
+  });
   // Verify the call number is displayed (in font-mono class)
   await expect(
-    page.locator('span.font-mono:has-text("005.133")')
+    page.locator('span.font-mono:has-text("005.133")'),
   ).toBeVisible();
 });
 

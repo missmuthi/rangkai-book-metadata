@@ -43,7 +43,10 @@ const DEFAULT_CONFIG: CircuitBreakerConfig = {
 };
 
 // In-memory fallback for Circuit Breaker state since KV is removed
-const CIRCUIT_BREAKER_STATE = new Map<string, { failures: number; openUntil?: number }>();
+const CIRCUIT_BREAKER_STATE = new Map<
+  string,
+  { failures: number; openUntil?: number }
+>();
 
 /**
  * Circuit Breaker

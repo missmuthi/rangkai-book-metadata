@@ -7,7 +7,10 @@ export default defineConfig({
       $lib: path.resolve(__dirname, "src/lib"),
       $modules: path.resolve(__dirname, "src/modules"),
       // Provide a mock module for SvelteKit private env imports in tests
-      "$env/dynamic/private": path.resolve(__dirname, "src/test-utils/mock-env-dynamic-private.ts"),
+      "$env/dynamic/private": path.resolve(
+        __dirname,
+        "src/test-utils/mock-env-dynamic-private.ts",
+      ),
     },
   },
   test: {

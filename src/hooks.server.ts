@@ -66,7 +66,10 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Debug: Print incoming headers to verify Playwright session flags
   try {
     // Debug log at info for presence of header (fallback when running preview)
-    logger.debug('hook_incoming_test_header', { header: event.request.headers.get('x-playwright-test-session'), cookie: event.request.headers.get('cookie') });
+    logger.debug("hook_incoming_test_header", {
+      header: event.request.headers.get("x-playwright-test-session"),
+      cookie: event.request.headers.get("cookie"),
+    });
   } catch (e) {
     // ignore
   }
@@ -76,25 +79,47 @@ export const handle: Handle = async ({ event, resolve }) => {
   // This MUST be restricted to local dev/test only.
   try {
     // Also allow when preview server is started for Playwright with PLAYWRIGHT_PREVIEW=1
-    if (import.meta.env.DEV || process.env.PLAYWRIGHT_PREVIEW === '1') {
-      const testHeader = event.request.headers.get('x-playwright-test-session');
-      const testParam = event.url.searchParams.get('test_session');
-      const testCookie = event.cookies.get('test_session');
-      if (testHeader === '1' || testParam === '1' || testCookie === '1') {
+    if (import.meta.env.DEV || process.env.PLAYWRIGHT_PREVIEW === "1") {
+      const testHeader = event.request.headers.get("x-playwright-test-session");
+      const testParam = event.url.searchParams.get("test_session");
+      const testCookie = event.cookies.get("test_session");
+      if (testHeader === "1" || testParam === "1" || testCookie === "1") {
         // Inject test session and user into locals
-        event.locals.session = { id: 'test-session', expires: Date.now() + 3600000 } as any;
-        event.locals.user = { id: 'test-user', email: 'test@example.com', name: 'Playwright Test' } as any;
-        logger.debug('test_session_injected', { path: event.url.pathname, header: testHeader, param: testParam, cookie: testCookie, PLAYWRIGHT_PREVIEW: process.env.PLAYWRIGHT_PREVIEW, DEV: import.meta.env.DEV });
-        logger.info('test_session_injected', { path: event.url.pathname, header: testHeader, param: testParam, cookie: testCookie });
+        event.locals.session = {
+          id: "test-session",
+          expires: Date.now() + 3600000,
+        } as any;
+        event.locals.user = {
+          id: "test-user",
+          email: "test@example.com",
+          name: "Playwright Test",
+        } as any;
+        logger.debug("test_session_injected", {
+          path: event.url.pathname,
+          header: testHeader,
+          param: testParam,
+          cookie: testCookie,
+          PLAYWRIGHT_PREVIEW: process.env.PLAYWRIGHT_PREVIEW,
+          DEV: import.meta.env.DEV,
+        });
+        logger.info("test_session_injected", {
+          path: event.url.pathname,
+          header: testHeader,
+          param: testParam,
+          cookie: testCookie,
+        });
       }
     }
   } catch (e) {
     // Swallow errors to avoid interrupting normal flow
-    logger.debug('test_session_injection_failed', { error: e });
+    logger.debug("test_session_injection_failed", { error: e });
   }
   // Log incoming requests in development
   if (import.meta.env.DEV) {
-    logger.debug(`incoming_request`, { method: event.request.method, path: event.url.pathname });
+    logger.debug(`incoming_request`, {
+      method: event.request.method,
+      path: event.url.pathname,
+    });
   }
 
   // === Rate Limiting ===
@@ -139,7 +164,9 @@ export const handle: Handle = async ({ event, resolve }) => {
         } else {
           // Session token exists but is invalid/expired
           if (event.url.pathname.startsWith("/api/")) {
-            logger.warn("auth_invalid_session_token", { path: event.url.pathname });
+            logger.warn("auth_invalid_session_token", {
+              path: event.url.pathname,
+            });
           }
           event.locals.session = null;
           event.locals.user = null;
@@ -189,8 +216,8 @@ export const handle: Handle = async ({ event, resolve }) => {
       "object-src 'none'",
       "frame-ancestors 'none'",
       "base-uri 'self'",
-    ].join('; ');
-    response.headers.set('Content-Security-Policy', CSP);
+    ].join("; ");
+    response.headers.set("Content-Security-Policy", CSP);
 
     return response;
   } catch (error) {

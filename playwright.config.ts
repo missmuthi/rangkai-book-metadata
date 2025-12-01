@@ -15,7 +15,8 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "PLAYWRIGHT_PREVIEW=1 npm run build && PLAYWRIGHT_PREVIEW=1 npm run preview -- --port 5173",
+    command:
+      "PLAYWRIGHT_PREVIEW=1 npm run build && PLAYWRIGHT_PREVIEW=1 npm run preview -- --port 5173",
     port: 5173,
     timeout: 120 * 1000,
     reuseExistingServer: false,

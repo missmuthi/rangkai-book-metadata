@@ -20,20 +20,20 @@ const mockCacheMatch = vi.fn();
 // Add missing properties to mock Request/Response for Cache API
 // Mock global Request for tests
 globalThis.Request = class MockRequest {
-    public url: string;
-    public headers: Map<string, string>;
-    constructor(input: any) {
-        this.url = input;
-        this.headers = new Map();
-    }
+  public url: string;
+  public headers: Map<string, string>;
+  constructor(input: any) {
+    this.url = input;
+    this.headers = new Map();
+  }
 } as any;
 
 // Provide simplified caches.default mock for tests
 globalThis.caches = {
   default: {
     put: mockCachePut,
-    match: mockCacheMatch
-  }
+    match: mockCacheMatch,
+  },
 } as any;
 
 // Mock dependencies
@@ -81,14 +81,16 @@ const mockBind = vi.fn();
 const mockFirst = vi.fn();
 const mockPrepare = vi.fn(() => ({
   bind: mockBind.mockReturnThis(),
-  first: mockFirst
+  first: mockFirst,
 }));
 
 vi.mock("$lib/server/db", () => ({
   getDB: vi.fn((platform: any) => {
-    return platform?.env?.DB || {
-       prepare: mockPrepare
-    };
+    return (
+      platform?.env?.DB || {
+        prepare: mockPrepare,
+      }
+    );
   }),
   createAnonymousScan: vi.fn(async () => undefined),
   createScan: vi.fn(async () => 1),
@@ -100,11 +102,7 @@ function createMockEvent(options: {
   hasWaitUntil?: boolean;
   isAuthenticated?: boolean;
 }): any {
-  const {
-    isbn,
-    hasWaitUntil = true,
-    isAuthenticated = true,
-  } = options;
+  const { isbn, hasWaitUntil = true, isAuthenticated = true } = options;
 
   const waitUntilPromises: Promise<any>[] = [];
 
@@ -113,7 +111,7 @@ function createMockEvent(options: {
     platform: {
       env: {
         DB: {
-            prepare: mockPrepare
+          prepare: mockPrepare,
         } as any,
       },
       context: hasWaitUntil
@@ -191,14 +189,14 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
 
       // Simulate D1 Hit
       mockFirst.mockResolvedValueOnce({
-          json_data: JSON.stringify({
-            isbn: "9780134685991",
-            title: "Effective Java (D1 Cached)",
-            authors: ["Joshua Bloch"],
-            publisher: "Addison-Wesley",
-            publishedDate: "2018",
-            dataSource: "d1",
-          })
+        json_data: JSON.stringify({
+          isbn: "9780134685991",
+          title: "Effective Java (D1 Cached)",
+          authors: ["Joshua Bloch"],
+          publisher: "Addison-Wesley",
+          publishedDate: "2018",
+          dataSource: "d1",
+        }),
       });
 
       const response = await GET(event);
@@ -267,10 +265,10 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
 
       // Simulate D1 Hit
       mockFirst.mockResolvedValueOnce({
-          json_data: JSON.stringify({
-            isbn: "9780134685991",
-            title: "Cached Book"
-          })
+        json_data: JSON.stringify({
+          isbn: "9780134685991",
+          title: "Cached Book",
+        }),
       });
 
       const response = await GET(event);

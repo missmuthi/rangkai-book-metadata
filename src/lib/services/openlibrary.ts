@@ -28,7 +28,10 @@ export async function queryOpenLibrary(
     });
 
     if (!response.ok) {
-      logger.error("openlibrary_api_error", { status: response.status, statusText: response.statusText });
+      logger.error("openlibrary_api_error", {
+        status: response.status,
+        statusText: response.statusText,
+      });
 
       if (response.status === 429 || response.status === 503) {
         logger.warn("openlibrary_rate_limit_or_unavailable", {});

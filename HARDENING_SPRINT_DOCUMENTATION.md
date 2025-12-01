@@ -270,9 +270,9 @@ if (!parseResult.success) {
 - **Note:** `Analytics.track()` remains the primary source for non-sensitive telemetry from both client and server, with events typed in `src/lib/services/analytics.ts`.
 
 **Developer Guidance:**
+
 - Use `logger` for server-side events only. Avoid importing `server/logger` into client-side modules. If you need client-side logging, use `clientLog` or `Analytics.track`.
 - Use typed `Analytics.track(eventName, props)` events; only pre-defined event names are allowed to avoid telemetry schema drift.
-
 
 ### Data Sanitization Strategy
 

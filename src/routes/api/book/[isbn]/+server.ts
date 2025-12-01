@@ -44,7 +44,10 @@ export const GET: RequestHandler = async ({
   request,
   locals,
 }) => {
-  logger.debug('book_api_incoming_headers', { testHeader: request?.headers?.get('x-playwright-test-session'), cookies: request?.headers?.get('cookie') });
+  logger.debug("book_api_incoming_headers", {
+    testHeader: request?.headers?.get("x-playwright-test-session"),
+    cookies: request?.headers?.get("cookie"),
+  });
   const { isbn } = params;
   const startTime = performance.now();
 
@@ -78,16 +81,16 @@ export const GET: RequestHandler = async ({
 
   if (cache) {
     try {
-        const cacheUrl = new URL(request.url);
-        cacheKey = new Request(cacheUrl.toString(), request);
-        const cachedResponse = await cache.match(cacheKey);
+      const cacheUrl = new URL(request.url);
+      cacheKey = new Request(cacheUrl.toString(), request);
+      const cachedResponse = await cache.match(cacheKey);
 
-        if (cachedResponse) {
-             logger.info("http_cache_hit", { isbn });
-             return cachedResponse;
-        }
+      if (cachedResponse) {
+        logger.info("http_cache_hit", { isbn });
+        return cachedResponse;
+      }
     } catch (e) {
-        logger.warn("http_cache_check_failed", { error: e });
+      logger.warn("http_cache_check_failed", { error: e });
     }
   }
 
@@ -98,16 +101,19 @@ export const GET: RequestHandler = async ({
   let source = "fetch";
 
   try {
-      // Check D1 for ANY scan with this ISBN (Global Cache)
-      const existingScan = await db.prepare("SELECT json_data FROM scans WHERE isbn = ? LIMIT 1").bind(isbn).first<{json_data: string}>();
-      if (existingScan) {
-           responseData = JSON.parse(existingScan.json_data);
-           cacheHit = true;
-           source = "d1";
-           logger.info("d1_cache_hit", { isbn });
-      }
+    // Check D1 for ANY scan with this ISBN (Global Cache)
+    const existingScan = await db
+      .prepare("SELECT json_data FROM scans WHERE isbn = ? LIMIT 1")
+      .bind(isbn)
+      .first<{ json_data: string }>();
+    if (existingScan) {
+      responseData = JSON.parse(existingScan.json_data);
+      cacheHit = true;
+      source = "d1";
+      logger.info("d1_cache_hit", { isbn });
+    }
   } catch (e) {
-      logger.error("d1_cache_check_failed", { error: e });
+    logger.error("d1_cache_check_failed", { error: e });
   }
 
   // === STEP 3: Fetch via Metadata Engine (if not in D1) ===
@@ -123,16 +129,27 @@ export const GET: RequestHandler = async ({
       // - legacy: fetchBookByIsbn(isbn)
       if (
         typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown).length >= 3
+        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown)
+          .length >= 3
       ) {
         mergedData = await fetchBookByIsbn(platform, fetch, isbn);
       } else if (
         typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown).length === 2
+        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown)
+          .length === 2
       ) {
-        mergedData = await (fetchBookByIsbn as unknown as (fetchFn: typeof fetch, isbn: string) => Promise<MergedBookData>)(fetch, isbn);
+        mergedData = await (
+          fetchBookByIsbn as unknown as (
+            fetchFn: typeof fetch,
+            isbn: string,
+          ) => Promise<MergedBookData>
+        )(fetch, isbn);
       } else {
-        mergedData = await (fetchBookByIsbn as unknown as (isbn: string) => Promise<MergedBookData>)(isbn);
+        mergedData = await (
+          fetchBookByIsbn as unknown as (
+            isbn: string,
+          ) => Promise<MergedBookData>
+        )(isbn);
       }
 
       // Get source status from the metadata
@@ -176,30 +193,34 @@ export const GET: RequestHandler = async ({
   // This ensures that when a user scans a book, it appears in THEIR list, even if someone else scanned it before.
   // The createScan function handles UPSERT logic.
   if (platform?.env?.DB) {
-      try {
-        const title = responseData.title || "Unknown Title";
-        const jsonData = JSON.stringify(responseData);
+    try {
+      const title = responseData.title || "Unknown Title";
+      const jsonData = JSON.stringify(responseData);
 
-        const scanId = await createScan(
-          db,
-          locals.user.id,
-          isbn,
-          title,
-          jsonData,
-          "draft",
-          responseData.authors,
-          responseData.subjects,
-          responseData.ddc,
-          responseData.lcc,
-        );
+      const scanId = await createScan(
+        db,
+        locals.user.id,
+        isbn,
+        title,
+        jsonData,
+        "draft",
+        responseData.authors,
+        responseData.subjects,
+        responseData.ddc,
+        responseData.lcc,
+      );
 
-        // Update response with the correct scan_id for THIS user
-        responseData.scan_id = scanId;
+      // Update response with the correct scan_id for THIS user
+      responseData.scan_id = scanId;
 
-        logger.info("scan_saved_to_history", { userId: locals.user.id, scanId, source });
-      } catch (dbError) {
-        logger.error("db_write_failed", { error: dbError });
-      }
+      logger.info("scan_saved_to_history", {
+        userId: locals.user.id,
+        scanId,
+        source,
+      });
+    } catch (dbError) {
+      logger.error("db_write_failed", { error: dbError });
+    }
   }
 
   // === STEP 5: ETag and Response ===
@@ -233,7 +254,7 @@ export const GET: RequestHandler = async ({
 
   // === STEP 6: Save to HTTP Cache (Background) ===
   if (cache && cacheKey && platform?.context?.waitUntil) {
-      platform.context.waitUntil(cache.put(cacheKey, response.clone()));
+    platform.context.waitUntil(cache.put(cacheKey, response.clone()));
   }
 
   return response;
@@ -248,7 +269,8 @@ export const OPTIONS: RequestHandler = async () => {
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, If-None-Match, x-playwright-test-session",
+      "Access-Control-Allow-Headers":
+        "Content-Type, If-None-Match, x-playwright-test-session",
       "Access-Control-Max-Age": "86400",
     },
   });

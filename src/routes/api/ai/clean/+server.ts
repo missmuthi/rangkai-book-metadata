@@ -46,7 +46,13 @@ function delay(ms: number) {
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
   // Enhanced authentication check with detailed error logging
-  logger.debug("ai_clean_auth_check_started", { sessionExists: !!locals.session, userExists: !!locals.user, platformExists: !!platform, envExists: !!platform?.env, dbExists: !!platform?.env?.DB });
+  logger.debug("ai_clean_auth_check_started", {
+    sessionExists: !!locals.session,
+    userExists: !!locals.user,
+    platformExists: !!platform,
+    envExists: !!platform?.env,
+    dbExists: !!platform?.env?.DB,
+  });
 
   if (!locals.session || !locals.user) {
     logger.warn("ai_clean_auth_failed", { reason: "no_session_or_user" });
@@ -93,17 +99,22 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
       logger.error("ai_clean_missing_api_key", {});
       return json(
         {
-          error:
-            "AI service is not configured (missing GROQ_API_KEY).",
+          error: "AI service is not configured (missing GROQ_API_KEY).",
           code: "AI_NOT_CONFIGURED",
         },
         { status: 500 },
       );
     }
 
-    const groq = createOpenAI({ baseURL: 'https://api.groq.com/openai/v1', apiKey });
+    const groq = createOpenAI({
+      baseURL: "https://api.groq.com/openai/v1",
+      apiKey,
+    });
 
-    logger.debug("ai_clean_request_validated", { title: book.title || 'Untitled', isbn: book.isbn || 'N/A' });
+    logger.debug("ai_clean_request_validated", {
+      title: book.title || "Untitled",
+      isbn: book.isbn || "N/A",
+    });
 
     // 1. SLIMS SENIOR LIBRARIAN SYSTEM PROMPT (Optimized for Indonesian libraries)
     const systemPrompt = `You are a **Senior Librarian & SLiMS Cataloging Expert** with 20+ years of experience in Indonesian academic libraries.
@@ -142,150 +153,187 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
     // NO KV CACHE CHECK - Proceed to Generate
 
     try {
-        logger.debug("ai_clean_groq_call_started", {});
-        const startTime = Date.now();
+      logger.debug("ai_clean_groq_call_started", {});
+      const startTime = Date.now();
 
-        let attempt = 0;
-        let gen;
-        let lastError: unknown = null;
+      let attempt = 0;
+      let gen;
+      let lastError: unknown = null;
 
-        // RETRY LOGIC for 429 Errors
-        while (attempt < 3) {
-          try {
-            gen = await generateObject({
-              model: groq("llama-3.3-70b-versatile"),
-              schema: metadataSchema,
-              system: systemPrompt,
-              prompt: `Complete the bibliographic record for: "${book.title || "Unknown Title"}" by ${book.author || "Unknown Author"}. ISBN: ${book.isbn13 || book.isbn10 || book.isbn || "N/A"}`,
-            });
-            break; // Success
-          } catch (e: any) {
-            attempt++;
-            lastError = e;
-            const errorMessage = e instanceof Error ? e.message : String(e);
-            const isRateLimit = errorMessage.includes("quota") || errorMessage.includes("429");
+      // RETRY LOGIC for 429 Errors
+      while (attempt < 3) {
+        try {
+          gen = await generateObject({
+            model: groq("llama-3.3-70b-versatile"),
+            schema: metadataSchema,
+            system: systemPrompt,
+            prompt: `Complete the bibliographic record for: "${book.title || "Unknown Title"}" by ${book.author || "Unknown Author"}. ISBN: ${book.isbn13 || book.isbn10 || book.isbn || "N/A"}`,
+          });
+          break; // Success
+        } catch (e: any) {
+          attempt++;
+          lastError = e;
+          const errorMessage = e instanceof Error ? e.message : String(e);
+          const isRateLimit =
+            errorMessage.includes("quota") || errorMessage.includes("429");
 
-            if (isRateLimit && attempt < 3) {
-              const waitTime = 2000 * Math.pow(2, attempt - 1); // 2s, 4s
-              logger.warn("ai_clean_rate_limit_retry", { attempt, waitTime });
-              await delay(waitTime);
-              continue;
-            }
-            // For json_schema unsupported, break to fallback logic
-            if (String(errorMessage).includes('json_schema')) {
-              break;
-            }
-            throw e; // Non-retriable or retries exhausted
+          if (isRateLimit && attempt < 3) {
+            const waitTime = 2000 * Math.pow(2, attempt - 1); // 2s, 4s
+            logger.warn("ai_clean_rate_limit_retry", { attempt, waitTime });
+            await delay(waitTime);
+            continue;
           }
-        }
-
-        rawAiResult = gen?.object ?? null;
-
-        // If generation failed due to unsupported `json_schema` format, attempt text fallback
-        if (!rawAiResult && lastError && String(lastError).includes('json_schema')) {
-          try {
-            logger.info('ai_clean_groq_fallback_to_generateText_loop', {});
-            const fallbackPromptLoop = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
-            const textResultLoop = await generateText({ model: groq("llama-3.3-70b-versatile"), prompt: fallbackPromptLoop });
-            const outputTextLoop = (textResultLoop as any).output_text || (textResultLoop as any).output?.[0]?.content?.find((c: any) => c.type === 'output_text')?.text || (textResultLoop as any).output?.[0]?.content?.[0]?.text;
-            if (typeof outputTextLoop === 'string') {
-              rawAiResult = JSON.parse(outputTextLoop);
-              try {
-                Analytics.track('ai_fallback_used', { model: 'llama-3.3-70b-versatile', provider: 'groq', isbn: isbn || undefined, reason: 'json_schema_unsupported' });
-              } catch (analyticsErr) {
-                logger.debug('analytics_track_failed', { analyticsErr });
-              }
-            }
-          } catch (fallbackLoopErr) {
-            logger.error('ai_clean_generateText_fallback_failed_loop', { fallbackLoopErr });
+          // For json_schema unsupported, break to fallback logic
+          if (String(errorMessage).includes("json_schema")) {
+            break;
           }
+          throw e; // Non-retriable or retries exhausted
         }
-
-        const duration = Date.now() - startTime;
-        logger.info("ai_clean_groq_success", { duration });
-      } catch (aiError) {
-        const errorMessage =
-          aiError instanceof Error ? aiError.message : String(aiError);
-        logger.debug('ai_clean_groq_failed_message', { errorMessage });
-        logger.error("ai_clean_groq_failed", { errorMessage });
-
-        // Fallback for models that don't support json_schema: try a plain text JSON output and parse
-        if (errorMessage.includes("json_schema")) {
-          try {
-            logger.info('ai_clean_groq_fallback_to_generateText', {});
-            logger.debug('ai_clean_fallback_invoking_generateText_start', {});
-            const fallbackPrompt = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
-            const textResult = await generateText({ model: groq("llama-3.3-70b-versatile"), prompt: fallbackPrompt });
-            logger.debug('ai_clean_fallback_invoking_generateText_end', {});
-            const outputText = (textResult as any).output_text || (textResult as any).output?.[0]?.content?.find((c: any) => c.type === 'output_text')?.text || (textResult as any).output?.[0]?.content?.[0]?.text;
-            if (typeof outputText === 'string') {
-              try {
-                rawAiResult = JSON.parse(outputText);
-                logger.debug('ai_clean_fallback_raw', { rawAiResult });
-              } catch (parseErr) {
-                logger.warn('ai_clean_generateText_parse_failed', { parseErr });
-              }
-              try {
-                Analytics.track('ai_fallback_used', { model: 'llama-3.3-70b-versatile', provider: 'groq', isbn: isbn || undefined, reason: 'json_schema_unsupported' });
-              } catch (analyticsErr) {
-                logger.debug('analytics_track_failed', { analyticsErr });
-              }
-            }
-          } catch (fallbackErr) {
-            logger.error('ai_clean_generateText_fallback_failed', { fallbackErr });
-          }
-        }
-
-        // Check for common issues
-        let userMessage = "AI metadata service is currently unavailable.";
-        let errorCode = "AI_SERVICE_UNAVAILABLE";
-
-          if (
-          errorMessage.includes("API key") ||
-          errorMessage.includes("authentication") ||
-          errorMessage.includes("401")
-        ) {
-          userMessage =
-            "AI service not configured. Please contact the administrator to set up GROQ_API_KEY.";
-          errorCode = "AI_NOT_CONFIGURED";
-          logger.warn("ai_clean_fix_suggestion", { suggestion: 'Add GROQ_API_KEY to Cloudflare Pages env' });
-        } else if (
-          errorMessage.includes("quota") ||
-          errorMessage.includes("429")
-        ) {
-          userMessage = "System busy (Free Tier limit). Please wait 30 seconds and try again.";
-          errorCode = "AI_QUOTA_EXCEEDED";
-        } else if (
-          errorMessage.includes("timeout") ||
-          errorMessage.includes("ECONNREFUSED")
-        ) {
-          userMessage = "AI service timed out. Please try again.";
-          errorCode = "AI_TIMEOUT";
-        }
-
-        return json(
-          {
-            error: userMessage,
-            code: errorCode,
-            message: userMessage,
-            debug:
-              process.env.NODE_ENV === "development" ? errorMessage : undefined,
-          },
-          { status: 503 },
-        );
       }
 
+      rawAiResult = gen?.object ?? null;
+
+      // If generation failed due to unsupported `json_schema` format, attempt text fallback
+      if (
+        !rawAiResult &&
+        lastError &&
+        String(lastError).includes("json_schema")
+      ) {
+        try {
+          logger.info("ai_clean_groq_fallback_to_generateText_loop", {});
+          const fallbackPromptLoop = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
+          const textResultLoop = await generateText({
+            model: groq("llama-3.3-70b-versatile"),
+            prompt: fallbackPromptLoop,
+          });
+          const outputTextLoop =
+            (textResultLoop as any).output_text ||
+            (textResultLoop as any).output?.[0]?.content?.find(
+              (c: any) => c.type === "output_text",
+            )?.text ||
+            (textResultLoop as any).output?.[0]?.content?.[0]?.text;
+          if (typeof outputTextLoop === "string") {
+            rawAiResult = JSON.parse(outputTextLoop);
+            try {
+              Analytics.track("ai_fallback_used", {
+                model: "llama-3.3-70b-versatile",
+                provider: "groq",
+                isbn: isbn || undefined,
+                reason: "json_schema_unsupported",
+              });
+            } catch (analyticsErr) {
+              logger.debug("analytics_track_failed", { analyticsErr });
+            }
+          }
+        } catch (fallbackLoopErr) {
+          logger.error("ai_clean_generateText_fallback_failed_loop", {
+            fallbackLoopErr,
+          });
+        }
+      }
+
+      const duration = Date.now() - startTime;
+      logger.info("ai_clean_groq_success", { duration });
+    } catch (aiError) {
+      const errorMessage =
+        aiError instanceof Error ? aiError.message : String(aiError);
+      logger.debug("ai_clean_groq_failed_message", { errorMessage });
+      logger.error("ai_clean_groq_failed", { errorMessage });
+
+      // Fallback for models that don't support json_schema: try a plain text JSON output and parse
+      if (errorMessage.includes("json_schema")) {
+        try {
+          logger.info("ai_clean_groq_fallback_to_generateText", {});
+          logger.debug("ai_clean_fallback_invoking_generateText_start", {});
+          const fallbackPrompt = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
+          const textResult = await generateText({
+            model: groq("llama-3.3-70b-versatile"),
+            prompt: fallbackPrompt,
+          });
+          logger.debug("ai_clean_fallback_invoking_generateText_end", {});
+          const outputText =
+            (textResult as any).output_text ||
+            (textResult as any).output?.[0]?.content?.find(
+              (c: any) => c.type === "output_text",
+            )?.text ||
+            (textResult as any).output?.[0]?.content?.[0]?.text;
+          if (typeof outputText === "string") {
+            try {
+              rawAiResult = JSON.parse(outputText);
+              logger.debug("ai_clean_fallback_raw", { rawAiResult });
+            } catch (parseErr) {
+              logger.warn("ai_clean_generateText_parse_failed", { parseErr });
+            }
+            try {
+              Analytics.track("ai_fallback_used", {
+                model: "llama-3.3-70b-versatile",
+                provider: "groq",
+                isbn: isbn || undefined,
+                reason: "json_schema_unsupported",
+              });
+            } catch (analyticsErr) {
+              logger.debug("analytics_track_failed", { analyticsErr });
+            }
+          }
+        } catch (fallbackErr) {
+          logger.error("ai_clean_generateText_fallback_failed", {
+            fallbackErr,
+          });
+        }
+      }
+
+      // Check for common issues
+      let userMessage = "AI metadata service is currently unavailable.";
+      let errorCode = "AI_SERVICE_UNAVAILABLE";
+
+      if (
+        errorMessage.includes("API key") ||
+        errorMessage.includes("authentication") ||
+        errorMessage.includes("401")
+      ) {
+        userMessage =
+          "AI service not configured. Please contact the administrator to set up GROQ_API_KEY.";
+        errorCode = "AI_NOT_CONFIGURED";
+        logger.warn("ai_clean_fix_suggestion", {
+          suggestion: "Add GROQ_API_KEY to Cloudflare Pages env",
+        });
+      } else if (
+        errorMessage.includes("quota") ||
+        errorMessage.includes("429")
+      ) {
+        userMessage =
+          "System busy (Free Tier limit). Please wait 30 seconds and try again.";
+        errorCode = "AI_QUOTA_EXCEEDED";
+      } else if (
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("ECONNREFUSED")
+      ) {
+        userMessage = "AI service timed out. Please try again.";
+        errorCode = "AI_TIMEOUT";
+      }
+
+      return json(
+        {
+          error: userMessage,
+          code: errorCode,
+          message: userMessage,
+          debug:
+            process.env.NODE_ENV === "development" ? errorMessage : undefined,
+        },
+        { status: 503 },
+      );
+    }
 
     // 3. NORMALIZE & OPTIMIZE
     if (!rawAiResult) {
-      logger.warn('ai_clean_no_ai_result', {});
+      logger.warn("ai_clean_no_ai_result", {});
     }
-    logger.debug('ai_clean_raw_result', { rawAiResult });
+    logger.debug("ai_clean_raw_result", { rawAiResult });
     const aiResult = normalizeKeys(
       (rawAiResult ?? {}) as import("$lib/utils/metadata").AIResultInput,
     );
     const cleanAiResult = deepClean(aiResult) ?? {};
-    logger.debug('ai_clean_normalized', { aiResult, cleanAiResult });
+    logger.debug("ai_clean_normalized", { aiResult, cleanAiResult });
 
     // 4. DEEP MERGE (The Fix for Data Loss)
     // Parse existing JSON from book data (may be in json_data field or scattered in book object)
@@ -378,7 +426,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       try {
         // CASE 1: scan_id provided → UPDATE existing (verify user ownership)
         if (scan_id) {
-            logger.debug("ai_clean_updating_existing_scan", { scan_id });
+          logger.debug("ai_clean_updating_existing_scan", { scan_id });
           const result = await DB.prepare(
             `
 						UPDATE scans 
@@ -409,7 +457,10 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
           if (existing?.id) {
             // Found existing scan → UPDATE it
-            logger.debug("ai_clean_found_existing_scan_updating", { isbn: isbnValue, id: existing.id });
+            logger.debug("ai_clean_found_existing_scan_updating", {
+              isbn: isbnValue,
+              id: existing.id,
+            });
             await DB.prepare(
               `
 							UPDATE scans 
@@ -523,7 +574,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       saveError: saveError || undefined,
       changes: changes,
     });
-    } catch (err) {
+  } catch (err) {
     logger.error("ai_clean_endpoint_error", { err });
     return json(
       { error: "Internal Server Error", details: String(err) },

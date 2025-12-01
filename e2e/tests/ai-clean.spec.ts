@@ -7,12 +7,14 @@ const FIXTURE_PATH = new URL(
 );
 
 // Test the AI Clean endpoint directly (API-level test)
-test("AI Clean API returns cleaned metadata with saved state", async ({ page }) => {
+test("AI Clean API returns cleaned metadata with saved state", async ({
+  page,
+}) => {
   const fixture = JSON.parse(await readFile(FIXTURE_PATH, "utf-8"));
 
   // Set test session header to bypass auth
-  await page.setExtraHTTPHeaders({ 'x-playwright-test-session': '1' });
-  
+  await page.setExtraHTTPHeaders({ "x-playwright-test-session": "1" });
+
   // Mock the /api/ai/clean response
   const cleanedResponse = {
     ...fixture,
@@ -26,9 +28,12 @@ test("AI Clean API returns cleaned metadata with saved state", async ({ page }) 
   await page.route("**/api/ai/clean", async (route) => {
     const request = route.request();
     const body = await request.postDataJSON();
-    
+
     if (!body || (!body.isbn && !body.isbn13 && !body.isbn10)) {
-      route.fulfill({ status: 400, body: JSON.stringify({ error: "Missing isbn" }) });
+      route.fulfill({
+        status: 400,
+        body: JSON.stringify({ error: "Missing isbn" }),
+      });
       return;
     }
 
@@ -40,16 +45,16 @@ test("AI Clean API returns cleaned metadata with saved state", async ({ page }) 
   });
 
   // Make a direct POST request to the AI Clean endpoint
-  const response = await page.request.post('/api/ai/clean', {
+  const response = await page.request.post("/api/ai/clean", {
     data: fixture,
-    headers: { 'x-playwright-test-session': '1' },
+    headers: { "x-playwright-test-session": "1" },
   });
 
   // Verify the response is successful
   expect(response.status()).toBe(200);
 
   const result = await response.json();
-  
+
   // Verify cleaned metadata is returned
   expect(result.ddc).toBe("005.133");
   expect(result.lcc).toBe("QA76.73.J38");

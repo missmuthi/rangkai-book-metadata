@@ -29,7 +29,11 @@ export function getSecureImageUrl(url: string | null | undefined): string {
     }
 
     // Reject dangerous data URIs (e.g., data:text/html, data:application/javascript)
-    if (import.meta.env.DEV) console.warn("[Security] Blocked unsafe data: URI:", url.substring(0, 50));
+    if (import.meta.env.DEV)
+      console.warn(
+        "[Security] Blocked unsafe data: URI:",
+        url.substring(0, 50),
+      );
     return ""; // Return empty to prevent XSS
   }
 
@@ -37,7 +41,10 @@ export function getSecureImageUrl(url: string | null | undefined): string {
   try {
     const urlObj = new URL(url);
     if (!["http:", "https:"].includes(urlObj.protocol)) {
-      if (import.meta.env.DEV) console.warn(`[Security] Blocked dangerous URL scheme: ${urlObj.protocol}`);
+      if (import.meta.env.DEV)
+        console.warn(
+          `[Security] Blocked dangerous URL scheme: ${urlObj.protocol}`,
+        );
       return "";
     }
   } catch {
@@ -192,7 +199,10 @@ export async function retry<T>(
           status === 429 ||
           (status >= 400 && status < 500)
         ) {
-          if (import.meta.env.DEV) console.warn(`[Circuit Breaker] Not retrying HTTP ${status}: ${message}`);
+          if (import.meta.env.DEV)
+            console.warn(
+              `[Circuit Breaker] Not retrying HTTP ${status}: ${message}`,
+            );
           throw error;
         }
       }
@@ -205,7 +215,10 @@ export async function retry<T>(
         errorMsg.includes("429") ||
         errorMsg.includes("temporarily unavailable")
       ) {
-        if (import.meta.env.DEV) console.warn(`[Circuit Breaker] Detected rate limit/service issue, aborting retries`);
+        if (import.meta.env.DEV)
+          console.warn(
+            `[Circuit Breaker] Detected rate limit/service issue, aborting retries`,
+          );
         throw lastError;
       }
 
@@ -325,7 +338,8 @@ export function convertISBN13to10(isbn13: string): string | null {
   if (cleaned.length !== 13) return null;
   if (!cleaned.startsWith("978")) return null; // Only 978 prefix can be converted
   if (!isValidISBN13(cleaned)) {
-    if (import.meta.env.DEV) console.warn(`[ISBN] Invalid ISBN-13 checksum: ${isbn13}`);
+    if (import.meta.env.DEV)
+      console.warn(`[ISBN] Invalid ISBN-13 checksum: ${isbn13}`);
     return null;
   }
 
@@ -350,7 +364,8 @@ export function convertISBN10to13(isbn10: string): string | null {
   // Validate format
   if (cleaned.length !== 10) return null;
   if (!isValidISBN10(cleaned)) {
-    if (import.meta.env.DEV) console.warn(`[ISBN] Invalid ISBN-10 checksum: ${isbn10}`);
+    if (import.meta.env.DEV)
+      console.warn(`[ISBN] Invalid ISBN-10 checksum: ${isbn10}`);
     return null;
   }
 

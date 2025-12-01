@@ -139,7 +139,10 @@ export async function fetchLibraryOfCongressWithTimeout(
     return result;
   } catch (error) {
     await breaker.failure();
-    logger.error("loc_request_failed", { isbn, error: error instanceof Error ? error.message : String(error) });
+    logger.error("loc_request_failed", {
+      isbn,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }

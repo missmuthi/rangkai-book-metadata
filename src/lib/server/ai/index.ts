@@ -71,7 +71,7 @@ export const aiService = {
   async cleanMetadata(book: MergedBookData): Promise<AIMergedBookData> {
     try {
       const groq = createOpenAI({
-        baseURL: 'https://api.groq.com/openai/v1',
+        baseURL: "https://api.groq.com/openai/v1",
         apiKey: env.GROQ_API_KEY,
       });
 
@@ -160,18 +160,17 @@ Return the cleaned AND completed fields with a comprehensive changes log.`,
           }
           // If the error indicates the model doesn't support json_schema (Groq limitation),
           // stop retrying and fall through to fallback logic outside the loop.
-          if (String(errorMessage).includes('json_schema')) {
+          if (String(errorMessage).includes("json_schema")) {
             break;
           }
           throw error; // Throw non-retriable or other errors
         }
       }
 
-
       // Fallback: Some Groq models do not support structured `json_schema` output.
       // If we failed due to unsupported response format try generateText and parse JSON.
       if (!object && lastError) {
-        logger.debug('ai_lastError_message', { lastError: String(lastError) });
+        logger.debug("ai_lastError_message", { lastError: String(lastError) });
       }
       if (!object && lastError && String(lastError).includes("json_schema")) {
         try {
@@ -181,36 +180,60 @@ Return the cleaned AND completed fields with a comprehensive changes log.`,
             prompt,
             system: `You are a helpful assistant. Output a single JSON object with the required fields only.`,
           });
-          logger.debug('ai_generateText_result', { result: textResult });
+          logger.debug("ai_generateText_result", { result: textResult });
 
           // Try to pull the textual output in a few known shapes
-          const text = (textResult as any).output_text || (textResult as any).output?.[0]?.content?.find((c: any) => c.type === 'output_text')?.text || (textResult as any).output?.[0]?.content?.[0]?.text;
-          if (typeof text === 'string') {
+          const text =
+            (textResult as any).output_text ||
+            (textResult as any).output?.[0]?.content?.find(
+              (c: any) => c.type === "output_text",
+            )?.text ||
+            (textResult as any).output?.[0]?.content?.[0]?.text;
+          if (typeof text === "string") {
             try {
               const parsed = JSON.parse(text);
-              logger.debug('ai_generateText_parsed', { parsedType: typeof parsed, keys: Object.keys(parsed ?? {}) });
+              logger.debug("ai_generateText_parsed", {
+                parsedType: typeof parsed,
+                keys: Object.keys(parsed ?? {}),
+              });
               // Validate parsed object against zod schema
               const parsedValidated = cleanedBookSchema.safeParse(parsed);
               if (parsedValidated.success) {
-                object = parsedValidated.data as unknown as z.infer<typeof cleanedBookSchema>;
-                logger.debug('ai_generateText_validated', { fields: Object.keys(object) });
+                object = parsedValidated.data as unknown as z.infer<
+                  typeof cleanedBookSchema
+                >;
+                logger.debug("ai_generateText_validated", {
+                  fields: Object.keys(object),
+                });
                 try {
-                  Analytics.track('ai_fallback_used', { model: 'llama-3.3-70b-versatile', provider: 'groq', isbn: book.isbn || undefined, reason: 'json_schema_unsupported' });
+                  Analytics.track("ai_fallback_used", {
+                    model: "llama-3.3-70b-versatile",
+                    provider: "groq",
+                    isbn: book.isbn || undefined,
+                    reason: "json_schema_unsupported",
+                  });
                 } catch (analyticsErr) {
-                  logger.debug('analytics_track_failed', { analyticsErr });
+                  logger.debug("analytics_track_failed", { analyticsErr });
                 }
               } else {
-                logger.warn('ai_generateText_parsed_but_invalid', { issues: parsedValidated.error.issues });
+                logger.warn("ai_generateText_parsed_but_invalid", {
+                  issues: parsedValidated.error.issues,
+                });
                 // Accept parsed result as a best-effort fallback -- we'll still map fields conservatively
                 object = parsed as unknown as z.infer<typeof cleanedBookSchema>;
-                logger.debug('ai_generateText_fallback_object_assigned', { fields: Object.keys(object) });
+                logger.debug("ai_generateText_fallback_object_assigned", {
+                  fields: Object.keys(object),
+                });
               }
             } catch (parseErr) {
-              logger.warn('ai_generateText_parse_failed', { parseErr, textSnippet: text?.slice(0, 200) });
+              logger.warn("ai_generateText_parse_failed", {
+                parseErr,
+                textSnippet: text?.slice(0, 200),
+              });
             }
           }
         } catch (fallbackErr) {
-          logger.error('ai_generateText_fallback_failed', { fallbackErr });
+          logger.error("ai_generateText_fallback_failed", { fallbackErr });
         }
       }
       if (!object) {

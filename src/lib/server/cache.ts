@@ -40,10 +40,7 @@ export function getKV(platform: any): any | null {
  * Generic wrapper to get data from KV with error handling
  * @deprecated KV is removed. Always returns null.
  */
-export async function cacheGet<T>(
-  kv: any,
-  key: string,
-): Promise<T | null> {
+export async function cacheGet<T>(kv: any, key: string): Promise<T | null> {
   return null;
 }
 
@@ -64,9 +61,6 @@ export async function cacheSet(
  * Generic wrapper to delete data from KV
  * @deprecated KV is removed. No-op.
  */
-export async function cacheDelete(
-  kv: any,
-  key: string,
-): Promise<void> {
+export async function cacheDelete(kv: any, key: string): Promise<void> {
   return;
 }

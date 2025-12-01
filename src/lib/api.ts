@@ -106,7 +106,11 @@ export class BookApiService {
         });
 
         if (response.status === 503 || response.status === 429) {
-          Analytics.track("error_occurred", { error_type: errorType, source: "openlibrary", message: `${response.status} ${response.statusText}` });
+          Analytics.track("error_occurred", {
+            error_type: errorType,
+            source: "openlibrary",
+            message: `${response.status} ${response.statusText}`,
+          });
           return null; // Allow the app to continue with Google Books data
         }
         throw new Error(
@@ -128,7 +132,11 @@ export class BookApiService {
             source: "openlibrary",
             message: data.error,
           });
-          Analytics.track("error_occurred", { error_type: "rate_limit", source: "openlibrary", message: data.error });
+          Analytics.track("error_occurred", {
+            error_type: "rate_limit",
+            source: "openlibrary",
+            message: data.error,
+          });
           return null;
         }
         throw new Error(data.error);
@@ -194,7 +202,11 @@ export class BookApiService {
           response.status === 429 ||
           response.status === 404
         ) {
-          Analytics.track("error_occurred", { error_type: errorType, source: "loc", message: `${response.status} ${response.statusText}` });
+          Analytics.track("error_occurred", {
+            error_type: errorType,
+            source: "loc",
+            message: `${response.status} ${response.statusText}`,
+          });
           return null;
         }
         throw new Error(
@@ -206,7 +218,11 @@ export class BookApiService {
 
       // Validate that we have actual results
       if (!data.results || data.results.length === 0) {
-        Analytics.track("error_occurred", { error_type: "unknown", source: "loc", message: `No results for ISBN ${isbn}` });
+        Analytics.track("error_occurred", {
+          error_type: "unknown",
+          source: "loc",
+          message: `No results for ISBN ${isbn}`,
+        });
         return null;
       }
 
@@ -239,7 +255,11 @@ export class BookApiService {
       }
 
       // Silent failure - LoC can be slow or unavailable
-      Analytics.track("error_occurred", { error_type: "network_error", source: "loc", message: error instanceof Error ? error.message : "Unknown error" });
+      Analytics.track("error_occurred", {
+        error_type: "network_error",
+        source: "loc",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
       return null;
     }
   }
@@ -534,6 +554,10 @@ export class ApiCache<T = unknown> {
 }
 
 // Global cache instances
-export const googleCache = new ApiCache<GoogleBookItem['volumeInfo'] | GoogleBooksResponse | null>();
-export const openLibraryCache = new ApiCache<OpenLibraryBookData | OpenLibrarySearchResponse | null>();
+export const googleCache = new ApiCache<
+  GoogleBookItem["volumeInfo"] | GoogleBooksResponse | null
+>();
+export const openLibraryCache = new ApiCache<
+  OpenLibraryBookData | OpenLibrarySearchResponse | null
+>();
 export const locCache = new ApiCache<LoCBookData | null>(5 * 60 * 1000, 100); // 5 minutes TTL, 100 items max

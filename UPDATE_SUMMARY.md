@@ -39,15 +39,15 @@ D1 Database  KV Cache  Google Books  OpenLibrary  LoC
 
 ## Tech Stack (v3.0.0)
 
-| Layer | Technologies |
-|-------|-------------|
+| Layer        | Technologies                                                     |
+| ------------ | ---------------------------------------------------------------- |
 | **Frontend** | SvelteKit 2.x, Svelte 5 Runes, TypeScript (strict), Tailwind CSS |
-| **Backend** | Cloudflare Workers (serverless compute) |
-| **Database** | D1 (SQLite on Cloudflare) |
-| **Cache** | KV Storage (24-hour TTL) |
-| **Auth** | Better Auth v2.x + Google OAuth |
-| **Build** | Vite, SvelteKit adapter-cloudflare |
-| **Testing** | Vitest (unit), Playwright (E2E) |
+| **Backend**  | Cloudflare Workers (serverless compute)                          |
+| **Database** | D1 (SQLite on Cloudflare)                                        |
+| **Cache**    | KV Storage (24-hour TTL)                                         |
+| **Auth**     | Better Auth v2.x + Google OAuth                                  |
+| **Build**    | Vite, SvelteKit adapter-cloudflare                               |
+| **Testing**  | Vitest (unit), Playwright (E2E)                                  |
 
 ---
 
@@ -71,6 +71,7 @@ Cover Image:  Google Books > OpenLibrary > Placeholder
 ### 2. Scanner Mode ("Unjammable" Logic)
 
 Library staff scan barcodes rapidly. The system:
+
 - Processes each scan instantly (ISBN prioritized over manual)
 - Debounces duplicate scans (3-second window)
 - Auto-focuses input field after each result
@@ -110,22 +111,26 @@ Uses wsrv.nl proxy which also compresses images to WebP format (70% smaller).
 ## Release Protocol (CRITICAL)
 
 ### Tier 1: Git Push (Routine)
+
 ```bash
 npm run check    # TypeScript validation (must pass)
 npm run build    # Build verification (must succeed)
 git push         # Save progress
 ```
+
 - **Frequency:** Multiple times per day
 - **Version Bump:** Not required
 - **Documentation:** Not required (unless adding features)
 
 ### Tier 2: Production Deploy (Deliberate Event)
+
 ```bash
 npm test         # All tests pass (100% success rate)
 npm version minor  # Bump version (follow semver)
 git push --tags  # Push version tag
 npm run deploy   # Deploy to Cloudflare Pages
 ```
+
 - **Frequency:** Weekly or bi-weekly
 - **Pre-requirements:**
   - All tests passing
@@ -134,6 +139,7 @@ npm run deploy   # Deploy to Cloudflare Pages
   - README, CHANGELOG, and relevant /docs files updated
 
 **THE GOLDEN RULE:**
+
 > "We do NOT deploy to Cloudflare on every git push. We ONLY deploy when Version Index and Documentation are synchronized."
 
 This ensures releases are deliberate, documented, and traceable.
@@ -143,6 +149,7 @@ This ensures releases are deliberate, documented, and traceable.
 ## Files Updated
 
 ### 1. `.gitignore` (259 lines, 5.3K)
+
 - ✅ Updated date to 2025-12-01 (v3.0.0)
 - ✅ Added project-specific debug artifacts
 - ✅ Added E2E test screenshot exclusion
@@ -150,6 +157,7 @@ This ensures releases are deliberate, documented, and traceable.
 - ✅ Verified no sensitive files are committed
 
 ### 2. `agents.md` (448 lines, 16K)
+
 - ✅ Completely rewritten (was 2,000 lines)
 - ✅ 7 AI agents with clear responsibilities
 - ✅ System prompts for each agent role
@@ -158,6 +166,7 @@ This ensures releases are deliberate, documented, and traceable.
 - ✅ Updated to v3.0.0 (serverless architecture)
 
 ### 3. `PROJECT_SUMMARY.md` (NEW - 12K)
+
 - ✅ Comprehensive project overview
 - ✅ Tech stack and architecture details
 - ✅ Data architecture explanation
@@ -170,6 +179,7 @@ This ensures releases are deliberate, documented, and traceable.
 - ✅ Version history
 
 ### 4. `QUICK_LEARNINGS.md` (NEW - 7.8K)
+
 - ✅ Quick reference for new developers
 - ✅ Key concepts and patterns
 - ✅ Waterfall prioritization explained
@@ -186,36 +196,43 @@ This ensures releases are deliberate, documented, and traceable.
 The project defines **7 specialized AI agents** for different development domains:
 
 ### 1. Svelte 5 Architect 🎨
+
 - **Domain:** Frontend development, component design, reactivity
 - **Expertise:** Svelte 5 runes, TypeScript strict mode, Tailwind CSS
 - **Responsibilities:** Build high-performance components, ensure auth checks, avoid cross-user data exposure
 
 ### 2. Backend Resilience Engineer ⚙️
+
 - **Domain:** API integration, caching, error handling
 - **Expertise:** 3-source API aggregation, Promise.allSettled, KV caching, waterfall prioritization
 - **Responsibilities:** Implement fault-tolerance, user data isolation, analytics instrumentation
 
 ### 3. Senior Librarian & SLiMS Expert 📚
+
 - **Domain:** Data validation, classification logic, ISBN handling
 - **Expertise:** ISBN check digits, LCC/DDC standards, MARC21, SLiMS CSV format
 - **Responsibilities:** Validate data quality, ensure library standards compliance, generate call numbers
 
 ### 4. QA & Release Manager 🧪
+
 - **Domain:** Testing, deployment verification, release management
 - **Expertise:** E2E testing, Tier 1/Tier 2 protocols, release checklists
 - **Responsibilities:** Enforce quality gates, verify documentation sync, manage deployments
 
 ### 5. Security & Compliance Officer 🔐
+
 - **Domain:** Authentication, authorization, data isolation, image security
 - **Expertise:** Zero-Trust policies, SSRF/XSS prevention, CSP compliance, session management
 - **Responsibilities:** Enforce auth checks, validate user scoping, audit for vulnerabilities
 
 ### 6. Documentation Synchronizer 📝
+
 - **Domain:** Documentation alignment, root markdown policy, docs organization
 - **Expertise:** Multi-file documentation sync, legacy archiving, link verification
 - **Responsibilities:** Keep docs current with code, enforce root markdown policy, update navigation
 
 ### 7. Mobile Scanner Specialist 📱
+
 - **Domain:** Camera integration, barcode scanning, mobile UX
 - **Expertise:** html5-qrcode, SSR-safe initialization, debouncing, responsive design
 - **Responsibilities:** Implement scanner mode, prevent jamming, optimize mobile layouts
@@ -229,6 +246,7 @@ See `agents.md` for full system prompts and detailed guidelines for each agent.
 ### Root-Level Policy (STRICTLY ENFORCED)
 
 **ONLY these markdown files in repository root:**
+
 - `README.md` - Project overview and features
 - `CONTRIBUTING.md` - Contribution guidelines
 - `CHANGELOG.md` - Version history and release notes
@@ -236,38 +254,40 @@ See `agents.md` for full system prompts and detailed guidelines for each agent.
 - `SECURITY.md` - Security policies
 
 **All other `.md` files MUST go to:**
+
 - `/docs/` - Core documentation (SYSTEM_OVERVIEW, ARCHITECTURE, etc.)
 - `/docs/meta/` - AI agent prompts and Copilot instructions
 - `/docs/legacy/` - Historical/deprecated documentation
 
 ### Core Documentation Files (`/docs`)
 
-| File | Purpose |
-|------|---------|
-| `index.md` | Documentation hub and navigation |
-| `SYSTEM_OVERVIEW.md` | High-level architecture and features |
-| `GETTING_STARTED.md` | Local setup and environment configuration |
-| `ARCHITECTURE.md` | Technical deep dive and system design |
-| `AUTH.md` | Authentication system and OAuth flow |
-| `API_INTEGRATION_GUIDE.md` | External API details and data mapping |
-| `SMART_SEARCH_API.md` | Search endpoints and classification logic |
-| `DEPLOYMENT_GUIDE.md` | Production deployment and secrets management |
-| `QUICK_REFERENCE.md` | Common commands and file locations |
-| `ANALYTICS_TELEMETRY.md` | Event tracking and analytics system |
-| `BUSINESS_RULES.md` | Classification standards and metadata rules |
-| `SERVERLESS_ARCHITECTURE.md` | Cloudflare Workers and edge computing |
-| `LOC_INTEGRATION_GUIDE.md` | Library of Congress API details |
-| `IMAGE_SECURITY.md` | Image proxy and SSRF protection |
-| `MOBILE_FIELD_AGENT.md` | Scanner mode and field agent workflows |
-| `PERFORMANCE.md` | Performance optimization and benchmarks |
-| `MODULE_REFERENCE.md` | Codebase modules and their purposes |
-| `V3_TECHNICAL_AUDIT.md` | v3.0 technical review and findings |
+| File                         | Purpose                                      |
+| ---------------------------- | -------------------------------------------- |
+| `index.md`                   | Documentation hub and navigation             |
+| `SYSTEM_OVERVIEW.md`         | High-level architecture and features         |
+| `GETTING_STARTED.md`         | Local setup and environment configuration    |
+| `ARCHITECTURE.md`            | Technical deep dive and system design        |
+| `AUTH.md`                    | Authentication system and OAuth flow         |
+| `API_INTEGRATION_GUIDE.md`   | External API details and data mapping        |
+| `SMART_SEARCH_API.md`        | Search endpoints and classification logic    |
+| `DEPLOYMENT_GUIDE.md`        | Production deployment and secrets management |
+| `QUICK_REFERENCE.md`         | Common commands and file locations           |
+| `ANALYTICS_TELEMETRY.md`     | Event tracking and analytics system          |
+| `BUSINESS_RULES.md`          | Classification standards and metadata rules  |
+| `SERVERLESS_ARCHITECTURE.md` | Cloudflare Workers and edge computing        |
+| `LOC_INTEGRATION_GUIDE.md`   | Library of Congress API details              |
+| `IMAGE_SECURITY.md`          | Image proxy and SSRF protection              |
+| `MOBILE_FIELD_AGENT.md`      | Scanner mode and field agent workflows       |
+| `PERFORMANCE.md`             | Performance optimization and benchmarks      |
+| `MODULE_REFERENCE.md`        | Codebase modules and their purposes          |
+| `V3_TECHNICAL_AUDIT.md`      | v3.0 technical review and findings           |
 
 ---
 
 ## Security Highlights
 
 ### Always Do ✅
+
 - Check `event.locals.session` on protected routes
 - Include `user_id` in all database queries (prevent data leaks)
 - Use `getSecureImageUrl()` for external images (SSRF protection)
@@ -276,6 +296,7 @@ See `agents.md` for full system prompts and detailed guidelines for each agent.
 - Store secrets in Cloudflare Pages environment variables
 
 ### Never Do ❌
+
 - Commit `.env` files with real credentials
 - Use `any` types in TypeScript
 - Expose one user's data to another user
@@ -286,20 +307,23 @@ See `agents.md` for full system prompts and detailed guidelines for each agent.
 ### Key Patterns
 
 **Data Isolation:**
+
 ```typescript
 // Prevent User A from accessing User B's scans
 if (resourceUserId !== locals.user.id) {
-  throw error(403, 'Forbidden');
+  throw error(403, "Forbidden");
 }
 ```
 
 **Image Security:**
+
 ```typescript
 // Sanitize all external images
 <img src={getSecureImageUrl(externalUrl)} />
 ```
 
 **User-Scoped Queries:**
+
 ```typescript
 // Always include user_id in WHERE clause
 const data = await db
@@ -312,16 +336,16 @@ const data = await db
 
 ## Performance Targets
 
-| Metric | Target | Actual |
-|--------|--------|--------|
-| ISBN Search | <2.5s | ~2.0s (parallel 3-source) |
-| Title Search | <3s | ~2.5s (Google + OL only) |
-| Cache Hit | <100ms | ~50ms (KV Storage) |
-| Bundle Size | <200KB gzipped | ~180KB |
-| Lighthouse Performance | >90 | >92 |
-| Lighthouse Accessibility | >95 | >96 |
-| First Contentful Paint | <1.5s | ~1.2s |
-| Time to Interactive | <3s | ~2.5s |
+| Metric                   | Target         | Actual                    |
+| ------------------------ | -------------- | ------------------------- |
+| ISBN Search              | <2.5s          | ~2.0s (parallel 3-source) |
+| Title Search             | <3s            | ~2.5s (Google + OL only)  |
+| Cache Hit                | <100ms         | ~50ms (KV Storage)        |
+| Bundle Size              | <200KB gzipped | ~180KB                    |
+| Lighthouse Performance   | >90            | >92                       |
+| Lighthouse Accessibility | >95            | >96                       |
+| First Contentful Paint   | <1.5s          | ~1.2s                     |
+| Time to Interactive      | <3s            | ~2.5s                     |
 
 ---
 
@@ -357,11 +381,13 @@ npm run db:migrate:prod  # Run migrations in production
 ## Next Steps for New Developers
 
 ### Phase 1: Learn the Project (45 minutes)
+
 1. Read `QUICK_LEARNINGS.md` (10 min) - Quick overview
 2. Read `PROJECT_SUMMARY.md` (20 min) - Comprehensive context
 3. Read `/docs/SYSTEM_OVERVIEW.md` (15 min) - Architecture overview
 
 ### Phase 2: Set Up Locally (10 minutes)
+
 ```bash
 git clone https://github.com/missmuthi/rangkai-book-metadata.git
 cd rangkai-book-metadata
@@ -371,11 +397,13 @@ npm run dev
 ```
 
 ### Phase 3: Deep Dive (90 minutes)
+
 1. Read `/docs/ARCHITECTURE.md` (45 min) - Technical details
 2. Read `agents.md` for your domain (15 min) - Your agent role
 3. Explore source code in `/src` (30 min) - Real implementation
 
 ### Phase 4: Start Coding
+
 1. Identify your task domain (frontend/backend/data/testing/docs)
 2. Use the corresponding AI agent from `agents.md`
 3. Paste full agent system prompt into a new chat session
@@ -423,13 +451,14 @@ npm run dev
 ✅ **Performance:** Sub-100ms cache hits, <2.5s searches, <200KB bundle  
 ✅ **Developer Experience:** New dev to first PR in <2 hours  
 ✅ **Release Process:** Tier 1/Tier 2 protocol ensures stable deployments  
-✅ **Accessibility:** WCAG AA compliant, >95 Lighthouse score  
+✅ **Accessibility:** WCAG AA compliant, >95 Lighthouse score
 
 ---
 
 ## Conclusion
 
 **Rangkai Book Metadata Harvester** is a production-grade serverless application that demonstrates:
+
 - Modern full-stack development practices
 - Serverless architecture on Cloudflare
 - Zero-Trust security principles

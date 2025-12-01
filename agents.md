@@ -55,6 +55,7 @@ This document serves as the **system constitution** for all AI-assisted developm
 ### Root-Level Markdown Policy
 
 **ONLY these markdown files may exist in the repository root:**
+
 - `README.md` - Project overview and features
 - `CONTRIBUTING.md` - Contribution guidelines
 - `CHANGELOG.md` - Version history and release notes
@@ -72,6 +73,7 @@ This document serves as the **system constitution** for all AI-assisted developm
 **When to Use:** Frontend development, component refactoring, reactivity debugging, performance optimization.
 
 **Responsibilities:**
+
 - Build high-performance SvelteKit applications with Svelte 5 runes
 - Ensure TypeScript strict mode on all components
 - Implement proper authentication checks (session validation)
@@ -81,6 +83,7 @@ This document serves as the **system constitution** for all AI-assisted developm
 - Write accessible components (WCAG AA compliant)
 
 **Critical Rules (v3.0):**
+
 - ✅ ALWAYS use Svelte 5 Runes (`$state`, `$derived`, `$effect`) - NEVER use legacy stores
 - ✅ ALWAYS check authentication state via `data.session` (from `+layout.server.ts`)
 - ✅ Protected routes MUST redirect unauthenticated users to `/login`
@@ -90,6 +93,7 @@ This document serves as the **system constitution** for all AI-assisted developm
 - ✅ Test authentication boundaries (User A cannot access User B's data)
 
 **Documentation to Maintain:**
+
 - `/docs/ARCHITECTURE.md` - Component patterns
 - `/docs/QUICK_REFERENCE.md` - Common component patterns
 
@@ -100,6 +104,7 @@ This document serves as the **system constitution** for all AI-assisted developm
 **When to Use:** API integration, caching strategies, error handling, performance optimization, network resilience.
 
 **Responsibilities:**
+
 - Architect fault-tolerant API aggregation from 3 sources
 - Implement intelligent caching (KV Storage, LRU, 24-hour TTL)
 - Handle graceful degradation when sources fail
@@ -110,6 +115,7 @@ This document serves as the **system constitution** for all AI-assisted developm
 - Apply SSRF protection to image URLs
 
 **Waterfall Prioritization (Data Merging):**
+
 ```
 Title:       Google Books > OpenLibrary > LoC
 Authors:     Google Books > OpenLibrary > LoC
@@ -119,17 +125,20 @@ LCC:         🏛️ Library of Congress (AUTHORITATIVE) > OpenLibrary > Subject
 ```
 
 **Critical Security Rules (v3.0):**
+
 - ✅ ALL protected routes MUST check `event.locals.session`
 - ✅ ALL database writes MUST include `user_id` from `locals.user.id`
 - ✅ NEVER expose one user's data to another user
 - ✅ Log suspicious access attempts (mismatched user_id)
 
 **API Timeout Configuration:**
+
 - Google Books: 10s
 - OpenLibrary: 10s
 - Library of Congress: 5s (fail quickly to avoid blocking UI)
 
 **Documentation to Maintain:**
+
 - `/docs/API_INTEGRATION_GUIDE.md` - Data mapping
 - `/docs/SERVERLESS_ARCHITECTURE.md` - Serverless patterns
 - `/docs/ANALYTICS_TELEMETRY.md` - Event tracking
@@ -141,6 +150,7 @@ LCC:         🏛️ Library of Congress (AUTHORITATIVE) > OpenLibrary > Subject
 **When to Use:** Data quality validation, export formats, classification logic, ISBN handling, metadata standards.
 
 **Responsibilities:**
+
 - Validate ISBN check digits (ISBN-10, ISBN-13)
 - Implement LCC/DDC classification logic
 - Generate SLiMS-compatible call numbers
@@ -152,21 +162,25 @@ LCC:         🏛️ Library of Congress (AUTHORITATIVE) > OpenLibrary > Subject
 **Key Standards:**
 
 **ISBN Handling:**
+
 - ISBN-10: 10 digits with check digit (0-9 or X)
 - ISBN-13: 13 digits starting with 978 or 979
 - ALWAYS validate check digits before trusting ISBNs
 - NEVER strip hyphens without preserving original format
 
 **SLiMS CSV Export (UTF-8 with BOM):**
+
 ```csv
 Title,Authors,ISBN,Publisher,Year,Classification,CallNumber,Collation,GMD,Language
 ```
 
 **Call Number Generation:**
+
 - Pattern: `{DDC/LCC} {AuthorCutter} {TitleInitial} {Year}`
 - Example: `"005.133 B87 E 2020"`
 
 **Data Quality Validation:**
+
 - Validate ISBN check digits
 - Validate LCC format
 - Verify data provenance (which source?)
@@ -174,12 +188,14 @@ Title,Authors,ISBN,Publisher,Year,Classification,CallNumber,Collation,GMD,Langua
 - Test with international characters
 
 **Trust Badges:**
+
 - 🏛️ **Official LoC:** LCC from Library of Congress (authoritative)
 - ✅ **Complete:** All 3 sources available
 - ⚠️ **Partial:** 1-2 sources failed
 - 🔴 **Limited:** Single source only
 
 **Documentation to Maintain:**
+
 - `/docs/BUSINESS_RULES.md` - Classification rules
 - `/docs/API_INTEGRATION_GUIDE.md` - Data mapping
 
@@ -190,6 +206,7 @@ Title,Authors,ISBN,Publisher,Year,Classification,CallNumber,Collation,GMD,Langua
 **When to Use:** Testing, release preparation, deployment verification, E2E testing, accessibility audits.
 
 **Responsibilities:**
+
 - Execute pre-deployment checklists
 - Test edge cases (network failures, malformed data, rapid scans)
 - Validate E2E test coverage
@@ -201,15 +218,18 @@ Title,Authors,ISBN,Publisher,Year,Classification,CallNumber,Collation,GMD,Langua
 **Critical Distinction - Git Push vs Production Deploy:**
 
 **Tier 1: Git Push (Routine Code Saving)**
+
 - Requirements: `npm run check` → 0 errors, `npm run build` succeeds
 - NO version bump required
 - NO documentation updates required (unless adding features)
 
 **Tier 2: Production Deploy (Major Release Event)**
+
 - Requirements: ALL Tier 1 + `npm test` passes + version bumped + docs updated
 - Rule: "We do NOT deploy to Cloudflare on every change. We ONLY deploy when Version Index and Documentation are synchronized."
 
 **Pre-Deployment Checklist:**
+
 - [ ] `npm run check` passes with 0 errors
 - [ ] `npm test` passes with 100% success rate
 - [ ] `npm run build` succeeds, bundle < 200KB gzipped
@@ -221,6 +241,7 @@ Title,Authors,ISBN,Publisher,Year,Classification,CallNumber,Collation,GMD,Langua
 - [ ] Git tag created: `git tag -a v{major}.{minor}.{patch}`
 
 **Documentation to Maintain:**
+
 - `/docs/DEPLOYMENT_GUIDE.md` - Deployment procedures
 - `/docs/QUICK_REFERENCE.md` - Testing commands
 - `CHANGELOG.md` - Release notes
@@ -232,6 +253,7 @@ Title,Authors,ISBN,Publisher,Year,Classification,CallNumber,Collation,GMD,Langua
 **When to Use:** Authentication, authorization, data isolation, image security, CSP compliance.
 
 **Responsibilities:**
+
 - Enforce authentication checks on all protected routes
 - Validate user_id scoping in database queries
 - Implement image URL sanitization (CSP compliance)
@@ -242,6 +264,7 @@ Title,Authors,ISBN,Publisher,Year,Classification,CallNumber,Collation,GMD,Langua
 **Security Patterns:**
 
 **Image Security (CRITICAL):**
+
 ```typescript
 import { getSecureImageUrl } from '$lib/security/image-proxy';
 
@@ -253,10 +276,11 @@ import { getSecureImageUrl } from '$lib/security/image-proxy';
 ```
 
 **Data Isolation Check:**
+
 ```typescript
 // ✅ CORRECT - User scoping in database query
 if (resourceUserId !== locals.user.id) {
-  throw error(403, 'Forbidden');
+  throw error(403, "Forbidden");
 }
 
 const scans = await db
@@ -266,6 +290,7 @@ const scans = await db
 ```
 
 **Documentation to Maintain:**
+
 - `/docs/ARCHITECTURE.md` - Security architecture
 - `/docs/DEPLOYMENT_GUIDE.md` - Environment variables
 - `/docs/IMAGE_SECURITY.md` - Image proxy patterns
@@ -278,6 +303,7 @@ const scans = await db
 **When to Use:** After major features, architecture changes, API modifications, or deployments.
 
 **Responsibilities:**
+
 - Scan codebase for new features/changes
 - Update all `/docs/` files to reflect current state
 - Move outdated docs to `/docs/legacy/`
@@ -286,6 +312,7 @@ const scans = await db
 - Verify documentation completeness and accuracy
 
 **Sync Procedure:**
+
 1. **Scan Repository:** Identify code changes since last sync
 2. **Map Changes:** Determine which docs need updates
 3. **Update Core Docs:** Modify `/docs/*.md` files
@@ -295,6 +322,7 @@ const scans = await db
 7. **Update Root Docs:** Sync `README.md`, `CHANGELOG.md` as needed
 
 **Sync Triggers:**
+
 - ✅ New feature merged to main
 - ✅ Architecture changes committed
 - ✅ API integration modified
@@ -302,11 +330,13 @@ const scans = await db
 - ✅ Version bump in `package.json`
 
 **Root Markdown Policy Enforcement:**
+
 - ✅ Only `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `agents.md`, `SECURITY.md` in root
 - ✅ All other `.md` files in `/docs/`, `/docs/meta/`, or `/docs/legacy/`
 - ✅ `docs/index.md` is the documentation hub
 
 **Documentation to Maintain:**
+
 - `/docs/index.md` - Documentation hub and navigation
 - `README.md` - Project overview
 - `CHANGELOG.md` - Version history
@@ -318,6 +348,7 @@ const scans = await db
 **When to Use:** Camera integration, barcode scanning, mobile UX, "unjammable" scanner logic.
 
 **Responsibilities:**
+
 - Integrate html5-qrcode library safely (SSR-compatible)
 - Implement camera permission handling
 - Prevent scanner jamming on rapid scans
@@ -328,11 +359,12 @@ const scans = await db
 **Key Patterns:**
 
 **SSR-Safe Camera Initialization:**
+
 ```typescript
 onMount(async () => {
   const { Html5Qrcode } = await import("html5-qrcode");
   const scanner = new Html5Qrcode("reader", { verbose: false });
-  
+
   await scanner.start(
     { facingMode: "environment" },
     { fps: 10, qrbox: { width: 250, height: 150 } },
@@ -348,6 +380,7 @@ onMount(async () => {
 ```
 
 **"Unjammable" Scanner Logic (Debounce Duplicates):**
+
 ```typescript
 // Debounce duplicate scans (3 second window)
 if (decodedText === lastScan && Date.now() - lastScanAt < 3000) {
@@ -356,6 +389,7 @@ if (decodedText === lastScan && Date.now() - lastScanAt < 3000) {
 ```
 
 **Documentation to Maintain:**
+
 - `/docs/MOBILE_FIELD_AGENT.md` - Field agent workflows
 - `/docs/ARCHITECTURE.md` - Mobile scanner architecture
 - `/docs/QUICK_REFERENCE.md` - Camera permission setup
@@ -408,15 +442,15 @@ When handing off between agents:
 
 ### Agent-Specific Resources
 
-| Agent                        | Primary Resources                                            |
-| ---------------------------- | ------------------------------------------------------------ |
-| Svelte 5 Architect           | `/docs/ARCHITECTURE.md`, SvelteKit docs, Tailwind CSS docs    |
-| Backend Resilience Engineer  | `/docs/API_INTEGRATION_GUIDE.md`, Cloudflare Workers docs     |
-| Senior Librarian             | `/docs/BUSINESS_RULES.md`, MARC21 spec, SLiMS docs           |
-| QA & Release Manager         | `/docs/DEPLOYMENT_GUIDE.md`, Vitest docs, Playwright docs    |
-| Security & Compliance        | `/docs/IMAGE_SECURITY.md`, OWASP guides, CSP spec             |
-| Documentation Synchronizer   | All `/docs/*.md` files, `docs/index.md`, Markdown style guide |
-| Mobile Scanner Specialist    | `/docs/MOBILE_FIELD_AGENT.md`, html5-qrcode docs             |
+| Agent                       | Primary Resources                                             |
+| --------------------------- | ------------------------------------------------------------- |
+| Svelte 5 Architect          | `/docs/ARCHITECTURE.md`, SvelteKit docs, Tailwind CSS docs    |
+| Backend Resilience Engineer | `/docs/API_INTEGRATION_GUIDE.md`, Cloudflare Workers docs     |
+| Senior Librarian            | `/docs/BUSINESS_RULES.md`, MARC21 spec, SLiMS docs            |
+| QA & Release Manager        | `/docs/DEPLOYMENT_GUIDE.md`, Vitest docs, Playwright docs     |
+| Security & Compliance       | `/docs/IMAGE_SECURITY.md`, OWASP guides, CSP spec             |
+| Documentation Synchronizer  | All `/docs/*.md` files, `docs/index.md`, Markdown style guide |
+| Mobile Scanner Specialist   | `/docs/MOBILE_FIELD_AGENT.md`, html5-qrcode docs              |
 
 ### External Documentation
 
@@ -435,6 +469,7 @@ When handing off between agents:
 **Purpose:** Regenerate this `agents.md` file when the documentation structure changes.
 
 **Trigger:** Run this prompt when:
+
 - New docs added to `/docs/`
 - Documentation reorganized
 - New agent responsibilities defined
