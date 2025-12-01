@@ -25,7 +25,8 @@ test("AI Clean API returns cleaned metadata with saved state", async ({
     title: "Clean Code",
   };
 
-  await page.route("**/api/ai/clean", async (route) => {
+  // Ensure the route interceptor captures both page fetches and API request context
+  await page.context().route("**/api/ai/clean", async (route) => {
     const request = route.request();
     const body = await request.postDataJSON();
 
@@ -44,16 +45,26 @@ test("AI Clean API returns cleaned metadata with saved state", async ({
     });
   });
 
-  // Make a direct POST request to the AI Clean endpoint
-  const response = await page.request.post("/api/ai/clean", {
-    data: fixture,
-    headers: { "x-playwright-test-session": "1" },
-  });
+  // Ensure the page has a valid origin (not about:blank) so fetch can use location.origin
+  await page.goto("/");
+  // Make a direct POST request from inside the page (so page.route/page.context().route intercepts it)
+  const response = await page.evaluate(async (payload) => {
+    const resp = await fetch(location.origin + "/api/ai/clean", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-playwright-test-session": "1",
+      },
+      body: JSON.stringify(payload),
+    });
+    const text = await resp.text();
+    return { status: resp.status, bodyText: text };
+  }, fixture);
 
   // Verify the response is successful
-  expect(response.status()).toBe(200);
+  expect(response.status).toBe(200);
 
-  const result = await response.json();
+  const result = JSON.parse(response.bodyText);
 
   // Verify cleaned metadata is returned
   expect(result.ddc).toBe("005.133");

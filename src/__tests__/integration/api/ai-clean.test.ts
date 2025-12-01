@@ -33,6 +33,26 @@ function createMockDB() {
   return db;
 }
 
+function createMockDBWithError() {
+  return {
+    prepare: (_sql: string) => ({
+      bind: () => ({
+        run: async () => {
+          throw new Error(
+            "SQLITE_CONSTRAINT: UNIQUE constraint failed: scans.user_id, scans.isbn",
+          );
+        },
+      }),
+      first: async () => null,
+      run: async () => {
+        throw new Error(
+          "SQLITE_CONSTRAINT: UNIQUE constraint failed: scans.user_id, scans.isbn",
+        );
+      },
+    }),
+  } as any;
+}
+
 function createMockEvent({
   body,
   isAuthenticated = true,
@@ -123,5 +143,25 @@ describe("POST /api/ai/clean - Integration", () => {
     expect(res.status).toBe(200);
     expect(data.title).toBe("Fallback Title");
     expect(data.ddc).toBe("005.100");
+  });
+
+  it("handles database unique constraint/race errors gracefully", async () => {
+    const { generateObject } = (await import("ai")) as any;
+    (generateObject as any).mockResolvedValue({
+      object: {
+        title: "Conflict Book",
+        ddc: "001.001",
+      },
+    });
+
+    const event = createMockEvent({ body: { title: "Conflict Book" } });
+    // Replace DB with one that throws constraint
+    event.platform.env.DB = createMockDBWithError();
+    const res = await POST(event as any);
+    const data = (await parseJsonSafe(res)) as any;
+    expect(res.status).toBe(200);
+    // When db throws, we should return saved: false (saveError set)
+    expect(data.saved).toBeFalsy();
+    expect(data.saveError).toBeDefined();
   });
 });
