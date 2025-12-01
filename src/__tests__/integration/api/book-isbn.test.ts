@@ -93,9 +93,32 @@ vi.mock("$lib/server/db", () => ({
       }
     );
   }),
+  getDrizzleDB: vi.fn(() => ({
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(() => Promise.resolve([])),
+        })),
+      })),
+    })),
+  })),
   createAnonymousScan: vi.fn(async () => undefined),
   createScan: vi.fn(async () => 1),
 }));
+
+// Mock drizzle helpers
+vi.mock("$lib/server/db/drizzle", () => ({
+  default: {
+    findAnyScanByIsbn: vi.fn(),
+    createScanDrizzle: vi.fn(async () => 1),
+  },
+}));
+
+// Import the mocked module to get reference
+import drizzleHelpers from "$lib/server/db/drizzle";
+const mockFindAnyScanByIsbn = drizzleHelpers.findAnyScanByIsbn as ReturnType<
+  typeof vi.fn
+>;
 
 // Helper to create mock RequestEvent
 function createMockEvent(options: {
@@ -188,8 +211,9 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
     it("should return cached data with D1-HIT header", async () => {
       const event = createMockEvent({ isbn: "9780134685991" });
 
-      // Simulate D1 Hit
-      mockFirst.mockResolvedValueOnce({
+      // Simulate D1 Hit in Drizzle
+      mockFindAnyScanByIsbn.mockResolvedValueOnce({
+        id: 1,
         json_data: JSON.stringify({
           isbn: "9780134685991",
           title: "Effective Java (D1 Cached)",
@@ -264,8 +288,9 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
     it("should set appropriate cache headers on D1 HIT", async () => {
       const event = createMockEvent({ isbn: "9780134685991" });
 
-      // Simulate D1 Hit
-      mockFirst.mockResolvedValueOnce({
+      // Simulate D1 Hit in Drizzle
+      mockFindAnyScanByIsbn.mockResolvedValueOnce({
+        id: 1,
         json_data: JSON.stringify({
           isbn: "9780134685991",
           title: "Cached Book",

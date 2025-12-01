@@ -1,15 +1,6 @@
 import { drizzle } from "drizzle-orm/d1";
 import type { D1Database } from "@cloudflare/workers-types";
-import {
-  eq,
-  and,
-  like,
-  desc,
-  or,
-  isNull,
-  sql,
-  count,
-} from "drizzle-orm";
+import { eq, and, like, desc, or, isNull, sql, count } from "drizzle-orm";
 import { z } from "zod";
 import { logger, LogEvents } from "../logger";
 import { bookSchema as mergedBookSchema } from "../../schemas";
@@ -52,7 +43,7 @@ export { scans, users, accounts, sessions, verification };
 export function parseJsonSafe<T>(
   json: string | null | undefined,
   schema: z.ZodSchema<T>,
-  fallback: T | null = null
+  fallback: T | null = null,
 ): T | null {
   if (!json) return fallback;
   try {
@@ -78,7 +69,7 @@ export function parseJsonSafe<T>(
  */
 export async function findUserByEmail(
   db: D1Database,
-  email: string
+  email: string,
 ): Promise<User | null> {
   const d = drizzle(db);
   const rows = await d
@@ -94,7 +85,7 @@ export async function findUserByEmail(
  */
 export async function findUserById(
   db: D1Database,
-  userId: string
+  userId: string,
 ): Promise<User | null> {
   const d = drizzle(db);
   const rows = await d
@@ -115,7 +106,7 @@ export async function findUserById(
 export async function getUserScans(
   db: D1Database,
   userId: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Scan[]> {
   const d = drizzle(db);
   const rows = await d
@@ -139,14 +130,14 @@ export async function searchUserScansByAuthor(
   db: D1Database,
   userId: string,
   authorQuery: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Scan[]> {
   const d = drizzle(db);
   const rows = await d
     .select()
     .from(scans)
     .where(
-      and(eq(scans.user_id, userId), like(scans.authors, `%${authorQuery}%`))
+      and(eq(scans.user_id, userId), like(scans.authors, `%${authorQuery}%`)),
     )
     .orderBy(desc(scans.created_at))
     .limit(limit);
@@ -166,14 +157,14 @@ export async function searchUserScansBySubject(
   db: D1Database,
   userId: string,
   subjectQuery: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Scan[]> {
   const d = drizzle(db);
   const rows = await d
     .select()
     .from(scans)
     .where(
-      and(eq(scans.user_id, userId), like(scans.subjects, `%${subjectQuery}%`))
+      and(eq(scans.user_id, userId), like(scans.subjects, `%${subjectQuery}%`)),
     )
     .orderBy(desc(scans.created_at))
     .limit(limit);
@@ -193,7 +184,7 @@ export async function searchUserScansByDDC(
   db: D1Database,
   userId: string,
   ddcQuery: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Scan[]> {
   const d = drizzle(db);
   const rows = await d
@@ -218,7 +209,7 @@ export async function searchUserScansByLCC(
   db: D1Database,
   userId: string,
   lccQuery: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Scan[]> {
   const d = drizzle(db);
   const rows = await d
@@ -243,15 +234,13 @@ export async function searchUserScansByTitle(
   db: D1Database,
   userId: string,
   titleQuery: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Scan[]> {
   const d = drizzle(db);
   const rows = await d
     .select()
     .from(scans)
-    .where(
-      and(eq(scans.user_id, userId), like(scans.title, `%${titleQuery}%`))
-    )
+    .where(and(eq(scans.user_id, userId), like(scans.title, `%${titleQuery}%`)))
     .orderBy(desc(scans.created_at))
     .limit(limit);
 
@@ -270,15 +259,13 @@ export async function searchUserScansByISBN(
   db: D1Database,
   userId: string,
   isbnQuery: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Scan[]> {
   const d = drizzle(db);
   const rows = await d
     .select()
     .from(scans)
-    .where(
-      and(eq(scans.user_id, userId), like(scans.isbn, `%${isbnQuery}%`))
-    )
+    .where(and(eq(scans.user_id, userId), like(scans.isbn, `%${isbnQuery}%`)))
     .orderBy(desc(scans.created_at))
     .limit(limit);
 
@@ -297,7 +284,7 @@ export async function searchUserScansGeneral(
   db: D1Database,
   userId: string,
   query: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Scan[]> {
   const searchTerm = `%${query}%`;
   const d = drizzle(db);
@@ -311,9 +298,9 @@ export async function searchUserScansGeneral(
           like(scans.title, searchTerm),
           like(scans.authors, searchTerm),
           like(scans.subjects, searchTerm),
-          like(scans.isbn, searchTerm)
-        )
-      )
+          like(scans.isbn, searchTerm),
+        ),
+      ),
     )
     .orderBy(desc(scans.created_at))
     .limit(limit);
@@ -331,7 +318,7 @@ export async function searchUserScansGeneral(
  */
 export async function countUserScans(
   db: D1Database,
-  userId: string
+  userId: string,
 ): Promise<number> {
   const d = drizzle(db);
   const result = await d
@@ -348,7 +335,7 @@ export async function countUserScans(
 export async function getScanById(
   db: D1Database,
   scanId: number,
-  userId: string
+  userId: string,
 ): Promise<Scan | null> {
   const d = drizzle(db);
   const rows = await d
@@ -372,7 +359,7 @@ export async function createScan(
   authors?: string[] | string,
   subjects?: string,
   ddc?: string,
-  lcc?: string
+  lcc?: string,
 ): Promise<number> {
   const authorsStr = Array.isArray(authors) ? authors.join("; ") : authors;
   const d = drizzle(db);
@@ -411,25 +398,28 @@ export async function createScan(
       .returning({ id: scans.id });
 
     if (result[0]?.id) {
-       logger.info(LogEvents.SCAN_CREATED, {
-          userId,
-          scanId: result[0].id,
-          isbn,
-          action: "upserted",
-        });
+      logger.info(LogEvents.SCAN_CREATED, {
+        userId,
+        scanId: result[0].id,
+        isbn,
+        action: "upserted",
+      });
       return result[0].id;
     }
 
     // Fallback if returning() is not supported or something else happened (though returning is supported in D1 now usually)
     // We try to fetch the id
-    const row = await d.select({ id: scans.id }).from(scans).where(and(eq(scans.user_id, userId), eq(scans.isbn, isbn))).limit(1);
+    const row = await d
+      .select({ id: scans.id })
+      .from(scans)
+      .where(and(eq(scans.user_id, userId), eq(scans.isbn, isbn)))
+      .limit(1);
     return row[0]?.id || 0;
-
   } catch (err) {
-     logger.error("scan_upsert_failed", { error: String(err), userId, isbn });
-     // Fallback to old race-condition logic if needed, but we should rely on upsert.
-     // If Drizzle/D1 fails upsert, we might need to investigate, but for now we throw or return 0.
-     throw err;
+    logger.error("scan_upsert_failed", { error: String(err), userId, isbn });
+    // Fallback to old race-condition logic if needed, but we should rely on upsert.
+    // If Drizzle/D1 fails upsert, we might need to investigate, but for now we throw or return 0.
+    throw err;
   }
 }
 
@@ -441,25 +431,25 @@ export async function createAnonymousScan(
   isbn: string,
   title: string,
   jsonData: string,
-  status: "draft" | "published" | "archived" = "draft"
+  status: "draft" | "published" | "archived" = "draft",
 ): Promise<number> {
   const d = drizzle(db);
   const result = await d
     .insert(scans)
     .values({
       user_id: null as any, // Allow null for anonymous? Schema says user_id is notNull() but previous code used NULL.
-                           // Wait, schema.ts says: user_id: text("user_id").notNull()
-                           // But createAnonymousScan in db.ts explicitly inserted NULL.
-                           // If schema strictly enforces notNull, then anonymous scans are invalid or schema is wrong.
-                           // However, previous code worked? Or maybe it failed?
-                           // Actually, previous code had a try/catch fallback to raw SQL inserting NULL.
-                           // If Drizzle schema says notNull(), Drizzle might block it.
-                           // But raw SQL might allow it if the actual DB schema allows it (which it might not if defined via Drizzle migration).
-                           // Let's check schema.ts again.
-                           // user_id: text("user_id").notNull()
-                           // So anonymous scans might be problematic if the table enforces it.
-                           // However, I must replicate the logic.
-                           // I will cast to any to bypass Drizzle type check, but if DB rejects it, it rejects it.
+      // Wait, schema.ts says: user_id: text("user_id").notNull()
+      // But createAnonymousScan in db.ts explicitly inserted NULL.
+      // If schema strictly enforces notNull, then anonymous scans are invalid or schema is wrong.
+      // However, previous code worked? Or maybe it failed?
+      // Actually, previous code had a try/catch fallback to raw SQL inserting NULL.
+      // If Drizzle schema says notNull(), Drizzle might block it.
+      // But raw SQL might allow it if the actual DB schema allows it (which it might not if defined via Drizzle migration).
+      // Let's check schema.ts again.
+      // user_id: text("user_id").notNull()
+      // So anonymous scans might be problematic if the table enforces it.
+      // However, I must replicate the logic.
+      // I will cast to any to bypass Drizzle type check, but if DB rejects it, it rejects it.
       isbn,
       title,
       json_data: jsonData,
@@ -479,7 +469,7 @@ export async function updateScanStatus(
   db: D1Database,
   scanId: number,
   userId: string,
-  status: "draft" | "published" | "archived"
+  status: "draft" | "published" | "archived",
 ): Promise<void> {
   const d = drizzle(db);
   await d
@@ -495,7 +485,7 @@ export async function updateScanStatus(
 export async function deleteScan(
   db: D1Database,
   scanId: number,
-  userId: string
+  userId: string,
 ): Promise<void> {
   const d = drizzle(db);
   await d
@@ -509,7 +499,7 @@ export async function deleteScan(
  */
 export async function getRecentScansGlobal(
   db: D1Database,
-  limit: number = 20
+  limit: number = 20,
 ): Promise<Scan[]> {
   const d = drizzle(db);
   const rows = await d
@@ -528,8 +518,14 @@ export async function getUserStats(db: D1Database, userId: string) {
 
   const [totalResult, publishedResult, draftResult] = await Promise.all([
     d.select({ count: count() }).from(scans).where(eq(scans.user_id, userId)),
-    d.select({ count: count() }).from(scans).where(and(eq(scans.user_id, userId), eq(scans.status, 'published'))),
-    d.select({ count: count() }).from(scans).where(and(eq(scans.user_id, userId), eq(scans.status, 'draft'))),
+    d
+      .select({ count: count() })
+      .from(scans)
+      .where(and(eq(scans.user_id, userId), eq(scans.status, "published"))),
+    d
+      .select({ count: count() })
+      .from(scans)
+      .where(and(eq(scans.user_id, userId), eq(scans.status, "draft"))),
   ]);
 
   return {
