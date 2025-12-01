@@ -143,6 +143,71 @@ LCC:         🏛️ Library of Congress (AUTHORITATIVE) > OpenLibrary > Subject
 - `/docs/SERVERLESS_ARCHITECTURE.md` - Serverless patterns
 - `/docs/ANALYTICS_TELEMETRY.md` - Event tracking
 
+### Drizzle ORM Adoption & Migration
+
+This project is migrating from raw D1 SQL helpers to Drizzle ORM (d1 adapter). The migration is incremental and designed to preserve the existing behavior while improving type-safety and developer ergonomics.
+
+Why Drizzle?
+
+- Better TypeScript integration with DB schema
+- Safer queries through typed schema accessors
+- Easier to maintain and refactor than raw SQL strings
+
+Current status (v3.0.0):
+
+- Drizzle schema & adapters introduced in `src/lib/server/db/schema.ts` and `src/lib/server/db/index.ts`.
+- Core helpers migrated to Drizzle with safe fallbacks: `getUserScans`, `getScanById`, `createScan` (with race-safe raw fallback), `updateScanStatus`, `deleteScan`, `findUserById` and `findUserByEmail`.
+- Helper wrappers for Drizzle-specific operations implemented in `src/lib/server/db/drizzle.ts`.
+- Client code now prefers `getRawDb(event.platform)` and re-exports it from `src/lib/server/index.ts`.
+- A `drizzle-kit` generation script was added to `package.json` and a CI job to detect drift is included (`.github/workflows/drizzle-migrations-check.yml`).
+
+Migration approach & rules:
+
+- Incremental: Prefer Drizzle, keep a raw SQL fallback in a catch block when an operation might be unsupported or for edge-case behavior.
+- Prefer typed helpers exported from `src/lib/server/db/index.ts` and `src/lib/server/db/drizzle.ts`.
+- Avoid `any` casts: prefer `unknown` and add type guards; use small `as any` casts when necessary but clean up in a follow-up.
+- Security: All writes MUST include `user_id` (never write user-scoped data without scoping to authenticated user id).
+- Query safety: Use `eq`, `and`, `or`, `isNull`, `like`, and `desc` from Drizzle; avoid string interpolation for user-provided values in raw SQL paths.
+
+Drizzle best practices (examples):
+
+```ts
+import { drizzle } from "drizzle-orm/d1";
+import { eq, desc, like, isNull } from "drizzle-orm";
+import { scans } from "$lib/server/db/schema";
+
+const d = drizzle(db as any);
+const rows = await d
+  .select()
+  .from(scans)
+  .where(and(eq(scans.user_id, userId), like(scans.title, `%${q}%`)))
+  .orderBy(desc(scans.created_at));
+```
+
+Future work / Roadmap:
+
+- Convert remaining search helpers and aggregation queries to Drizzle (e.g. `searchUserScansBy*` helpers and `getUserStats` using typed aggregates).
+- Replace the `getDB` alias completely and use `getRawDb` everywhere — the codebase currently references `getRawDb`, and legacy docs were updated.
+- Replace `as any` casts by deriving proper select/insert types from the strongly typed schema.
+- Convert `createScan` to a Drizzle-native UPSERT (ON CONFLICT) once we've verified behavior in D1/SQLite.
+- Remove raw SQL fallback in places where Drizzle provides a clear, tested equivalent.
+
+CI & deployment:
+
+- A `db:migrate:drizzle` script is available to generate migrations using drizzle-kit; the CI job detects migration drift and warns if schema changes are not checked in.
+- Ensure preflight: `npm run check`, `npm test`, `npm run build` are run in the CI before production deploys.
+
+Risks & Rollback:
+
+- Race conditions during concurrent `createScan` calls are mitigated with a raw SQL fallback until `ON CONFLICT` is implemented and tested.
+- Keep raw SQL fallbacks for complex aggregates until stable typed Drizzle replacements exist.
+
+Owner & Contacts:
+
+- Backend Resilience Engineer (primary)
+- Senior Librarian (data/validation owner)
+- QA (to validate migration before Tier 2 deployments)
+
 ---
 
 ### 3. Senior Librarian & SLiMS Expert 📚
