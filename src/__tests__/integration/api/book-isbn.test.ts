@@ -18,7 +18,7 @@ const mockCachePut = vi.fn();
 const mockCacheMatch = vi.fn();
 
 // Add missing properties to mock Request/Response for Cache API
-// @ts-ignore
+// Mock global Request for tests
 globalThis.Request = class MockRequest {
     public url: string;
     public headers: Map<string, string>;
@@ -28,7 +28,7 @@ globalThis.Request = class MockRequest {
     }
 } as any;
 
-// @ts-ignore
+// Provide simplified caches.default mock for tests
 globalThis.caches = {
   default: {
     put: mockCachePut,
