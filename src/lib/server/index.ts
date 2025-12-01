@@ -21,7 +21,7 @@ export {
 
 // Database operations
 export {
-  getDB,
+  getRawDb,
   findUserByEmail,
   findUserById,
   getUserScans,

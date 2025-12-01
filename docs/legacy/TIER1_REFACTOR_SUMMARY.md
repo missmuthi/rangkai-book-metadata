@@ -41,11 +41,11 @@ The Tier 1 architectural upgrades for Rangkai Book Metadata have been **complete
 
 ```typescript
 // Protected route example
-import { requireSession, getDB, getUserScans } from "$lib/server";
+import { requireSession, getRawDb, getUserScans } from "$lib/server";
 
 export const load = async (event) => {
   const session = await requireSession(event); // throws redirect if not logged in
-  const db = getDB(event.platform);
+  const db = getRawDb(event.platform);
   const scans = await getUserScans(db, session.user.id);
   return { user: session.user, scans };
 };
@@ -77,15 +77,15 @@ export const load = async (event) => {
 
 - ✅ Refactored `history/+page.server.ts` to use `getUserScans` and `countUserScans` helpers
 - ✅ Removed inline SQL queries from route files
-- ✅ All routes now use `getDB(event.platform)` instead of direct `platform.env.DB` access
+- ✅ All routes now use `getRawDb(event.platform)` instead of direct `platform.env.DB` access
 
 **Usage Pattern:**
 
 ```typescript
 // Database access example
-import { getDB, getUserScans, countUserScans } from "$lib/server";
+import { getRawDb, getUserScans, countUserScans } from "$lib/server";
 
-const db = getDB(event.platform);
+const db = getRawDb(event.platform);
 const [scans, total] = await Promise.all([
   getUserScans(db, userId, 50),
   countUserScans(db, userId),
@@ -153,7 +153,7 @@ All routes now call centralized server helpers for auth, data, and metadata oper
 
 - ✅ `src/routes/history/+page.server.ts`
   - **Before**: Manual `if (!locals.session)` check, inline SQL query
-  - **After**: Uses `requireSession`, `getDB`, `getUserScans`, `countUserScans`
+  - **After**: Uses `requireSession`, `getRawDb`, `getUserScans`, `countUserScans`
   - **Result**: 33 lines → 33 lines, but much cleaner and reusable
 
 **Route Patterns:**
@@ -162,14 +162,14 @@ All routes now call centralized server helpers for auth, data, and metadata oper
 // Dashboard route - uses all helpers
 import {
   requireSession,
-  getDB,
+  getRawDb,
   getUserScans,
   countUserScans,
 } from "$lib/server";
 
 export const load = async (event) => {
   const session = await requireSession(event);
-  const db = getDB(event.platform);
+  const db = getRawDb(event.platform);
   const [scans, totalScans] = await Promise.all([
     getUserScans(db, session.user.id, 50),
     countUserScans(db, session.user.id),
@@ -249,7 +249,7 @@ export const GET = async ({ params, platform }) => {
 
 ### Route Refactoring
 
-9. ✅ `src/routes/history/+page.server.ts` - Refactored to use `requireSession`, `getDB`, `getUserScans`, `countUserScans`
+9. ✅ `src/routes/history/+page.server.ts` - Refactored to use `requireSession`, `getRawDb`, `getUserScans`, `countUserScans`
 
 ---
 
@@ -274,7 +274,7 @@ $ npm run build
 
 - ✅ No inline SQL queries in routes
 - ✅ No manual auth checks (all use `requireSession`)
-- ✅ No direct platform binding access (all use `getDB`, `getKV`)
+- ✅ No direct platform binding access (all use `getRawDb`, `getKV`)
 - ✅ TypeScript strict mode passing
 - ✅ Consistent patterns across all routes
 

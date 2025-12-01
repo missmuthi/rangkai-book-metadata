@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { parseJsonSafe } from "$lib/utils/json";
 import { GET } from "../../../routes/api/dashboard/stats/+server";
 import type { RequestEvent as _RequestEvent } from "@sveltejs/kit";
 
@@ -153,7 +154,7 @@ describe("GET /api/dashboard/stats - Integration Tests", () => {
       const event = createMockEvent({ authenticated: true });
 
       const response = await GET(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(response.status).toBe(200);
       expect(data).toBeDefined();
@@ -165,7 +166,7 @@ describe("GET /api/dashboard/stats - Integration Tests", () => {
       const event = createMockEvent({ authenticated: true, hasScans: true });
 
       const response = await GET(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(response.status).toBe(200);
       expect(data).toMatchObject({
@@ -190,7 +191,7 @@ describe("GET /api/dashboard/stats - Integration Tests", () => {
       const event = createMockEvent({ authenticated: true, hasScans: true });
 
       const response = await GET(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(data.recentScans).toBeDefined();
       expect(Array.isArray(data.recentScans)).toBe(true);
@@ -203,7 +204,7 @@ describe("GET /api/dashboard/stats - Integration Tests", () => {
       const event = createMockEvent({ authenticated: true, hasScans: false });
 
       const response = await GET(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(response.status).toBe(200);
       expect(data.stats).toMatchObject({
@@ -226,7 +227,7 @@ describe("GET /api/dashboard/stats - Integration Tests", () => {
       });
 
       const response = await GET(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(data.activity).toBeUndefined();
     });
@@ -238,7 +239,7 @@ describe("GET /api/dashboard/stats - Integration Tests", () => {
       });
 
       const response = await GET(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(data.activity).toBeDefined();
       expect(data.activity).toMatchObject({
@@ -306,7 +307,7 @@ describe("GET /api/dashboard/stats - Integration Tests", () => {
       const event = createMockEvent({ authenticated: true });
 
       const response = await GET(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(data).toHaveProperty("stats");
       expect(data).toHaveProperty("recentScans");

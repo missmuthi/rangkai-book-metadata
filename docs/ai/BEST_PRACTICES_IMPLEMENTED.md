@@ -80,11 +80,11 @@ Implemented module import best practices to eliminate circular dependencies and 
 
    ```typescript
    // ✅ Good
-   import { getDB } from "$lib/server/db";
+   import { getRawDb } from "$lib/server/db";
    import { getKV } from "$lib/server/cache";
 
    // ❌ Avoid
-   import { getDB, getKV } from "$lib/server";
+   import { getRawDb, getKV } from "$lib/server";
    ```
 
 2. **Keep Barrel Exports for External Consumers**: Barrel exports are still useful for external packages but should be avoided within the same module tree

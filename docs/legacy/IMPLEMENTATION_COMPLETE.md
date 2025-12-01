@@ -189,7 +189,7 @@ const kv = getKV(platform);
 const cached = await cacheGet(kv, CacheKeys.book(isbn));
 let metadata = cached || (await fetchBookByIsbn(isbn));
 await cacheSet(kv, CacheKeys.book(isbn), metadata);
-const db = getDB(platform);
+const db = getRawDb(platform);
 await createScan(db, userId, isbn, metadata.title, JSON.stringify(metadata));
 ```
 
@@ -204,7 +204,7 @@ const result = await createBookScan(event, isbn);
 **Before (Tier 1):**
 
 ```typescript
-const db = getDB(platform);
+const db = getRawDb(platform);
 const [scans, total] = await Promise.all([
   getUserScans(db, userId, 50),
   countUserScans(db, userId),
@@ -255,7 +255,7 @@ const isAdmin = await isAdmin(event); // Boolean check
 ```bash
 $ bash validate-tier1.sh
 ✅ Auth helpers: requireSession, getSession, requireOwnership
-✅ DB helpers: getUserScans, createScan, getDB
+✅ DB helpers: getUserScans, createScan, getRawDb
 ✅ Cache helpers: cacheGet, cacheSet, CacheKeys
 ✅ Metadata engine: fetchBookByIsbn, searchBooksByTitle
 ✅ Routes use helpers (no inline SQL)

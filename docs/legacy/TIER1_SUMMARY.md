@@ -45,7 +45,7 @@
 
 - Data layer is already excellent
 - No direct `env.DB` or `env.BOOK_CACHE` usage in routes
-- Dashboard already uses `getDB()` and `getUserScans()`
+- Dashboard already uses `getRawDb()` and `getUserScans()`
 
 ### Metadata Fetching
 
@@ -69,7 +69,7 @@
 
 **Dashboard** (`/dashboard/+page.server.ts`):
 
-- Already uses `requireSession()`, `getDB()`, `getUserScans()`
+- Already uses `requireSession()`, `getRawDb()`, `getUserScans()`
 - Business logic properly delegated to helpers
 - This is the ideal pattern!
 

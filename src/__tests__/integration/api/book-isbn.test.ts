@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { parseJsonSafe } from "$lib/utils/json";
 import { GET } from "../../../routes/api/book/[isbn]/+server";
 
 // Mock global caches.default
@@ -85,7 +86,7 @@ const mockPrepare = vi.fn(() => ({
 }));
 
 vi.mock("$lib/server/db", () => ({
-  getDB: vi.fn((platform: any) => {
+  getRawDb: vi.fn((platform: any) => {
     return (
       platform?.env?.DB || {
         prepare: mockPrepare,
@@ -200,7 +201,7 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
       });
 
       const response = await GET(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(response.status).toBe(200);
       expect(response.headers.get("X-Cache")).toBe("D1-HIT");
@@ -212,7 +213,7 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
       // mockFirst returns null by default (miss)
 
       const response = await GET(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(response.status).toBe(200);
       expect(response.headers.get("X-Cache")).toBe("MISS");
@@ -236,7 +237,7 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
       const event = createMockEvent({ isbn: "9780132350884" });
 
       const response = await GET(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(data).toMatchObject({
         isbn: "9780132350884",

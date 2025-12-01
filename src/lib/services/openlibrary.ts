@@ -1,5 +1,6 @@
 import { error } from "@sveltejs/kit";
 import { logger } from "$lib/server/logger";
+import { parseJsonSafe } from "$lib/utils/json";
 
 export async function queryOpenLibrary(
   query: string,
@@ -44,9 +45,8 @@ export async function queryOpenLibrary(
       return { error: `OpenLibrary API error: ${response.statusText}` };
     }
 
-    const data = await response.json();
-
-    return data;
+    const data = await parseJsonSafe(response);
+    return data as any;
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
     logger.error("openlibrary_fetch_error", { error: errorMessage });

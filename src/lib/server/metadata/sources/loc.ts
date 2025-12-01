@@ -10,6 +10,7 @@ import type { LoCBookData } from "$lib/types";
 import { Analytics } from "$lib/services/analytics";
 import { logger, LogEvents } from "$lib/server/logger";
 import { CircuitBreaker, withTimeout } from "$lib/server/utils/resilience";
+import { parseJsonSafe } from "$lib/utils/json";
 import { getKV } from "$lib/server/cache";
 
 const LOC_BASE = "https://www.loc.gov/books/";
@@ -69,7 +70,7 @@ export async function fetchLibraryOfCongress(
       );
     }
 
-    const data: LoCBookData = await response.json();
+    const data = (await parseJsonSafe(response)) as LoCBookData;
 
     // Validate that we have actual results
     if (!data.results || data.results.length === 0) {

@@ -4,6 +4,7 @@
 	import { BookApiService } from '$lib/api';
 	import { normalizeISBN } from '$lib/isbn-helpers';
 	import type { MergedBookData } from '$lib/types';
+	import { parseJsonSafe } from '$lib/utils/json';
 	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
 	import { toasts } from '$lib/stores/toast';
@@ -127,7 +128,7 @@
 				throw new Error('AI Cleaning failed');
 			}
 
-			const cleaned = await res.json();
+			const cleaned = await parseJsonSafe(res) as MergedBookData;
 			lastResult = cleaned;
 
 			// Handle warnings

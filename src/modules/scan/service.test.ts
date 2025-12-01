@@ -28,7 +28,7 @@ const mockKV = {
 };
 
 vi.mock("$lib/server/db", () => ({
-  getDB: vi.fn(() => mockDB),
+  getRawDb: vi.fn(() => mockDB),
   createScan: vi.fn((_db, _userId, _isbn, _title, _jsonData, _status) => {
     return Promise.resolve(mockScanId);
   }),

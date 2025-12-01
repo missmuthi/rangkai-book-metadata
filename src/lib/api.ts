@@ -8,6 +8,7 @@ import type {
 } from "./types";
 import { getISBNSibling, isISBN } from "./utils";
 import { Analytics } from "./services/analytics";
+import { parseJsonSafe, isErrorObject } from "$lib/utils/json";
 
 /**
  * API Service Layer - Centralized API calls with enhanced error handling
@@ -52,7 +53,7 @@ export class BookApiService {
         );
       }
 
-      const data: GoogleBooksResponse = await response.json();
+      const data = (await parseJsonSafe(response)) as GoogleBooksResponse;
 
       // Track API timing
       Analytics.track("api_timing", {
@@ -118,10 +119,10 @@ export class BookApiService {
         );
       }
 
-      const data = await response.json();
+      const data = await parseJsonSafe(response);
 
       // Check for API-level errors
-      if (data.error) {
+      if (isErrorObject(data)) {
         // Graceful degradation for temporary unavailability
         if (
           data.error.includes("temporarily unavailable") ||
@@ -152,10 +153,9 @@ export class BookApiService {
 
       if (isIsbn) {
         const key = `ISBN:${query}`;
-        return data[key] || null;
+        return (data as any)[key] || null;
       }
-
-      return data;
+      return data as OpenLibraryBookData | OpenLibrarySearchResponse | null;
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
       Analytics.track("api_timing", {
@@ -354,9 +354,9 @@ export class BookApiService {
       const duration = Math.round(performance.now() - startTime);
 
       if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ message: response.statusText }));
+        const errorData = (await parseJsonSafe(response).catch(() => ({
+          message: response.statusText,
+        }))) as { message?: string };
         Analytics.track("error_occurred", {
           error_type: "serverless_api_error",
           source: "serverless",
@@ -365,7 +365,7 @@ export class BookApiService {
         throw new Error(errorData.message || `API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as MergedBookData;
 
       // Track successful API call
       Analytics.track("api_timing", {

@@ -1,6 +1,7 @@
 <script lang="ts">
-        import { onMount } from 'svelte';
+		import { onMount } from 'svelte';
         import type { MergedBookData } from '$lib/types';
+		import { parseJsonSafe } from '$lib/utils/json';
 
         interface BookWithScanId extends MergedBookData {
                 scan_id?: number;
@@ -175,10 +176,10 @@
 						if (!res.ok) {
 							let errorMessage = 'AI clean failed';
 							let errorCode = 'UNKNOWN';
-							try {
-									const errorData = await res.json();
-									errorCode = errorData.code || errorData.error || 'UNKNOWN';
-									errorMessage = errorData.message || errorData.error || errorMessage;
+							    try {
+								    const errorData = await parseJsonSafe(res) as { code?: string; error?: string; message?: string };
+								    errorCode = errorData.code || errorData.error || 'UNKNOWN';
+								    errorMessage = errorData.message || errorData.error || errorMessage;
 									
 									// 🔍 DIAGNOSTIC: Show full error details in console
 									clientLog('error', '❌ [AI Clean] Request Failed');
@@ -222,7 +223,7 @@
 							throw new Error(errorMessage);
 					}
 						
-						const cleaned = await res.json();
+						const cleaned = await parseJsonSafe(res) as any;
 						
 						// 🔍 DIAGNOSTIC: Log successful response
 						clientLog('info', '✅ [AI Clean] Success');

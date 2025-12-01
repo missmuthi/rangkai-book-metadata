@@ -11,7 +11,7 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { isValidISBN13, isValidISBN10 } from "$lib/utils";
 import {
-  getDB,
+  getRawDb,
   createScan,
   getUserScans,
   countUserScans,
@@ -123,7 +123,7 @@ export async function createBookScan(
     }
 
     // Save scan to database (user-scoped)
-    const db = getDB(event.platform);
+    const db = getRawDb(event.platform);
     const scanId = await createScan(
       db,
       userId,
@@ -179,7 +179,7 @@ export async function getScanHistory(
   }
 
   try {
-    const db = getDB(event.platform);
+    const db = getRawDb(event.platform);
 
     // Fetch scans and total count in parallel
     const [scans, total] = await Promise.all([

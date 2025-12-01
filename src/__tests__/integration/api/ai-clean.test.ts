@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { parseJsonSafe } from "$lib/utils/json";
 import { POST } from "../../../routes/api/ai/clean/+server";
 
 // Mock dependencies
@@ -10,7 +11,7 @@ vi.mock("$lib/server/logger", () => ({
 
 // Mock DB helper
 vi.mock("$lib/server/db", () => ({
-  getDB: vi.fn((platform: any) => platform.env.DB || null),
+  getRawDb: vi.fn((platform: any) => platform.env.DB || null),
 }));
 
 // Simple helper to create a mock D1-like database
@@ -71,7 +72,7 @@ describe("POST /api/ai/clean - Integration", () => {
     });
     const res = await POST(event as any);
     expect(res.status).toBe(401);
-    const data = await res.json();
+    const data = (await parseJsonSafe(res)) as any;
     expect(data.code).toBe("NO_SESSION");
   });
 
@@ -94,7 +95,7 @@ describe("POST /api/ai/clean - Integration", () => {
     const event = createMockEvent({ body });
 
     const res = await POST(event as any);
-    const data = await res.json();
+    const data = (await parseJsonSafe(res)) as any;
     console.warn("FALLBACK POST RESPONSE", { status: res.status, body: data });
     expect(res.status).toBe(200);
     expect(data.scan_id).toBeDefined();
@@ -117,7 +118,7 @@ describe("POST /api/ai/clean - Integration", () => {
 
     const event = createMockEvent({ body: { title: "Fallback" } });
     const res = await POST(event as any);
-    const data = await res.json();
+    const data = (await parseJsonSafe(res)) as any;
     console.warn("FALLBACK POST RESPONSE", { status: res.status, body: data });
     expect(res.status).toBe(200);
     expect(data.title).toBe("Fallback Title");

@@ -124,7 +124,7 @@ export const load = async (event) => {
 **Before:**
 
 ```typescript
-const db = getDB(event.platform);
+const db = getRawDb(event.platform);
 const [scans, totalScans] = await Promise.all([
   getUserScans(db, userId, 50),
   countUserScans(db, userId),
@@ -143,7 +143,7 @@ const dashboardData = await getDashboardData(event);
 **Before:**
 
 ```typescript
-const db = getDB(event.platform);
+const db = getRawDb(event.platform);
 const [scans, totalScans] = await Promise.all([
   getUserScans(db, userId),
   countUserScans(db, userId),
@@ -512,9 +512,9 @@ export const load = async (event) => {
 **Old pattern (Tier 1):**
 
 ```typescript
-import { getDB, getUserScans, countUserScans } from "$lib/server";
+import { getRawDb, getUserScans, countUserScans } from "$lib/server";
 
-const db = getDB(event.platform);
+const db = getRawDb(event.platform);
 const [scans, total] = await Promise.all([
   getUserScans(db, userId),
   countUserScans(db, userId),

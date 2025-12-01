@@ -6,7 +6,7 @@ import type { Scan } from "$lib/server/types";
 
 // Mock dependencies
 vi.mock("$lib/server/db", () => ({
-  getDB: vi.fn(() => mockDB),
+  getRawDb: vi.fn(() => mockDB),
   getUserScans: vi.fn((_db, _userId, limit) => {
     return Promise.resolve(mockScans.slice(0, limit));
   }),

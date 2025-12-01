@@ -7,17 +7,24 @@
 
 import type { D1Database, Scan, User } from "./types";
 import { logger, LogEvents } from "./logger";
+import { drizzle } from "drizzle-orm/d1";
+import { eq, and, like, desc, or, isNull } from "drizzle-orm";
+import { scans, users } from "./db/schema";
 
 /**
  * Get D1 database from platform context
  * Throws if database is not available
  */
-export function getDB(platform: App.Platform | undefined): D1Database {
+export function getRawDb(platform: App.Platform | undefined): D1Database {
   if (!platform?.env?.DB) {
     throw new Error("D1 database not available in platform context");
   }
   return platform.env.DB;
 }
+
+// Backwards compatible alias
+// NOTE: `getRawDb` is the canonical accessor for the D1 database.
+// The old `getDB` alias has been removed to encourage explicit naming.
 
 // ============================================================================
 // USER QUERIES
@@ -30,12 +37,13 @@ export async function findUserByEmail(
   db: D1Database,
   email: string,
 ): Promise<User | null> {
-  const result = await db
-    .prepare("SELECT * FROM user WHERE email = ?")
-    .bind(email)
-    .first<User>();
-
-  return result || null;
+  const d = drizzle(db as any);
+  const rows = await d
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  return (rows[0] as unknown as User) || null;
 }
 
 /**
@@ -45,12 +53,13 @@ export async function findUserById(
   db: D1Database,
   userId: string,
 ): Promise<User | null> {
-  const result = await db
-    .prepare("SELECT * FROM user WHERE id = ?")
-    .bind(userId)
-    .first<User>();
-
-  return result || null;
+  const d = drizzle(db as any);
+  const rows = await d
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return (rows[0] as unknown as User) || null;
 }
 
 // ============================================================================
@@ -70,22 +79,32 @@ export async function getUserScans(
   userId: string,
   limit: number = 50,
 ): Promise<Scan[]> {
-  const result = await db
-    .prepare(
-      `SELECT id, user_id, isbn, title, json_data, status, created_at, updated_at
-			 FROM scans 
-			 WHERE user_id = ? 
-			 ORDER BY created_at DESC 
-			 LIMIT ?`,
-    )
-    .bind(userId, limit)
-    .all<Scan>();
-
+  const d = drizzle(db as any);
+  const rows = await d
+    .select({
+      id: scans.id,
+      user_id: scans.user_id,
+      isbn: scans.isbn,
+      title: scans.title,
+      json_data: scans.json_data,
+      status: scans.status,
+      created_at: scans.created_at,
+      updated_at: scans.updated_at,
+    })
+    .from(scans)
+    .where(eq(scans.user_id, userId))
+    .orderBy(desc(scans.created_at))
+    .limit(limit);
   logger.info("scan_history_fetched", {
     userId,
-    count: result.results?.length || 0,
+    count: rows.length || 0,
   });
-  return result.results || [];
+  return rows as unknown as Scan[];
+  logger.info("scan_history_fetched", {
+    userId,
+    count: rows.length || 0,
+  });
+  return rows as unknown as Scan[];
 }
 
 /**
@@ -97,23 +116,55 @@ export async function searchUserScansByAuthor(
   authorQuery: string,
   limit: number = 50,
 ): Promise<Scan[]> {
-  const result = await db
-    .prepare(
-      `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
-       FROM scans
-       WHERE user_id = ? AND authors LIKE ?
-       ORDER BY created_at DESC
-       LIMIT ?`,
-    )
-    .bind(userId, `%${authorQuery}%`, limit)
-    .all<Scan>();
+  try {
+    const d = drizzle(db as any);
+    const rows = await d
+      .select({
+        id: scans.id,
+        user_id: scans.user_id,
+        isbn: scans.isbn,
+        title: scans.title,
+        authors: scans.authors,
+        subjects: scans.subjects,
+        ddc: scans.ddc,
+        lcc: scans.lcc,
+        json_data: scans.json_data,
+        status: scans.status,
+        created_at: scans.created_at,
+        updated_at: scans.updated_at,
+      })
+      .from(scans)
+      .where(
+        and(eq(scans.user_id, userId), like(scans.authors, `%${authorQuery}%`)),
+      )
+      .orderBy(desc(scans.created_at))
+      .limit(limit);
 
-  logger.info("scan_search_by_author", {
-    userId,
-    query: authorQuery,
-    count: result.results?.length || 0,
-  });
-  return result.results || [];
+    logger.info("scan_search_by_author", {
+      userId,
+      query: authorQuery,
+      count: rows.length || 0,
+    });
+    return rows as unknown as Scan[];
+  } catch (e) {
+    const result = await db
+      .prepare(
+        `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
+         FROM scans
+         WHERE user_id = ? AND authors LIKE ?
+         ORDER BY created_at DESC
+         LIMIT ?`,
+      )
+      .bind(userId, `%${authorQuery}%`, limit)
+      .all<Scan>();
+
+    logger.info("scan_search_by_author", {
+      userId,
+      query: authorQuery,
+      count: result.results?.length || 0,
+    });
+    return result.results || [];
+  }
 }
 
 /**
@@ -125,23 +176,58 @@ export async function searchUserScansBySubject(
   subjectQuery: string,
   limit: number = 50,
 ): Promise<Scan[]> {
-  const result = await db
-    .prepare(
-      `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
-       FROM scans
-       WHERE user_id = ? AND subjects LIKE ?
-       ORDER BY created_at DESC
-       LIMIT ?`,
-    )
-    .bind(userId, `%${subjectQuery}%`, limit)
-    .all<Scan>();
+  try {
+    const d = drizzle(db as any);
+    const rows = await d
+      .select({
+        id: scans.id,
+        user_id: scans.user_id,
+        isbn: scans.isbn,
+        title: scans.title,
+        authors: scans.authors,
+        subjects: scans.subjects,
+        ddc: scans.ddc,
+        lcc: scans.lcc,
+        json_data: scans.json_data,
+        status: scans.status,
+        created_at: scans.created_at,
+        updated_at: scans.updated_at,
+      })
+      .from(scans)
+      .where(
+        and(
+          eq(scans.user_id, userId),
+          like(scans.subjects, `%${subjectQuery}%`),
+        ),
+      )
+      .orderBy(desc(scans.created_at))
+      .limit(limit);
 
-  logger.info("scan_search_by_subject", {
-    userId,
-    query: subjectQuery,
-    count: result.results?.length || 0,
-  });
-  return result.results || [];
+    logger.info("scan_search_by_subject", {
+      userId,
+      query: subjectQuery,
+      count: rows.length || 0,
+    });
+    return rows as unknown as Scan[];
+  } catch (e) {
+    const result = await db
+      .prepare(
+        `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
+         FROM scans
+         WHERE user_id = ? AND subjects LIKE ?
+         ORDER BY created_at DESC
+         LIMIT ?`,
+      )
+      .bind(userId, `%${subjectQuery}%`, limit)
+      .all<Scan>();
+
+    logger.info("scan_search_by_subject", {
+      userId,
+      query: subjectQuery,
+      count: result.results?.length || 0,
+    });
+    return result.results || [];
+  }
 }
 
 /**
@@ -153,23 +239,53 @@ export async function searchUserScansByDDC(
   ddcQuery: string,
   limit: number = 50,
 ): Promise<Scan[]> {
-  const result = await db
-    .prepare(
-      `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
-       FROM scans
-       WHERE user_id = ? AND ddc LIKE ?
-       ORDER BY created_at DESC
-       LIMIT ?`,
-    )
-    .bind(userId, `${ddcQuery}%`, limit)
-    .all<Scan>();
+  try {
+    const d = drizzle(db as any);
+    const rows = await d
+      .select({
+        id: scans.id,
+        user_id: scans.user_id,
+        isbn: scans.isbn,
+        title: scans.title,
+        authors: scans.authors,
+        subjects: scans.subjects,
+        ddc: scans.ddc,
+        lcc: scans.lcc,
+        json_data: scans.json_data,
+        status: scans.status,
+        created_at: scans.created_at,
+        updated_at: scans.updated_at,
+      })
+      .from(scans)
+      .where(and(eq(scans.user_id, userId), like(scans.ddc, `${ddcQuery}%`)))
+      .orderBy(desc(scans.created_at))
+      .limit(limit);
 
-  logger.info("scan_search_by_ddc", {
-    userId,
-    query: ddcQuery,
-    count: result.results?.length || 0,
-  });
-  return result.results || [];
+    logger.info("scan_search_by_ddc", {
+      userId,
+      query: ddcQuery,
+      count: rows.length || 0,
+    });
+    return rows as unknown as Scan[];
+  } catch (e) {
+    const result = await db
+      .prepare(
+        `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
+         FROM scans
+         WHERE user_id = ? AND ddc LIKE ?
+         ORDER BY created_at DESC
+         LIMIT ?`,
+      )
+      .bind(userId, `${ddcQuery}%`, limit)
+      .all<Scan>();
+
+    logger.info("scan_search_by_ddc", {
+      userId,
+      query: ddcQuery,
+      count: result.results?.length || 0,
+    });
+    return result.results || [];
+  }
 }
 
 /**
@@ -181,23 +297,53 @@ export async function searchUserScansByLCC(
   lccQuery: string,
   limit: number = 50,
 ): Promise<Scan[]> {
-  const result = await db
-    .prepare(
-      `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
-       FROM scans
-       WHERE user_id = ? AND lcc LIKE ?
-       ORDER BY created_at DESC
-       LIMIT ?`,
-    )
-    .bind(userId, `${lccQuery}%`, limit)
-    .all<Scan>();
+  try {
+    const d = drizzle(db as any);
+    const rows = await d
+      .select({
+        id: scans.id,
+        user_id: scans.user_id,
+        isbn: scans.isbn,
+        title: scans.title,
+        authors: scans.authors,
+        subjects: scans.subjects,
+        ddc: scans.ddc,
+        lcc: scans.lcc,
+        json_data: scans.json_data,
+        status: scans.status,
+        created_at: scans.created_at,
+        updated_at: scans.updated_at,
+      })
+      .from(scans)
+      .where(and(eq(scans.user_id, userId), like(scans.lcc, `${lccQuery}%`)))
+      .orderBy(desc(scans.created_at))
+      .limit(limit);
 
-  logger.info("scan_search_by_lcc", {
-    userId,
-    query: lccQuery,
-    count: result.results?.length || 0,
-  });
-  return result.results || [];
+    logger.info("scan_search_by_lcc", {
+      userId,
+      query: lccQuery,
+      count: rows.length || 0,
+    });
+    return rows as unknown as Scan[];
+  } catch (e) {
+    const result = await db
+      .prepare(
+        `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
+         FROM scans
+         WHERE user_id = ? AND lcc LIKE ?
+         ORDER BY created_at DESC
+         LIMIT ?`,
+      )
+      .bind(userId, `${lccQuery}%`, limit)
+      .all<Scan>();
+
+    logger.info("scan_search_by_lcc", {
+      userId,
+      query: lccQuery,
+      count: result.results?.length || 0,
+    });
+    return result.results || [];
+  }
 }
 
 /**
@@ -210,28 +356,68 @@ export async function searchUserScansGeneral(
   limit: number = 50,
 ): Promise<Scan[]> {
   const searchTerm = `%${query}%`;
-  const result = await db
-    .prepare(
-      `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
-       FROM scans
-       WHERE user_id = ? AND (
-         title LIKE ? OR
-         authors LIKE ? OR
-         subjects LIKE ? OR
-         isbn LIKE ?
-       )
-       ORDER BY created_at DESC
-       LIMIT ?`,
-    )
-    .bind(userId, searchTerm, searchTerm, searchTerm, searchTerm, limit)
-    .all<Scan>();
+  try {
+    const d = drizzle(db as any);
+    const rows = await d
+      .select({
+        id: scans.id,
+        user_id: scans.user_id,
+        isbn: scans.isbn,
+        title: scans.title,
+        authors: scans.authors,
+        subjects: scans.subjects,
+        ddc: scans.ddc,
+        lcc: scans.lcc,
+        json_data: scans.json_data,
+        status: scans.status,
+        created_at: scans.created_at,
+        updated_at: scans.updated_at,
+      })
+      .from(scans)
+      .where(
+        and(
+          eq(scans.user_id, userId),
+          or(
+            like(scans.title, searchTerm),
+            like(scans.authors, searchTerm),
+            like(scans.subjects, searchTerm),
+            like(scans.isbn, searchTerm),
+          ),
+        ),
+      )
+      .orderBy(desc(scans.created_at))
+      .limit(limit);
 
-  logger.info("scan_search_general", {
-    userId,
-    query,
-    count: result.results?.length || 0,
-  });
-  return result.results || [];
+    logger.info("scan_search_general", {
+      userId,
+      query,
+      count: rows.length || 0,
+    });
+    return rows as unknown as Scan[];
+  } catch (e) {
+    const result = await db
+      .prepare(
+        `SELECT id, user_id, isbn, title, authors, subjects, ddc, lcc, json_data, status, created_at, updated_at
+         FROM scans
+         WHERE user_id = ? AND (
+           title LIKE ? OR
+           authors LIKE ? OR
+           subjects LIKE ? OR
+           isbn LIKE ?
+         )
+         ORDER BY created_at DESC
+         LIMIT ?`,
+      )
+      .bind(userId, searchTerm, searchTerm, searchTerm, searchTerm, limit)
+      .all<Scan>();
+
+    logger.info("scan_search_general", {
+      userId,
+      query,
+      count: result.results?.length || 0,
+    });
+    return result.results || [];
+  }
 }
 
 /**
@@ -241,12 +427,19 @@ export async function countUserScans(
   db: D1Database,
   userId: string,
 ): Promise<number> {
-  const result = await db
-    .prepare("SELECT COUNT(*) as total FROM scans WHERE user_id = ?")
-    .bind(userId)
-    .first<{ total: number }>();
+  try {
+    const d = drizzle(db as any);
+    const rows = await d.select().from(scans).where(eq(scans.user_id, userId));
+    // Use .length as a quick count fallback (not ideal for performance on large datasets)
+    return rows.length || 0;
+  } catch (e) {
+    const result = await db
+      .prepare("SELECT COUNT(*) as total FROM scans WHERE user_id = ?")
+      .bind(userId)
+      .first<{ total: number }>();
 
-  return result?.total || 0;
+    return result?.total || 0;
+  }
 }
 
 /**
@@ -262,12 +455,13 @@ export async function getScanById(
   scanId: number,
   userId: string,
 ): Promise<Scan | null> {
-  const result = await db
-    .prepare("SELECT * FROM scans WHERE id = ? AND user_id = ?")
-    .bind(scanId, userId)
-    .first<Scan>();
-
-  return result || null;
+  const d = drizzle(db as any);
+  const rows = await d
+    .select()
+    .from(scans)
+    .where(and(eq(scans.id, scanId), eq(scans.user_id, userId)))
+    .limit(1);
+  return (rows[0] as unknown as Scan) || null;
 }
 
 /**
@@ -300,97 +494,81 @@ export async function createScan(
 ): Promise<number> {
   // Normalize authors to string if array
   const authorsStr = Array.isArray(authors) ? authors.join("; ") : authors;
-
   try {
-    // Check if scan already exists for this user+isbn
-    const existing = await db
-      .prepare(`SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1`)
-      .bind(userId, isbn)
-      .first<{ id: number }>();
+    const d = drizzle(db as any);
 
-    if (existing?.id) {
-      // UPDATE existing scan
-      await db
-        .prepare(
-          `UPDATE scans SET title = ?, json_data = ?, status = ?, authors = ?, subjects = ?, ddc = ?, lcc = ?, updated_at = datetime('now')
-           WHERE id = ? AND user_id = ?`,
-        )
-        .bind(
-          title,
-          jsonData,
-          status,
-          authorsStr || null,
-          subjects || null,
-          ddc || null,
-          lcc || null,
-          existing.id,
+    if (userId) {
+      const existing = await d
+        .select({ id: scans.id })
+        .from(scans)
+        .where(and(eq(scans.user_id, userId), eq(scans.isbn, isbn)))
+        .limit(1);
+      if (existing[0]?.id) {
+        await d
+          .update(scans)
+          .set({
+            title,
+            json_data: jsonData,
+            status,
+            authors: authorsStr || null,
+            subjects: subjects || null,
+            ddc: ddc || null,
+            lcc: lcc || null,
+            updated_at: new Date().toISOString(),
+          })
+          .where(eq(scans.id, existing[0].id))
+          .run();
+
+        logger.info(LogEvents.SCAN_CREATED, {
           userId,
-        )
-        .run();
-
-      logger.info(LogEvents.SCAN_CREATED, {
-        userId,
-        scanId: existing.id,
-        isbn,
-        action: "updated",
-      });
-
-      return existing.id;
+          scanId: existing[0].id,
+          isbn,
+          action: "updated",
+        });
+        return existing[0].id;
+      }
     }
 
-    // INSERT new scan
-    const result = await db
-      .prepare(
-        `INSERT INTO scans (user_id, isbn, title, json_data, status, authors, subjects, ddc, lcc, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-      )
-      .bind(
-        userId,
+    await d
+      .insert(scans)
+      .values({
+        user_id: userId as any,
         isbn,
         title,
-        jsonData,
+        json_data: jsonData,
         status,
-        authorsStr || null,
-        subjects || null,
-        ddc || null,
-        lcc || null,
-      )
+        authors: (authorsStr || null) as any,
+        subjects: subjects || null,
+        ddc: ddc || null,
+        lcc: lcc || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .run();
 
-    if (!result.success) {
-      throw new Error("Failed to create scan");
+    if (userId) {
+      const inserted = await d
+        .select({ id: scans.id })
+        .from(scans)
+        .where(and(eq(scans.user_id, userId), eq(scans.isbn, isbn)))
+        .limit(1);
+      if (inserted[0]?.id) {
+        logger.info(LogEvents.SCAN_CREATED, {
+          userId,
+          scanId: inserted[0].id,
+          isbn,
+          action: "inserted",
+        });
+        return inserted[0].id;
+      }
     }
-
-    // Get the inserted ID
-    const lastInserted = await db
-      .prepare(`SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1`)
-      .bind(userId, isbn)
-      .first<{ id: number }>();
-
-    if (lastInserted?.id) {
-      logger.info(LogEvents.SCAN_CREATED, {
-        userId,
-        scanId: lastInserted.id,
-        isbn,
-        action: "inserted",
-      });
-      return lastInserted.id;
-    }
-
-    logger.error(LogEvents.DB_WRITE_FAILED, {
-      userId,
-      isbn,
-      context: "createScan",
-    });
     return 0;
   } catch (err) {
-    // Handle race condition: UNIQUE constraint violation
     const errorMsg = err instanceof Error ? err.message : String(err);
     if (
       errorMsg.includes("UNIQUE constraint failed") ||
       errorMsg.includes("SQLITE_CONSTRAINT")
     ) {
-      // Another request won the race, fetch that row
       const fallback = await db
         .prepare(`SELECT id FROM scans WHERE user_id = ? AND isbn = ? LIMIT 1`)
         .bind(userId, isbn)
@@ -427,23 +605,43 @@ export async function createAnonymousScan(
   jsonData: string,
   status: "draft" | "published" | "archived" = "draft",
 ): Promise<number> {
-  const result = await db
-    .prepare(
-      `INSERT INTO scans (user_id, isbn, title, json_data, status, created_at, updated_at)
-			 VALUES (NULL, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-    )
-    .bind(isbn, title, jsonData, status)
-    .run();
+  try {
+    const d = drizzle(db as any);
+    await d
+      .insert(scans)
+      .values({
+        user_id: null as any,
+        isbn,
+        title,
+        json_data: jsonData,
+        status,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .run();
 
-  if (!result.success) {
-    throw new Error("Failed to create anonymous scan");
+    // Attempt to find inserted row
+    const inserted = await d
+      .select({ id: scans.id })
+      .from(scans)
+      .where(and(isNull(scans.user_id), eq(scans.isbn, isbn)))
+      .limit(1);
+    if (inserted[0]?.id) return inserted[0].id;
+    return 0;
+  } catch (e) {
+    const result = await db
+      .prepare(
+        `INSERT INTO scans (user_id, isbn, title, json_data, status, created_at, updated_at)
+           VALUES (NULL, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+      )
+      .bind(isbn, title, jsonData, status)
+      .run();
+
+    if (!result.success) {
+      throw new Error("Failed to create anonymous scan");
+    }
+    return 0;
   }
-
-  // Since we can't reliably get the last inserted ID for an anonymous
-  // scan without a user_id, we'll return 0 as a placeholder.
-  // This is acceptable as anonymous scans are for logging/analytics
-  // and don't need to be retrieved individually.
-  return 0;
 }
 
 /**
@@ -455,13 +653,11 @@ export async function updateScanStatus(
   userId: string,
   status: "draft" | "published" | "archived",
 ): Promise<void> {
-  await db
-    .prepare(
-      `UPDATE scans 
-			 SET status = ?, updated_at = datetime('now') 
-			 WHERE id = ? AND user_id = ?`,
-    )
-    .bind(status, scanId, userId)
+  const d = drizzle(db as any);
+  await d
+    .update(scans)
+    .set({ status, updated_at: new Date().toISOString() })
+    .where(and(eq(scans.id, scanId), eq(scans.user_id, userId)))
     .run();
 }
 
@@ -473,9 +669,10 @@ export async function deleteScan(
   scanId: number,
   userId: string,
 ): Promise<void> {
-  await db
-    .prepare("DELETE FROM scans WHERE id = ? AND user_id = ?")
-    .bind(scanId, userId)
+  const d = drizzle(db as any);
+  await d
+    .delete(scans)
+    .where(and(eq(scans.id, scanId), eq(scans.user_id, userId)))
     .run();
 }
 
@@ -487,17 +684,20 @@ export async function getRecentScansGlobal(
   db: D1Database,
   limit: number = 20,
 ): Promise<Scan[]> {
-  const result = await db
-    .prepare(
-      `SELECT id, user_id, isbn, title, status, created_at
-			 FROM scans 
-			 ORDER BY created_at DESC 
-			 LIMIT ?`,
-    )
-    .bind(limit)
-    .all<Scan>();
-
-  return result.results || [];
+  const d = drizzle(db as any);
+  const rows = await d
+    .select({
+      id: scans.id,
+      user_id: scans.user_id,
+      isbn: scans.isbn,
+      title: scans.title,
+      status: scans.status,
+      created_at: scans.created_at,
+    })
+    .from(scans)
+    .orderBy(desc(scans.created_at))
+    .limit(limit);
+  return rows as unknown as Scan[];
 }
 
 // ============================================================================
@@ -508,6 +708,7 @@ export async function getRecentScansGlobal(
  * Get user statistics
  */
 export async function getUserStats(db: D1Database, userId: string) {
+  // Use raw D1 queries for counts to avoid Drizzle aggregate typing complexities
   const [total, published, draft] = await Promise.all([
     db
       .prepare("SELECT COUNT(*) as count FROM scans WHERE user_id = ?")

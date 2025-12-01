@@ -10,7 +10,7 @@
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { requireSession } from "$lib/server/auth";
-import { getDB, searchUserScansGeneral } from "$lib/server/db";
+import { getRawDb, searchUserScansGeneral } from "$lib/server/db";
 import { logger } from "$lib/server/logger";
 
 export const GET: RequestHandler = async (event) => {
@@ -31,7 +31,7 @@ export const GET: RequestHandler = async (event) => {
   }
 
   try {
-    const db = getDB(event.platform);
+    const db = getRawDb(event.platform);
     const results = await searchUserScansGeneral(
       db,
       userId,

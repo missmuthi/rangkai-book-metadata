@@ -134,11 +134,11 @@ export const load = async (event) => {
 
 ```typescript
 import { requireAdmin } from "$modules/auth";
-import { getDB, getRecentScansGlobal } from "$lib/server";
+import { getRawDb, getRecentScansGlobal } from "$lib/server";
 
 export const load = async (event) => {
   await requireAdmin(event); // 403 if not admin
-  const db = getDB(event.platform);
+  const db = getRawDb(event.platform);
   const scans = await getRecentScansGlobal(db, 50);
   return { scans };
 };
@@ -235,8 +235,8 @@ import { createBookScan } from "../../modules/scan/service";
 **Tier 1 (Infrastructure):**
 
 ```typescript
-import { getDB, getUserScans } from "$lib/server";
-const db = getDB(event.platform);
+import { getRawDb, getUserScans } from "$lib/server";
+const db = getRawDb(event.platform);
 const scans = await getUserScans(db, userId);
 ```
 

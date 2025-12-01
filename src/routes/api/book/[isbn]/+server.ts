@@ -14,7 +14,9 @@
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import type { MergedBookData } from "$lib/types";
-import { getDB, createScan } from "$lib/server/db";
+import { getRawDb, createScan } from "$lib/server/db";
+import { getDrizzleDB } from "$lib/server/db/index";
+import drizzleHelpers from "$lib/server/db/drizzle";
 import { fetchBookByIsbn } from "$lib/server/metadata";
 import { logger } from "$lib/server/logger";
 import { isbnSchema } from "$lib/schemas";
@@ -95,24 +97,40 @@ export const GET: RequestHandler = async ({
   }
 
   // === STEP 2: Check D1 (Source of Truth) ===
-  const db = getDB(platform);
+  const db = getRawDb(platform);
+  const drizzleDb = getDrizzleDB(platform);
   let responseData: MergedBookData | null = null;
   let cacheHit = false;
   let source = "fetch";
 
   try {
-    // Check D1 for ANY scan with this ISBN (Global Cache)
-    const existingScan = await db
-      .prepare("SELECT json_data FROM scans WHERE isbn = ? LIMIT 1")
-      .bind(isbn)
-      .first<{ json_data: string }>();
-    if (existingScan) {
+    // Prefer Drizzle if available
+    const existingScan = await drizzleHelpers.findAnyScanByIsbn(
+      drizzleDb,
+      isbn,
+    );
+    if (existingScan && existingScan.json_data) {
       responseData = JSON.parse(existingScan.json_data);
       cacheHit = true;
       source = "d1";
       logger.info("d1_cache_hit", { isbn });
     }
   } catch (e) {
+    // Fallback to the existing D1 raw query if Drizzle isn't configured or test mocks intercept
+    try {
+      const existingScan = await db
+        .prepare("SELECT json_data FROM scans WHERE isbn = ? LIMIT 1")
+        .bind(isbn)
+        .first<{ json_data: string }>();
+      if (existingScan && existingScan.json_data) {
+        responseData = JSON.parse(existingScan.json_data);
+        cacheHit = true;
+        source = "d1";
+        logger.info("d1_cache_hit", { isbn });
+      }
+    } catch (err) {
+      logger.error("d1_cache_check_failed", { error: err });
+    }
     logger.error("d1_cache_check_failed", { error: e });
   }
 
@@ -197,18 +215,35 @@ export const GET: RequestHandler = async ({
       const title = responseData.title || "Unknown Title";
       const jsonData = JSON.stringify(responseData);
 
-      const scanId = await createScan(
-        db,
-        locals.user.id,
-        isbn,
-        title,
-        jsonData,
-        "draft",
-        responseData.authors,
-        responseData.subjects,
-        responseData.ddc,
-        responseData.lcc,
-      );
+      let scanId;
+      try {
+        scanId = await drizzleHelpers.createScanDrizzle(
+          drizzleDb,
+          locals.user.id,
+          isbn,
+          title,
+          jsonData,
+          "draft",
+          responseData.authors,
+          responseData.subjects,
+          responseData.ddc,
+          responseData.lcc,
+        );
+      } catch (drizzleErr) {
+        // Fallback to existing raw SQL function
+        scanId = await createScan(
+          db,
+          locals.user.id,
+          isbn,
+          title,
+          jsonData,
+          "draft",
+          responseData.authors,
+          responseData.subjects,
+          responseData.ddc,
+          responseData.lcc,
+        );
+      }
 
       // Update response with the correct scan_id for THIS user
       responseData.scan_id = scanId;

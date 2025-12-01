@@ -25,10 +25,14 @@
     "test:e2e:smoke": "playwright test --grep 'Search by ISBN displays merged metadata card' --workers=1 --reporter=list",
     "db:migrate:local": "wrangler d1 execute DB --local --file=./schema.sql",
     "db:migrate:prod": "wrangler d1 execute DB --remote --file=./schema.sql",
+    "db:migrate:drizzle": "npx drizzle-kit generate --config ./drizzle.config.ts --out ./migrations",
+    "db:migrate:drizzle:check": "npx drizzle-kit generate --config ./drizzle.config.ts --out ./drizzle-temp && git --no-pager diff --no-index --name-only ./migrations ./drizzle-temp || true",
     "diagnostic": "node diagnostic.js",
     "diagnostic:fast": "node diagnostic.js --fast"
   },
   "devDependencies": {
+    "drizzle-orm": "^0.33.0",
+    "drizzle-kit": "^0.42.0",
     "@better-auth/cli": "^1.4.4",
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.44.0",

@@ -12,6 +12,7 @@ import type {
 import { Analytics } from "$lib/services/analytics";
 import { logger, LogEvents } from "$lib/server/logger";
 import { CircuitBreaker, withTimeout } from "$lib/server/utils/resilience";
+import { parseJsonSafe, isErrorObject } from "$lib/utils/json";
 import { getKV } from "$lib/server/cache";
 
 // Platform object is needed to get KV, so we need to inject it or handle it in the caller.
@@ -87,9 +88,9 @@ export async function fetchOpenLibrary(
       );
     }
 
-    const data = await response.json();
+    const data = await parseJsonSafe(response);
 
-    if (data.error) {
+    if (isErrorObject(data)) {
       if (
         data.error.includes("temporarily unavailable") ||
         data.error.includes("rate limit")
@@ -123,10 +124,11 @@ export async function fetchOpenLibrary(
 
     if (isIsbn) {
       const key = `ISBN:${query}`;
-      return data[key] || null;
+      // data is typed as OpenLibrary response or object; access via any index
+      return (data as any)[key] || null;
     }
 
-    return data;
+    return data as any;
   } catch (error) {
     const duration = Math.round(performance.now() - startTime);
     Analytics.track("api_timing", {

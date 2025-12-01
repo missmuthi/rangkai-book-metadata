@@ -1,3 +1,7 @@
+import type { RequestEvent } from "@sveltejs/kit";
+import { requireSession } from "$lib/server/auth";
+   import { getRawDb } from "$lib/server/db";
+
 # Contributing to Rangkai Book Metadata
 
 Thank you for considering contributing to Rangkai! This guide will help you get started.
@@ -149,13 +153,16 @@ Includes a production build test (slower but comprehensive).
    // src/modules/my-module/service.ts
    import type { RequestEvent } from "@sveltejs/kit";
    import { requireSession } from "$lib/server/auth";
-   import { getDB } from "$lib/server/db";
+   import { getRawDb } from "$lib/server/db";
 
    export async function myModuleFunction(
      event: RequestEvent,
    ): Promise<MyResult> {
      const session = await requireSession(event);
-     const db = getDB(event);
+    export async function myModuleFunction(
+       event: RequestEvent,
+    ): Promise<MyResult> {
+       const db = getRawDb(event.platform);
      // ... your logic
    }
    ```

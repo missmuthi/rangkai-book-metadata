@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { parseJsonSafe } from "$lib/utils/json";
 import { POST } from "../../../routes/api/scan/+server";
 import type { RequestEvent as _RequestEvent } from "@sveltejs/kit";
 
@@ -130,7 +131,7 @@ describe("POST /api/scan - Integration Tests", () => {
       });
 
       const response = await POST(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
@@ -185,7 +186,7 @@ describe("POST /api/scan - Integration Tests", () => {
       });
 
       const response = await POST(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(response.status).toBe(200);
       expect(data.scan.isbn).toBe("9780132350884");
@@ -200,7 +201,7 @@ describe("POST /api/scan - Integration Tests", () => {
       });
 
       const response = await POST(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(response.status).toBe(200);
       expect(data).toMatchObject({
@@ -235,7 +236,7 @@ describe("POST /api/scan - Integration Tests", () => {
       });
 
       const response = await POST(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(data.cached).toBe(true);
     });
@@ -277,7 +278,7 @@ describe("POST /api/scan - Integration Tests", () => {
       });
 
       const response = await POST(event);
-      const data = await response.json();
+      const data = (await parseJsonSafe(response)) as any;
 
       expect(data).toHaveProperty("success");
       expect(data).toHaveProperty("scan");

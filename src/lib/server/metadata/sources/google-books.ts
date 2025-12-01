@@ -9,6 +9,7 @@ import type { GoogleBooksResponse } from "$lib/types";
 import { Analytics } from "$lib/services/analytics";
 import { logger, LogEvents } from "$lib/server/logger";
 import { CircuitBreaker, withTimeout } from "$lib/server/utils/resilience";
+import { parseJsonSafe } from "$lib/utils/json";
 import { getKV } from "$lib/server/cache";
 
 const GOOGLE_BOOKS_BASE = "https://www.googleapis.com/books/v1/volumes";
@@ -63,7 +64,7 @@ export async function fetchGoogleBooks(
       );
     }
 
-    const data: GoogleBooksResponse = await response.json();
+    const data = (await parseJsonSafe(response)) as GoogleBooksResponse;
 
     Analytics.track("api_timing", {
       source: "google",

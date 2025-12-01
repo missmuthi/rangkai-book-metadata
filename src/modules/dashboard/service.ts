@@ -8,7 +8,7 @@
  */
 
 import type { RequestEvent } from "@sveltejs/kit";
-import { getDB, getUserScans, getUserStats } from "$lib/server/db";
+import { getRawDb, getUserScans, getUserStats } from "$lib/server/db";
 import { logger, LogEvents } from "$lib/server/logger";
 import type { Scan } from "$lib/server/types";
 
@@ -52,7 +52,7 @@ export async function getDashboardData(
   }
 
   try {
-    const db = getDB(event.platform);
+    const db = getRawDb(event.platform);
 
     // Fetch stats and recent scans in parallel
     const [stats, recentScans] = await Promise.all([
@@ -109,7 +109,7 @@ export async function getActivitySummary(
   }
 
   try {
-    const db = getDB(event.platform);
+    const db = getRawDb(event.platform);
     const scans = await getUserScans(db, userId, 1000); // Fetch more for analytics
 
     const now = new Date();
@@ -174,7 +174,7 @@ export async function getScanTrends(
   }
 
   try {
-    const db = getDB(event.platform);
+    const db = getRawDb(event.platform);
     const scans = await getUserScans(db, userId, 1000);
 
     const now = new Date();
