@@ -2,7 +2,7 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { deepClean, normalizeKeys } from "$lib/utils/metadata";
 import type { MergedBookData } from "$lib/types";
 
@@ -89,6 +89,23 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
       );
     }
 
+    const apiKey = platform.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!apiKey) {
+      console.error(
+        "[AI Clean] ❌ Missing GOOGLE_GENERATIVE_AI_API_KEY in platform.env",
+      );
+      return json(
+        {
+          error:
+            "AI service is not configured (missing GOOGLE_GENERATIVE_AI_API_KEY).",
+          code: "AI_NOT_CONFIGURED",
+        },
+        { status: 500 },
+      );
+    }
+
+    const googleProvider = createGoogleGenerativeAI({ apiKey });
+
     console.warn(
       "[AI Clean] Request validated - Book:",
       book.title || "Untitled",
@@ -104,35 +121,21 @@ Your mission: Transform raw book metadata into **SLiMS-ready bibliographic recor
 ## CRITICAL CATALOGING RULES:
 
 ### 1. Classification Codes (MANDATORY - NEVER leave empty)
-- **DDC (Dewey Decimal)**: Use 3-digit base with optional decimal extensions
   - Examples: "005.133" (Java programming), "610.73" (Nursing), "330" (Economics)
   - ESTIMATE from title/subjects if not provided
-- **LCC (Library of Congress)**: Use letter(s) + number + optional decimal
   - Examples: "QA76.73.J38" (Java), "RT41" (Nursing), "HB171" (Economics)
   - ESTIMATE from title/subjects if not provided
 
 ### 2. Publisher Format (ISBD Standard)
 Format: "Place : Publisher, Year"
-- Example: "Jakarta : Gramedia Pustaka Utama, 2024"
-- Use "S.l." for unknown place, "s.n." for unknown publisher, "[n.d.]" for unknown year
 
 ### 3. Author Names
-- Clean academic titles (remove Ph.D, M.Sc, Dr., Prof.)
-- Format: "Surname, Given Name" (Western) or natural order for Indonesian names
-- Multiple authors: Use semicolon separator
 
 ### 4. Language Codes (ISO 639-2)
-- Indonesian: "ind", English: "eng", Arabic: "ara", Javanese: "jav"
-- INFER from title if not provided
 
 ### 5. Subject Headings
-- Use semicolon-separated terms
-- Follow LCSH or Indonesian subject heading conventions
-- Example: "Computer programming; Java (Programming language); Software development"
 
 ### 6. Description
-- Maximum 2 sentences summarizing the book's content and purpose
-- Focus on what the reader will learn or gain
 
 ## INPUT DATA:
 ${JSON.stringify(book, null, 2)}
@@ -146,8 +149,8 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       console.warn("[AI Clean] Calling Gemini API...");
       const startTime = Date.now();
       
-      const gen = await generateObject({
-        model: google("gemini-2.0-flash-exp"),
+        const gen = await generateObject({
+          model: googleProvider("gemini-2.0-flash-exp"),
         schema: metadataSchema,
         system: systemPrompt,
         prompt: `Complete the bibliographic record for: "${book.title || "Unknown Title"}" by ${book.author || "Unknown Author"}. ISBN: ${book.isbn13 || book.isbn10 || book.isbn || "N/A"}`,

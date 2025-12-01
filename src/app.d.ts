@@ -44,6 +44,8 @@ declare global {
         GOOGLE_CLIENT_ID: string;
         /** Google OAuth Client Secret */
         GOOGLE_CLIENT_SECRET: string;
+        /** Google Generative AI API Key for AI cleaning */
+        GOOGLE_GENERATIVE_AI_API_KEY: string;
       };
       /**
        * Cloudflare Workers context for background tasks
