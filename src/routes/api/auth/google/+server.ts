@@ -5,7 +5,10 @@ import { logger } from "$lib/server/logger";
 import { z } from "zod";
 
 const querySchema = z.object({
-  debug: z.string().optional().transform((val) => val === "true"),
+  debug: z
+    .string()
+    .optional()
+    .transform((val) => val === "true"),
 });
 
 /**
@@ -44,12 +47,16 @@ function isSecureContext(url: URL): boolean {
  */
 export const GET: RequestHandler = async ({ platform, cookies, url }) => {
   if (!platform?.env) {
-    logger.error("oauth_platform_error", { message: "Platform environment not available" });
+    logger.error("oauth_platform_error", {
+      message: "Platform environment not available",
+    });
     return new Response("Platform not configured", { status: 500 });
   }
 
   // Validate query parameters
-  const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams));
+  const queryResult = querySchema.safeParse(
+    Object.fromEntries(url.searchParams),
+  );
   if (!queryResult.success) {
     return error(400, "Invalid query parameters");
   }
@@ -73,7 +80,7 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
       logger.debug("oauth_init", {
         state: state.substring(0, 8) + "...",
         hostname: authUrl.hostname,
-        secure: isSecureContext(url)
+        secure: isSecureContext(url),
       });
     }
 
@@ -104,7 +111,9 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
       throw err;
     }
 
-    logger.error("oauth_init_failed", { error: err instanceof Error ? err.message : err });
+    logger.error("oauth_init_failed", {
+      error: err instanceof Error ? err.message : err,
+    });
 
     // Redirect to login with error
     throw redirect(302, "/login?error=oauth_init_failed");

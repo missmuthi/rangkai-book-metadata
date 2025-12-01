@@ -1,6 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { generateObject } from "ai";
+import { logger } from "$lib/server/logger";
 import { z } from "zod";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { deepClean, normalizeKeys } from "$lib/utils/metadata";
@@ -38,17 +39,10 @@ const metadataSchema = z.object({
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
   // Enhanced authentication check with detailed error logging
-  console.warn("[AI Clean] Authentication check started");
-  console.warn("[AI Clean] locals.session exists:", !!locals.session);
-  console.warn("[AI Clean] locals.user exists:", !!locals.user);
-  console.warn("[AI Clean] platform exists:", !!platform);
-  console.warn("[AI Clean] platform.env exists:", !!platform?.env);
-  console.warn("[AI Clean] DB exists:", !!platform?.env?.DB);
+  logger.debug("ai_clean_auth_check_started", { sessionExists: !!locals.session, userExists: !!locals.user, platformExists: !!platform, envExists: !!platform?.env, dbExists: !!platform?.env?.DB });
 
   if (!locals.session || !locals.user) {
-    console.error(
-      "[AI Clean] ❌ Authentication failed - no session or user in locals",
-    );
+    logger.warn("ai_clean_auth_failed", { reason: "no_session_or_user" });
     return json(
       {
         error: "Authentication required. Please log in again.",
@@ -61,7 +55,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
   const userId = locals.user.id;
   const DB = platform?.env?.DB;
 
-  console.warn("[AI Clean] ✅ Authentication successful, userId:", userId);
+  logger.info("ai_clean_auth_success", { userId });
 
   try {
     const body = (await request.json()) as MergedBookData & {
@@ -71,14 +65,12 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
     const { scan_id, mode: _mode = "fill_gaps", ...book } = body;
 
     if (!book) {
-      console.error("[AI Clean] ❌ No book data provided in request");
+      logger.warn("ai_clean_no_book_provided", {});
       return json({ error: "No book data provided" }, { status: 400 });
     }
 
     if (!DB) {
-      console.error(
-        "[AI Clean] ❌ Database not available - platform.env.DB is missing",
-      );
+      logger.error("ai_clean_no_database", {});
       return json(
         {
           error:
@@ -91,9 +83,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
     const apiKey = platform.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      console.error(
-        "[AI Clean] ❌ Missing GOOGLE_GENERATIVE_AI_API_KEY in platform.env",
-      );
+      logger.error("ai_clean_missing_api_key", {});
       return json(
         {
           error:
@@ -106,12 +96,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
     const googleProvider = createGoogleGenerativeAI({ apiKey });
 
-    console.warn(
-      "[AI Clean] Request validated - Book:",
-      book.title || "Untitled",
-      "ISBN:",
-      book.isbn || "N/A",
-    );
+    logger.debug("ai_clean_request_validated", { title: book.title || 'Untitled', isbn: book.isbn || 'N/A' });
 
     // 1. SLIMS SENIOR LIBRARIAN SYSTEM PROMPT (Optimized for Indonesian libraries)
     const systemPrompt = `You are a **Senior Librarian & SLiMS Cataloging Expert** with 20+ years of experience in Indonesian academic libraries.
@@ -146,36 +131,48 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
     // 2. GENERATE DATA (defensive: handle failures in production)
     let rawAiResult: unknown = null;
     try {
-      console.warn("[AI Clean] Calling Gemini API...");
+      logger.debug("ai_clean_gemini_call_started", {});
       const startTime = Date.now();
-      
-        const gen = await generateObject({
-          model: googleProvider("gemini-2.0-flash-exp"),
+
+      const gen = await generateObject({
+        model: googleProvider("gemini-2.0-flash-exp"),
         schema: metadataSchema,
         system: systemPrompt,
         prompt: `Complete the bibliographic record for: "${book.title || "Unknown Title"}" by ${book.author || "Unknown Author"}. ISBN: ${book.isbn13 || book.isbn10 || book.isbn || "N/A"}`,
       });
 
       rawAiResult = gen?.object ?? null;
-      
+
       const duration = Date.now() - startTime;
-      console.warn(`[AI Clean] ✅ Gemini API success in ${duration}ms`);
+      logger.info("ai_clean_gemini_success", { duration });
     } catch (aiError) {
-      const errorMessage = aiError instanceof Error ? aiError.message : String(aiError);
-      console.error("[AI Clean] ❌ Gemini API failed:", errorMessage);
-      
+      const errorMessage =
+        aiError instanceof Error ? aiError.message : String(aiError);
+      logger.error("ai_clean_gemini_failed", { errorMessage });
+
       // Check for common issues
       let userMessage = "AI metadata service is currently unavailable.";
       let errorCode = "AI_SERVICE_UNAVAILABLE";
-      
-      if (errorMessage.includes("API key") || errorMessage.includes("authentication") || errorMessage.includes("401")) {
-        userMessage = "AI service not configured. Please contact the administrator to set up GOOGLE_GENERATIVE_AI_API_KEY.";
+
+      if (
+        errorMessage.includes("API key") ||
+        errorMessage.includes("authentication") ||
+        errorMessage.includes("401")
+      ) {
+        userMessage =
+          "AI service not configured. Please contact the administrator to set up GOOGLE_GENERATIVE_AI_API_KEY.";
         errorCode = "AI_NOT_CONFIGURED";
-        console.error("[AI Clean] 💡 FIX: Add GOOGLE_GENERATIVE_AI_API_KEY to Cloudflare Pages → Settings → Environment Variables → Secrets");
-      } else if (errorMessage.includes("quota") || errorMessage.includes("429")) {
+        logger.warn("ai_clean_fix_suggestion", { suggestion: 'Add GOOGLE_GENERATIVE_AI_API_KEY to Cloudflare Pages env' });
+      } else if (
+        errorMessage.includes("quota") ||
+        errorMessage.includes("429")
+      ) {
         userMessage = "AI service quota exceeded. Please try again later.";
         errorCode = "AI_QUOTA_EXCEEDED";
-      } else if (errorMessage.includes("timeout") || errorMessage.includes("ECONNREFUSED")) {
+      } else if (
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("ECONNREFUSED")
+      ) {
         userMessage = "AI service timed out. Please try again.";
         errorCode = "AI_TIMEOUT";
       }
@@ -185,14 +182,17 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           error: userMessage,
           code: errorCode,
           message: userMessage,
-          debug: process.env.NODE_ENV === "development" ? errorMessage : undefined,
+          debug:
+            process.env.NODE_ENV === "development" ? errorMessage : undefined,
         },
         { status: 503 },
       );
     }
 
     // 3. NORMALIZE & OPTIMIZE
-    const aiResult = normalizeKeys(rawAiResult as import("$lib/utils/metadata").AIResultInput);
+    const aiResult = normalizeKeys(
+      rawAiResult as import("$lib/utils/metadata").AIResultInput,
+    );
     const cleanAiResult = deepClean(aiResult);
 
     // 4. DEEP MERGE (The Fix for Data Loss)
@@ -208,10 +208,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
             ? JSON.parse(bookWithJson.json_data)
             : (bookWithJson.json_data as Record<string, unknown>);
       } catch (parseError) {
-        console.warn(
-          "[AI Clean] Failed to parse existing json_data; proceeding with empty object",
-          parseError,
-        );
+        logger.warn("ai_clean_json_parse_failed", { parseError });
         existingJson = {};
       }
     }
@@ -234,7 +231,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
     const bookRecord = book as Record<string, unknown>;
     const existingRecord = existingJson as Record<string, unknown>;
     const cleanRecord = cleanAiResult as Record<string, unknown>;
-    
+
     Object.keys(cleanAiResult).forEach((key) => {
       const oldVal = bookRecord[key] || existingRecord[key];
       const newVal = cleanRecord[key];
@@ -250,7 +247,11 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
     };
 
     // Parse existing ai_log
-    let existingLog: Array<{ timestamp: number; model: string; changes: string[] }> = [];
+    let existingLog: Array<{
+      timestamp: number;
+      model: string;
+      changes: string[];
+    }> = [];
     try {
       if (book.ai_log) {
         existingLog = Array.isArray(book.ai_log)
@@ -258,7 +259,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           : JSON.parse(String(book.ai_log));
       }
     } catch (_e) {
-      console.error("Failed to parse ai_log:", _e);
+      logger.warn("ai_clean_parse_ai_log_failed", { error: _e });
     }
 
     const auditLog = [...existingLog, logEntry];
@@ -285,7 +286,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       try {
         // CASE 1: scan_id provided → UPDATE existing (verify user ownership)
         if (scan_id) {
-          console.warn(`[AI Clean] Updating existing scan ID: ${scan_id}`);
+            logger.debug("ai_clean_updating_existing_scan", { scan_id });
           const result = await DB.prepare(
             `
 						UPDATE scans 
@@ -297,13 +298,11 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
             .run();
 
           if (result.meta.changes > 0) {
-            console.warn(`[AI Clean] ✅ Updated scan ID: ${scan_id}`);
+            logger.info("ai_clean_scan_updated", { scan_id });
             return { scanId: scan_id, error: null };
           }
           // scan_id not found for this user, fall through to lookup by isbn
-          console.warn(
-            `[AI Clean] scan_id ${scan_id} not found, checking by ISBN`,
-          );
+          logger.debug("ai_clean_scanid_not_found_checking_isbn", { scan_id });
         }
 
         // CASE 2: No scan_id or update failed → Check if scan exists for this user+isbn
@@ -318,9 +317,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
           if (existing?.id) {
             // Found existing scan → UPDATE it
-            console.warn(
-              `[AI Clean] Found existing scan for ISBN ${isbnValue}, updating ID: ${existing.id}`,
-            );
+            logger.debug("ai_clean_found_existing_scan_updating", { isbn: isbnValue, id: existing.id });
             await DB.prepare(
               `
 							UPDATE scans 
@@ -337,17 +334,13 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
               )
               .run();
 
-            console.warn(
-              `[AI Clean] ✅ Updated existing scan ID: ${existing.id}`,
-            );
+            logger.info("ai_clean_existing_scan_updated", { id: existing.id });
             return { scanId: existing.id, error: null };
           }
         }
 
         // CASE 3: No existing scan → INSERT new
-        console.warn(
-          `[AI Clean] No existing scan found, inserting new for ISBN: ${isbnValue}`,
-        );
+        logger.debug("ai_clean_inserting_new_scan", { isbn: isbnValue });
         const result = await DB.prepare(
           `
 					INSERT INTO scans (user_id, isbn, title, json_data, ai_log, status)
@@ -358,7 +351,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           .run();
 
         const newId = result.meta.last_row_id as number;
-        console.warn(`[AI Clean] ✅ Inserted new scan ID: ${newId}`);
+        logger.info("ai_clean_inserted_new_scan", { newId });
         return { scanId: newId, error: null };
       } catch (dbError) {
         // CASE 4: Race condition - UNIQUE constraint violation
@@ -369,9 +362,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           errorMsg.includes("UNIQUE constraint failed") ||
           errorMsg.includes("SQLITE_CONSTRAINT")
         ) {
-          console.warn(
-            `[AI Clean] Race condition detected, fetching existing scan for ISBN: ${isbnValue}`,
-          );
+          logger.warn("ai_clean_race_condition_detected", { isbn: isbnValue });
           try {
             const fallback = await DB.prepare(
               `
@@ -399,17 +390,15 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
                 )
                 .run();
 
-              console.warn(
-                `[AI Clean] ✅ Race resolved, updated scan ID: ${fallback.id}`,
-              );
+              logger.info("ai_clean_race_resolved", { id: fallback.id });
               return { scanId: fallback.id, error: null };
             }
           } catch (fallbackError) {
-            console.error("[AI Clean] Fallback lookup failed:", fallbackError);
+            logger.error("ai_clean_fallback_lookup_failed", { fallbackError });
           }
         }
 
-        console.error("[AI Clean] Database error:", dbError);
+        logger.error("ai_clean_db_error", { dbError });
         return { scanId: null, error: errorMsg };
       }
     };
@@ -427,7 +416,12 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       is_ai_enhanced: true,
       enhanced_at: Date.now(),
       ai_log: auditLog,
-    } as MergedBookData & { json_data: unknown; is_ai_enhanced: boolean; enhanced_at: number; ai_log: typeof auditLog };
+    } as MergedBookData & {
+      json_data: unknown;
+      is_ai_enhanced: boolean;
+      enhanced_at: number;
+      ai_log: typeof auditLog;
+    };
 
     // Return cleaned book with save status
     return json({
@@ -437,11 +431,24 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       saveError: saveError || undefined,
       changes: changes,
     });
-  } catch (err) {
-    console.error("Error in AI clean endpoint:", err);
+    } catch (err) {
+    logger.error("ai_clean_endpoint_error", { err });
     return json(
       { error: "Internal Server Error", details: String(err) },
       { status: 500 },
     );
   }
+};
+
+// OPTIONS handler to support CORS preflight for Playwright custom header
+export const OPTIONS: RequestHandler = async () => {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, x-playwright-test-session",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
 };

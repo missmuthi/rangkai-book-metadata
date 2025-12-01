@@ -51,6 +51,7 @@ export const GET: RequestHandler = async ({
   request,
   locals,
 }) => {
+  logger.debug('book_api_incoming_headers', { testHeader: request?.headers?.get('x-playwright-test-session'), cookies: request?.headers?.get('cookie') });
   const { isbn } = params;
   const startTime = performance.now();
 
@@ -113,20 +114,16 @@ export const GET: RequestHandler = async ({
       // - legacy: fetchBookByIsbn(isbn)
       if (
         typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown)
-          .length >= 3
+        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown).length >= 3
       ) {
         mergedData = await fetchBookByIsbn(platform, fetch, isbn);
       } else if (
         typeof fetchBookByIsbn === "function" &&
-        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown)
-          .length === 2
+        (fetchBookByIsbn as unknown as (...args: unknown[]) => unknown).length === 2
       ) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        mergedData = await (fetchBookByIsbn as any)(fetch, isbn);
+        mergedData = await (fetchBookByIsbn as unknown as (fetchFn: typeof fetch, isbn: string) => Promise<MergedBookData>)(fetch, isbn);
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        mergedData = await (fetchBookByIsbn as any)(isbn);
+        mergedData = await (fetchBookByIsbn as unknown as (isbn: string) => Promise<MergedBookData>)(isbn);
       }
 
       // Get source status from the metadata
@@ -260,7 +257,7 @@ export const OPTIONS: RequestHandler = async () => {
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, If-None-Match",
+      "Access-Control-Allow-Headers": "Content-Type, If-None-Match, x-playwright-test-session",
       "Access-Control-Max-Age": "86400",
     },
   });

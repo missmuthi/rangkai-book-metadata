@@ -14,7 +14,10 @@ const querySchema = z.object({
   state: z.string().optional(),
   error: z.string().optional(),
   error_description: z.string().optional(),
-  debug: z.string().optional().transform((val) => val === "true"),
+  debug: z
+    .string()
+    .optional()
+    .transform((val) => val === "true"),
 });
 
 /**
@@ -80,21 +83,34 @@ export const GET: RequestHandler = async ({
   request,
 }): Promise<Response> => {
   if (!platform?.env) {
-    logger.error("oauth_platform_error", { message: "Platform not configured" });
+    logger.error("oauth_platform_error", {
+      message: "Platform not configured",
+    });
     return new Response("Platform not configured", { status: 500 });
   }
 
   // Validate query parameters
-  const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams));
+  const queryResult = querySchema.safeParse(
+    Object.fromEntries(url.searchParams),
+  );
   if (!queryResult.success) {
     logger.warn("oauth_invalid_params", { errors: queryResult.error.message });
     throw error(400, "Invalid OAuth parameters");
   }
-  const { code, state, error: errorParam, error_description, debug } = queryResult.data;
+  const {
+    code,
+    state,
+    error: errorParam,
+    error_description,
+    debug,
+  } = queryResult.data;
 
   // Check if Google returned an error (e.g., user denied consent)
   if (errorParam) {
-    logger.warn("oauth_provider_error", { error: errorParam, description: error_description });
+    logger.warn("oauth_provider_error", {
+      error: errorParam,
+      description: error_description,
+    });
     const errorDesc = error_description || errorParam;
     throw redirect(302, `/login?error=${encodeURIComponent(errorDesc)}`);
   }
@@ -107,11 +123,11 @@ export const GET: RequestHandler = async ({
   // Debug logging (only in callback to avoid sensitive data exposure)
   if (debug) {
     logger.debug("oauth_callback_process", {
-        hasCode: !!code,
-        hasState: !!state,
-        hasStoredState: !!storedState,
-        hasVerifier: !!codeVerifier,
-        stateMatch: state === storedState
+      hasCode: !!code,
+      hasState: !!state,
+      hasStoredState: !!storedState,
+      hasVerifier: !!codeVerifier,
+      stateMatch: state === storedState,
     });
   }
 
@@ -155,7 +171,10 @@ export const GET: RequestHandler = async ({
     try {
       tokens = await google.validateAuthorizationCode(code, codeVerifier);
     } catch (tokenError) {
-      logger.error("oauth_token_exchange_failed", { error: tokenError instanceof Error ? tokenError.message : "Unknown error" });
+      logger.error("oauth_token_exchange_failed", {
+        error:
+          tokenError instanceof Error ? tokenError.message : "Unknown error",
+      });
       redirectWithError(
         "token_exchange_failed",
         tokenError instanceof Error ? tokenError.message : "Unknown error",
@@ -182,7 +201,12 @@ export const GET: RequestHandler = async ({
         picture: string;
       };
     } catch (userInfoError) {
-      logger.error("oauth_user_info_failed", { error: userInfoError instanceof Error ? userInfoError.message : "Unknown error" });
+      logger.error("oauth_user_info_failed", {
+        error:
+          userInfoError instanceof Error
+            ? userInfoError.message
+            : "Unknown error",
+      });
       redirectWithError(
         "user_info_failed",
         userInfoError instanceof Error
@@ -201,7 +225,9 @@ export const GET: RequestHandler = async ({
         googleUser.picture,
       );
     } catch (dbError) {
-      logger.error("oauth_user_upsert_failed", { error: dbError instanceof Error ? dbError.message : "Database error" });
+      logger.error("oauth_user_upsert_failed", {
+        error: dbError instanceof Error ? dbError.message : "Database error",
+      });
       redirectWithError(
         "session_failed",
         dbError instanceof Error ? dbError.message : "Database error",
@@ -223,7 +249,12 @@ export const GET: RequestHandler = async ({
         maxAge: 60 * 60 * 24 * 7, // 7 days
       });
     } catch (sessionError) {
-      logger.error("oauth_session_creation_failed", { error: sessionError instanceof Error ? sessionError.message : "Session error" });
+      logger.error("oauth_session_creation_failed", {
+        error:
+          sessionError instanceof Error
+            ? sessionError.message
+            : "Session error",
+      });
       redirectWithError(
         "session_failed",
         sessionError instanceof Error ? sessionError.message : "Session error",
@@ -260,10 +291,10 @@ export const GET: RequestHandler = async ({
 
     // Log actual errors
     logger.error("oauth_callback_error", {
-        route: "/api/auth/callback/google",
-        errorType: error instanceof Error ? error.constructor.name : "Unknown",
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+      route: "/api/auth/callback/google",
+      errorType: error instanceof Error ? error.constructor.name : "Unknown",
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
     });
 
     // Clean up cookies on unknown error to avoid stuck state

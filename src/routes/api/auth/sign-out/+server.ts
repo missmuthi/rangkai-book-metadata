@@ -16,7 +16,12 @@ function isSecureContext(url: URL): boolean {
  *
  * Deletes the session from D1 database and clears the session cookie.
  */
-export const POST: RequestHandler = async ({ platform, cookies, url, request }) => {
+export const POST: RequestHandler = async ({
+  platform,
+  cookies,
+  url,
+  request,
+}) => {
   // CSRF Protection: Ensure Origin matches (if present)
   const origin = request.headers.get("Origin");
   if (origin && origin !== url.origin) {
@@ -35,9 +40,13 @@ export const POST: RequestHandler = async ({ platform, cookies, url, request }) 
   if (sessionToken) {
     try {
       await deleteSession(platform.env.DB, sessionToken);
-      logger.info("sign_out_success", { sessionToken: sessionToken.substring(0, 8) + "..." });
+      logger.info("sign_out_success", {
+        sessionToken: sessionToken.substring(0, 8) + "...",
+      });
     } catch (error) {
-      logger.error("sign_out_failed", { error: error instanceof Error ? error.message : error });
+      logger.error("sign_out_failed", {
+        error: error instanceof Error ? error.message : error,
+      });
     }
   }
 
