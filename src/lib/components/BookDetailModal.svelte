@@ -8,6 +8,14 @@
 
         let { book, onClose }: { book: BookWithScanId; onClose: () => void } = $props();
 
+		// Client-side log helper - no-op in production
+		function clientLog(level: 'log' | 'warn' | 'error' | 'info' | 'debug', ...args: unknown[]) {
+			if (import.meta.env.DEV) {
+				const c = console as unknown as Record<string, (...args: unknown[]) => void>;
+				c[level]?.(...args);
+			}
+		}
+
         const FALLBACK_COVER =
                 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTBlMGUwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjN2M3YzdjIj5ObyBDb3ZlcjwvdGV4dD48L3N2Zz4=';
 
@@ -102,15 +110,15 @@
                                 (domain) => urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
                         );
 
-                        if (!isAllowed) {
-                                console.warn(`[SSRF Protection] Blocked untrusted domain: ${urlObj.hostname}`);
+						if (!isAllowed) {
+							clientLog('warn', `[SSRF Protection] Blocked untrusted domain: ${urlObj.hostname}`);
                                 return FALLBACK_COVER;
                         }
 
                         const encodedUrl = encodeURIComponent(url);
                         return `https://wsrv.nl/?url=${encodedUrl}&w=450&q=80&output=webp`;
-                } catch (_error) {
-                        console.warn('[Secure Proxy] Invalid URL format:', url);
+				} catch (_error) {
+					clientLog('warn', '[Secure Proxy] Invalid URL format:', url);
                         return FALLBACK_COVER;
                 }
         }
@@ -122,7 +130,7 @@
                         copiedField = fieldName;
                         setTimeout(() => (copiedField = null), 1500);
                 } catch (error) {
-                        console.error('Failed to copy field', error);
+					clientLog('error', 'Failed to copy field', error);
                 }
         }
 
@@ -133,11 +141,11 @@
 				saveStatus = 'saving';
 				
 				// 🔍 DIAGNOSTIC LOGGING - Visible in browser console (F12)
-				console.warn('🤖 [AI Clean] Request Started');
-				console.warn('📚 Book Title:', book.title);
-				console.warn('📖 ISBN:', book.isbn13 || book.isbn10 || book.isbn || 'N/A');
-				console.warn('🆔 Scan ID:', book.scan_id || 'New scan');
-				console.warn('⏱️ Timestamp:', new Date().toISOString());
+				clientLog('info', '🤖 [AI Clean] Request Started');
+				clientLog('info', '📚 Book Title:', book.title);
+				clientLog('info', '📖 ISBN:', book.isbn13 || book.isbn10 || book.isbn || 'N/A');
+				clientLog('info', '🆔 Scan ID:', book.scan_id || 'New scan');
+				clientLog('info', '⏱️ Timestamp:', new Date().toISOString());
 				
 				try {
 						// Pass scan_id if available for database update (prevents duplicates)
@@ -146,7 +154,7 @@
 								scan_id: book.scan_id || undefined
 						};
 						
-						console.warn('📤 [AI Clean] Sending request to /api/ai/clean...');
+						clientLog('info', '📤 [AI Clean] Sending request to /api/ai/clean...');
 						const startTime = performance.now();
 						
 						const res = await fetch('/api/ai/clean', {
@@ -156,7 +164,7 @@
 						});
 						
 						const duration = Math.round(performance.now() - startTime);
-						console.warn(`⏱️ [AI Clean] Response received in ${duration}ms, status: ${res.status}`);
+								clientLog('info', `⏱️ [AI Clean] Response received in ${duration}ms, status: ${res.status}`);
 						
 						if (!res.ok) {
 							let errorMessage = 'AI clean failed';
@@ -167,16 +175,16 @@
 									errorMessage = errorData.message || errorData.error || errorMessage;
 									
 									// 🔍 DIAGNOSTIC: Show full error details in console
-									console.error('❌ [AI Clean] Request Failed');
-									console.error('Status:', res.status);
-									console.error('Error Code:', errorCode);
-									console.error('Error Message:', errorMessage);
-									console.error('Full Response:', errorData);
-									console.warn('💡 TIP: Check Cloudflare Pages → Settings → Environment Variables → GOOGLE_GENERATIVE_AI_API_KEY');
+									clientLog('error', '❌ [AI Clean] Request Failed');
+									clientLog('error', 'Status:', res.status);
+									clientLog('error', 'Error Code:', errorCode);
+									clientLog('error', 'Error Message:', errorMessage);
+									clientLog('error', 'Full Response:', errorData);
+									clientLog('warn', '💡 TIP: Check Cloudflare Pages → Settings → Environment Variables → GOOGLE_GENERATIVE_AI_API_KEY');
 							} catch {
 									// If JSON parse fails, try text
 									const errorText = await res.text();
-									console.error('❌ [AI Clean] Non-JSON error response:', errorText);
+									clientLog('error', '❌ [AI Clean] Non-JSON error response:', errorText);
 									errorMessage = errorText || errorMessage;
 							}
 							saveStatus = 'error';
@@ -187,12 +195,12 @@
 						const cleaned = await res.json();
 						
 						// 🔍 DIAGNOSTIC: Log successful response
-						console.warn('✅ [AI Clean] Success');
-						console.warn('📋 Cleaned Title:', cleaned.title);
-						console.warn('📊 DDC:', cleaned.ddc);
-						console.warn('🏛️ LCC:', cleaned.lcc);
-						console.warn('💾 Saved:', cleaned.saved);
-						console.warn('🆔 Scan ID:', cleaned.scan_id);
+						clientLog('info', '✅ [AI Clean] Success');
+						clientLog('info', '📋 Cleaned Title:', cleaned.title);
+						clientLog('info', '📊 DDC:', cleaned.ddc);
+						clientLog('info', '🏛️ LCC:', cleaned.lcc);
+						clientLog('info', '💾 Saved:', cleaned.saved);
+						clientLog('info', '🆔 Scan ID:', cleaned.scan_id);
 						
 						// CRITICAL: Store the returned scan_id so future operations update the same row
 						// This prevents duplicate scans when user cleans the same book multiple times
@@ -224,7 +232,7 @@
 						saveStatus = 'error';
 						const errorMsg = e instanceof Error ? e.message : 'Cleaning failed. Try again.';
 						toast = errorMsg;
-						console.error('❌ [AI Clean] Exception:', e);
+						clientLog('error', '❌ [AI Clean] Exception:', e);
 						setTimeout(() => {
 								saveStatus = 'idle';
 								toast = null;

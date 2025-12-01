@@ -1,3 +1,4 @@
+import { logger } from "$lib/server/logger";
 /**
  * Lightweight Authentication with Arctic (OAuth) + D1 Sessions
  *
@@ -55,10 +56,7 @@ function normalizeBaseUrl(baseUrl: string): string {
     !parsedUrl.hostname.includes("localhost") &&
     !parsedUrl.hostname.includes("127.0.0.1")
   ) {
-    console.warn(
-      `⚠️ [OAuth] BETTER_AUTH_URL uses HTTP (${normalized}). ` +
-        "OAuth callbacks may fail if Google requires HTTPS.",
-    );
+    logger.warn("oauth_http_in_production", { normalized });
   }
 
   return normalized;
@@ -85,15 +83,13 @@ export function createGoogleAuth(
 
   // Debug logging for OAuth configuration (enable in development or via option)
   if (options?.debug) {
-    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.warn("🔧 [OAuth Config] Debug Info");
-    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.warn("Raw BETTER_AUTH_URL:", env.BETTER_AUTH_URL);
-    console.warn("Normalized Base URL:", baseUrl);
-    console.warn("Computed Redirect URI:", redirectUri);
-    console.warn("Google Client ID present:", !!env.GOOGLE_CLIENT_ID);
-    console.warn("Google Client Secret present:", !!env.GOOGLE_CLIENT_SECRET);
-    console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    logger.debug("oauth_config_debug", {
+      raw_better_auth_url_present: !!env.BETTER_AUTH_URL,
+      normalized_base_url: baseUrl,
+      redirect_uri: redirectUri,
+      google_client_present: !!env.GOOGLE_CLIENT_ID,
+      google_secret_present: !!env.GOOGLE_CLIENT_SECRET,
+    });
   }
 
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
@@ -154,14 +150,10 @@ export async function createSession(
     //   `[AUTH] Session created for user ${userId}, expires: ${expiresAt.toISOString()}`,
     // );
   } catch (error) {
-    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.error("🔴 DATABASE ERROR in createSession");
-    console.error("User ID:", userId);
-    console.error(
-      "Error:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
-    );
-    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    logger.error("db_error_create_session", {
+      userId,
+      error: JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
+    });
     throw error;
   }
 }
@@ -260,14 +252,10 @@ export async function upsertUser(
 
     return userId;
   } catch (error) {
-    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.error("🔴 DATABASE ERROR in upsertUser");
-    console.error("Email:", email);
-    console.error(
-      "Error:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
-    );
-    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    logger.error("db_error_upsert_user", {
+      email: email,
+      error: JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
+    });
     throw error; // Re-throw to be caught by OAuth handler
   }
 }

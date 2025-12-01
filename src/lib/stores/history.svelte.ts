@@ -26,7 +26,9 @@ function loadHistoryFromStorage(): MergedBookData[] {
     const parsed = JSON.parse(stored);
     return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
-    console.error("[History Store] Failed to load from localStorage:", err);
+    if (import.meta.env.DEV) {
+      console.error("[History Store] Failed to load from localStorage:", err);
+    }
     return [];
   }
 }
@@ -40,7 +42,9 @@ function saveHistoryToStorage(items: MergedBookData[]): void {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
   } catch (err) {
-    console.error("[History Store] Failed to save to localStorage:", err);
+    if (import.meta.env.DEV) {
+      console.error("[History Store] Failed to save to localStorage:", err);
+    }
   }
 }
 

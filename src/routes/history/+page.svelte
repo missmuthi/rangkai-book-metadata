@@ -16,6 +16,14 @@
         let { data }: { data: PageData } = $props();
         let selectedBook = $state<MergedBookData | null>(null);
 
+		// Client-side logger helper - DEV-only
+		function clientLog(level: 'log' | 'warn' | 'error' | 'info' | 'debug', ...args: unknown[]) {
+			if (import.meta.env.DEV) {
+				const c = console as unknown as Record<string, (...a: unknown[]) => void>;
+				c[level]?.(...args);
+			}
+		}
+
 	// Filter state
 	let searchQuery = $state('');
 	let filteredScans = $derived(
@@ -54,7 +62,7 @@
 		} catch (err) {
 			// Log error without exposing to user (they see alert)
 			const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-                        console.error('[History] Export failed:', errorMessage);
+			clientLog('error', '[History] Export failed:', errorMessage);
                         alert('Failed to export CSV. Please try again.');
                 }
         }
@@ -62,8 +70,8 @@
         function openScanDetails(scan: Scan) {
                 try {
                         selectedBook = JSON.parse(scan.json_data) as MergedBookData;
-                } catch (err) {
-                        console.error('[History] Failed to parse scan json_data', err);
+				} catch (err) {
+					clientLog('error', '[History] Failed to parse scan json_data', err);
                         selectedBook = null;
                 }
         }

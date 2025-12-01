@@ -20,7 +20,7 @@ export const load: PageServerLoad = async (event) => {
       hasMore: history.hasMore,
     };
   } catch (error) {
-    console.error("[History] Failed to fetch scans:", error);
+    logger.error("history_fetch_failed", { error });
     return {
       user: session.user,
       scans: [],

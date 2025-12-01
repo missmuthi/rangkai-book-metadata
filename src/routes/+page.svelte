@@ -144,7 +144,7 @@
 			);
 			
 			if (!isAllowed) {
-				console.warn(`[SSRF Protection] Blocked untrusted domain: ${urlObj.hostname}`);
+				clientLog('warn', `[SSRF Protection] Blocked untrusted domain: ${urlObj.hostname}`);
 				return FALLBACK_COVER;
 			}
 			
@@ -156,8 +156,16 @@
 			return `https://wsrv.nl/?url=${encodedUrl}&w=300&q=80&output=webp`;
 			
 		} catch (_error) {
-			console.warn('[Secure Proxy] Invalid URL format:', url);
+			clientLog('warn', '[Secure Proxy] Invalid URL format:', url);
 			return FALLBACK_COVER;
+		}
+	}
+
+	// Client-side debug log helper (no-op in production)
+	function clientLog(level: 'log' | 'warn' | 'error' | 'info' | 'debug', ...args: unknown[]) {
+		if (import.meta.env.DEV) {
+			const c = console as unknown as Record<string, (...a: unknown[]) => void>;
+			c[level]?.(...args);
 		}
 	}
 
@@ -236,7 +244,7 @@
                         oscillator.start(audioContext.currentTime);
                         oscillator.stop(audioContext.currentTime + 0.1);
                 } catch (err) {
-                        console.warn('[Audio] Feedback sound failed:', err);
+							clientLog('warn', '[Audio] Feedback sound failed:', err);
                 }
         }
 
@@ -493,10 +501,10 @@
 
 				// Show API errors as warnings but continue with available data
 				if (result.errors.google) {
-					console.warn('[Title Search] Google API error:', result.errors.google.message);
+					clientLog('warn', '[Title Search] Google API error:', result.errors.google.message);
 				}
 				if (result.errors.openlibrary) {
-					console.warn('[Title Search] OpenLibrary API error:', result.errors.openlibrary.message);
+					clientLog('warn', '[Title Search] OpenLibrary API error:', result.errors.openlibrary.message);
 				}
 
 				const totalResults = (googleItems?.length || 0) + (openLibraryItems?.length || 0);
@@ -524,7 +532,7 @@
                                 });
                         }
 		} catch (err) {
-			console.error('[Scanner Mode] Search failed:', err);
+			clientLog('error', '[Scanner Mode] Search failed:', err);
 			const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred during search.';
 			error = errorMessage;
 			
@@ -566,7 +574,7 @@
 		if (isbn) {
 			try {
 				const cacheKey = getCacheKey(isbn, 'openlibrary', true);
-				openLibraryData = openLibraryCache.get(cacheKey);
+				openLibraryData = openLibraryCache.get(cacheKey) as OpenLibraryBookData | null;
 
 				if (!openLibraryData) {
 					openLibraryData = await retry(() => BookApiService.fetchOpenLibrary(isbn, true)) as OpenLibraryBookData | null;
@@ -574,8 +582,8 @@
 						openLibraryCache.set(cacheKey, openLibraryData);
 					}
 				}
-			} catch (err) {
-				console.warn('[Book Selection] OpenLibrary fetch failed:', err);
+				} catch (err) {
+				clientLog('warn', '[Book Selection] OpenLibrary fetch failed:', err);
 			}
 			openLibraryRaw = JSON.stringify(openLibraryData, null, 2) || 'No data found from OpenLibrary for this ISBN.';
 		} else {
@@ -638,7 +646,7 @@
 					locCache.set(cacheKey, locData);
 				}
 			} catch (err) {
-				console.warn('[OpenLibrary Selection] API fetch failed:', err);
+				clientLog('warn', '[OpenLibrary Selection] API fetch failed:', err);
 			}
 			googleRaw = JSON.stringify(googleData, null, 2) || 'No data found from Google for this ISBN.';
 		} else {
@@ -695,7 +703,7 @@
 				isbn: book.isbn13 || book.isbn10
 			});
 		} catch (err) {
-			console.error('Failed to load export module:', err);
+			clientLog('error', 'Failed to load export module:', err);
 			alert('Failed to export CSV. Please try again.');
 		}
 	}
@@ -714,7 +722,7 @@
 				isbn: book.isbn13 || book.isbn10
 			});
 		} catch (err) {
-			console.error('Failed to load export module:', err);
+			clientLog('error', 'Failed to load export module:', err);
 			alert('Failed to export MARCXML. Please try again.');
 		}
 	}
@@ -739,9 +747,9 @@
 				format: 'csv'
 			});
 
-			console.warn(`[Batch Export] Exported ${allBooks.length} books`);
+			clientLog('info', `[Batch Export] Exported ${allBooks.length} books`);
 		} catch (err) {
-			console.error('Failed to load export module:', err);
+			clientLog('error', 'Failed to load export module:', err);
 			alert('Failed to export batch CSV. Please try again.');
 		}
 	}

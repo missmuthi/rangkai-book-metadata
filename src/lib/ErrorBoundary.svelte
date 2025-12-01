@@ -13,16 +13,16 @@
 	function safeLogError(label: string, err: unknown): void {
 		try {
 			if (err instanceof Error) {
-				console.error(label, {
+				if (import.meta.env.DEV) console.error(label, {
 					name: err.name,
 					message: err.message,
 					stack: err.stack
 				});
 			} else {
-				console.error(label, String(err));
+				if (import.meta.env.DEV) console.error(label, String(err));
 			}
-		} catch (_logError) {
-			console.error(label, '[Unable to serialize error]');
+		    } catch (_logError) {
+			    if (import.meta.env.DEV) console.error(label, '[Unable to serialize error]');
 		}
 	}
 
@@ -111,7 +111,7 @@
 							error = null; 
 							errorId = null; 
 						} catch (e) {
-							console.error('Failed to dismiss error:', e);
+										if (import.meta.env.DEV) console.error('Failed to dismiss error:', e);
 							window.location.reload();
 						}
 					}}
@@ -124,7 +124,7 @@
 						try {
 							window.location.reload();
 						} catch (e) {
-							console.error('Failed to reload:', e);
+							if (import.meta.env.DEV) console.error('Failed to reload:', e);
 							window.location.href = '/';
 						}
 					}}

@@ -4,6 +4,7 @@ import type {
   OpenLibrarySearchResponse,
   LoCBookData,
   MergedBookData,
+  GoogleBookItem,
 } from "./types";
 import { getISBNSibling, isISBN } from "./utils";
 import { Analytics } from "./services/analytics";
@@ -105,9 +106,7 @@ export class BookApiService {
         });
 
         if (response.status === 503 || response.status === 429) {
-          console.warn(
-            `⚠️ OpenLibrary ${response.status}: Gracefully degrading to Google Books only`,
-          );
+          Analytics.track("error_occurred", { error_type: errorType, source: "openlibrary", message: `${response.status} ${response.statusText}` });
           return null; // Allow the app to continue with Google Books data
         }
         throw new Error(
@@ -129,7 +128,7 @@ export class BookApiService {
             source: "openlibrary",
             message: data.error,
           });
-          console.warn("⚠️ OpenLibrary temporarily unavailable:", data.error);
+          Analytics.track("error_occurred", { error_type: "rate_limit", source: "openlibrary", message: data.error });
           return null;
         }
         throw new Error(data.error);
@@ -195,9 +194,7 @@ export class BookApiService {
           response.status === 429 ||
           response.status === 404
         ) {
-          console.warn(
-            `⚠️ Library of Congress ${response.status}: Gracefully degrading to other sources`,
-          );
+          Analytics.track("error_occurred", { error_type: errorType, source: "loc", message: `${response.status} ${response.statusText}` });
           return null;
         }
         throw new Error(
@@ -209,7 +206,7 @@ export class BookApiService {
 
       // Validate that we have actual results
       if (!data.results || data.results.length === 0) {
-        console.warn("ℹ️ Library of Congress: No results found for ISBN");
+        Analytics.track("error_occurred", { error_type: "unknown", source: "loc", message: `No results for ISBN ${isbn}` });
         return null;
       }
 
@@ -242,10 +239,7 @@ export class BookApiService {
       }
 
       // Silent failure - LoC can be slow or unavailable
-      console.warn(
-        "⚠️ Library of Congress fetch failed:",
-        error instanceof Error ? error.message : "Unknown error",
-      );
+      Analytics.track("error_occurred", { error_type: "network_error", source: "loc", message: error instanceof Error ? error.message : "Unknown error" });
       return null;
     }
   }
@@ -504,7 +498,17 @@ export class ApiCache<T = unknown> {
       if (sibling && !this.cache.has(sibling)) {
         // Store the same data under the sibling ISBN key
         this.cache.set(sibling, { data, timestamp: now, hits: 0 });
-        console.warn(`[Cache] Smart prefetch: Stored ${key} → ${sibling}`);
+        const cacheType =
+          this === googleCache
+            ? "google"
+            : this === openLibraryCache
+              ? "openlibrary"
+              : "loc";
+        Analytics.track("cache_hit", {
+          cache_type: cacheType,
+          key: key.substring(0, 50),
+          is_isbn: isISBN(key.split(":")[0]),
+        });
       }
     }
   }
@@ -530,9 +534,6 @@ export class ApiCache<T = unknown> {
 }
 
 // Global cache instances
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const googleCache = new ApiCache<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const openLibraryCache = new ApiCache<any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const locCache = new ApiCache<any>(5 * 60 * 1000, 100); // 5 minutes TTL, 100 items max
+export const googleCache = new ApiCache<GoogleBookItem['volumeInfo'] | GoogleBooksResponse | null>();
+export const openLibraryCache = new ApiCache<OpenLibraryBookData | OpenLibrarySearchResponse | null>();
+export const locCache = new ApiCache<LoCBookData | null>(5 * 60 * 1000, 100); // 5 minutes TTL, 100 items max

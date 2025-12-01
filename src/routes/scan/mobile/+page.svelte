@@ -11,6 +11,14 @@
 
 	let { data } = $props<{ data: PageData }>();
 
+	// Client-side DEV-only log helper
+	function clientLog(level: 'log' | 'warn' | 'error' | 'info' | 'debug', ...args: unknown[]) {
+		if (import.meta.env.DEV) {
+			const c = console as unknown as Record<string, (...a: unknown[]) => void>;
+			c[level]?.(...args);
+		}
+	}
+
 	let CameraScanner = $state<ComponentType | null>(null);
 	let BookDetailModal = $state<ComponentType | null>(null);
 
@@ -75,7 +83,7 @@
 			toasts.add(`Found: ${lastResult.title}`, 'success');
 			// console.log('[Scanner] ✅ Book fetched successfully');
 		} catch (err: unknown) {
-			console.error('[Scanner] ❌ Error fetching book:', err);
+			clientLog('error', '[Scanner] ❌ Error fetching book:', err);
 			
 			const message = err instanceof Error ? err.message : String(err);
 
@@ -115,7 +123,7 @@
 
 			if (!res.ok) {
 				const errorText = await res.text();
-				console.error('[MobileScanner] Response not OK:', errorText);
+				clientLog('error', '[MobileScanner] Response not OK:', errorText);
 				throw new Error('AI Cleaning failed');
 			}
 

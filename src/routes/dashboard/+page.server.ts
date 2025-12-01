@@ -1,6 +1,7 @@
 import type { PageServerLoad } from "./$types";
 import { requireSession } from "$lib/server/auth";
 import { getDashboardData } from "$modules/dashboard";
+import { logger } from "$lib/server/logger";
 
 export const load: PageServerLoad = async (event) => {
   // Protect this route - require authentication (throws redirect if not logged in)
@@ -31,7 +32,7 @@ export const load: PageServerLoad = async (event) => {
       },
     };
   } catch (error) {
-    console.error("[Dashboard] Failed to load dashboard:", error);
+    logger.error("dashboard_load_failed", { error });
     return {
       user: session.user,
       scans: [],

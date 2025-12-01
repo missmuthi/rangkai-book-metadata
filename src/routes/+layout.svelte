@@ -8,6 +8,14 @@ import { onMount } from 'svelte';
 
 let { children, data } = $props();
 
+// Client-side logging helper (DEV only)
+function clientLog(level: 'log' | 'warn' | 'error' | 'info' | 'debug', ...args: unknown[]) {
+	if (import.meta.env.DEV) {
+		const c = console as unknown as Record<string, (...a: unknown[]) => void>;
+		c[level]?.(...args);
+	}
+}
+
 // User menu state
 let showUserMenu = $state(false);
 
@@ -31,8 +39,8 @@ function closeUserMenu() {
 onMount(() => {
         if ('serviceWorker' in navigator) {
                 navigator.serviceWorker
-                        .register('/service-worker.js')
-                        .catch((err) => console.error('Service worker registration failed', err));
+						.register('/service-worker.js')
+							.catch((err) => clientLog('error', 'Service worker registration failed', err));
         }
 	
 	// PWA Install Prompt Logic (Hero Feature)
@@ -56,7 +64,7 @@ onMount(() => {
 
 async function handleInstallApp() {
 	if (!deferredPrompt) {
-		console.warn('[PWA] No install prompt available');
+		clientLog('warn', '[PWA] No install prompt available');
 		return;
 	}
 	
@@ -90,14 +98,14 @@ async function onSignOut() {
 		// console.log('[Logout] Sign out response status:', response.status);
 		
 		if (!response.ok) {
-			console.error('[Logout] Sign out failed:', response.status);
+			clientLog('error', '[Logout] Sign out failed:', response.status);
 		}
 		
 		// console.log('[Logout] ✅ Redirecting to /login');
 		// Force hard reload to clear all client-side state
 		window.location.href = '/login';
 	} catch (error) {
-		console.error('[Logout] ❌ Sign out error:', error);
+		clientLog('error', '[Logout] ❌ Sign out error:', error);
 		// Still redirect even if API call fails
 		window.location.href = '/login';
 	}
