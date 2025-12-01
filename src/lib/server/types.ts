@@ -50,6 +50,8 @@ export type Scan = {
   subjects?: string;
   ddc?: string;
   lcc?: string;
+  // AI audit log stored as serialized JSON string in D1
+  ai_log?: string | null;
 };
 
 export type Database = {
