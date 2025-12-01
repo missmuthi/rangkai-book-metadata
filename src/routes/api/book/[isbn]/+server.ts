@@ -111,6 +111,18 @@ export const GET: RequestHandler = async ({
     );
     if (existingScan && existingScan.json_data) {
       responseData = JSON.parse(existingScan.json_data);
+      // If the Drizzle helper returned ai flags, expose them on the response
+      if (responseData) {
+        if (typeof existingScan.is_ai_enhanced !== "undefined") {
+          responseData.is_ai_enhanced = !!existingScan.is_ai_enhanced;
+        }
+        if (
+          typeof existingScan.enhanced_at !== "undefined" &&
+          existingScan.enhanced_at
+        ) {
+          responseData.enhanced_at = Number(existingScan.enhanced_at);
+        }
+      }
       cacheHit = true;
       source = "d1";
       logger.info("d1_cache_hit", { isbn });

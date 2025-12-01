@@ -42,6 +42,10 @@ wrangler.toml.backup
 *.sqlite3
 *.db
 .mf/
+d1_local/
+
+# Local backup files (do not commit production data)
+backup_scans_*.json
 
 # Cloudflare Workers local state
 worker-configuration.d.ts

@@ -52,6 +52,9 @@ export type Scan = {
   lcc?: string;
   // AI audit log stored as serialized JSON string in D1
   ai_log?: string | null;
+  // AI flags persisted on the scan row for easier querying
+  is_ai_enhanced?: number | null; // 0/1 boolean stored as INTEGER
+  enhanced_at?: number | null; // milliseconds epoch
 };
 
 export type Database = {

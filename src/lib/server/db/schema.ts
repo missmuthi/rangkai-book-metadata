@@ -54,6 +54,9 @@ export const scans = sqliteTable("scans", {
   json_data: text("json_data"),
   // AI log: structured JSON log for AI operations (optional)
   ai_log: text("ai_log"),
+  // AI flags: explicit columns for easier queries and indexes
+  is_ai_enhanced: integer("is_ai_enhanced").default(0),
+  enhanced_at: integer("enhanced_at"),
   status: text("status").default("draft"),
   authors: text("authors"),
   subjects: text("subjects"),

@@ -430,11 +430,19 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           const result = await DB.prepare(
             `
 						UPDATE scans 
-						SET json_data = ?, title = ?, ai_log = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
+            SET json_data = ?, title = ?, ai_log = ?, is_ai_enhanced = ?, enhanced_at = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
 						WHERE id = ? AND user_id = ?
 					`,
           )
-            .bind(finalJsonString, titleValue, auditLogString, scan_id, userId)
+            .bind(
+              finalJsonString,
+              titleValue,
+              auditLogString,
+              1,
+              Date.now(),
+              scan_id,
+              userId,
+            )
             .run();
 
           if (result.meta.changes > 0) {
@@ -472,6 +480,8 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
                 finalJsonString,
                 titleValue,
                 auditLogString,
+                1,
+                Date.now(),
                 existing.id,
                 userId,
               )
@@ -487,10 +497,18 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
         const result = await DB.prepare(
           `
 					INSERT INTO scans (user_id, isbn, title, json_data, ai_log, status)
-					VALUES (?, ?, ?, ?, ?, 'completed')
+            VALUES (?, ?, ?, ?, ?, ?, 'completed')
 				`,
         )
-          .bind(userId, isbnValue, titleValue, finalJsonString, auditLogString)
+          .bind(
+            userId,
+            isbnValue,
+            titleValue,
+            finalJsonString,
+            auditLogString,
+            1,
+            Date.now(),
+          )
           .run();
 
         const newId = result.meta.last_row_id as number;
@@ -528,6 +546,8 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
                   finalJsonString,
                   titleValue,
                   auditLogString,
+                  1,
+                  Date.now(),
                   fallback.id,
                   userId,
                 )

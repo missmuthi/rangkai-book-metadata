@@ -1,9 +1,10 @@
 <script lang="ts">
         import type { PageData } from './$types';
-        import { Card, Button, EmptyState, Alert, Input } from '$lib/components/ui';
+		import { Card, Button, EmptyState, Alert } from '$lib/components/ui';
         import BookDetailModal from '$lib/components/BookDetailModal.svelte';
         import type { MergedBookData } from '$lib/types';
         import { fade, slide as _slide } from 'svelte/transition';
+        import { goto } from '$app/navigation';
 
 		interface Scan {
 			id: number;
@@ -24,18 +25,24 @@
 			}
 		}
 
-	// Filter state
-	let searchQuery = $state('');
-	let filteredScans = $derived(
-		(data.scans as Scan[]).filter((scan: Scan) => {
-			if (!searchQuery) return true;
-			const query = searchQuery.toLowerCase();
-			return (
-				scan.title?.toLowerCase().includes(query) ||
-				scan.isbn?.toLowerCase().includes(query)
-			);
-		})
-	);
+	// Search state from URL params
+	let searchQuery = $state(data.query || '');
+	let searchType = $state(data.searchType || 'all');
+	
+	// Debounce search to avoid too many requests
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+	
+	function handleSearchInput() {
+		if (searchTimeout) clearTimeout(searchTimeout);
+		searchTimeout = setTimeout(() => {
+			const params = new URLSearchParams();
+			if (searchQuery.trim()) {
+				params.set('q', searchQuery.trim());
+				params.set('type', searchType);
+			}
+			goto(`/history?${params.toString()}`, { keepFocus: true, replaceState: false });
+		}, 300);
+	}
 
 	// Export to CSV
         async function exportToCSV() {
@@ -43,7 +50,7 @@
                         const { exportBatchToSLiMSCSV } = await import('$lib/export');
 			
 			// Parse json_data for each scan
-			const books = filteredScans
+			const books = data.scans
 				.map((scan: Scan) => {
 					try {
 						return JSON.parse(scan.json_data);
@@ -116,21 +123,44 @@
 		</div>
 
 		<!-- Search Bar -->
-		{#if data.scans.length > 0}
+		{#if data.scans.length > 0 || data.query}
 			<div class="mb-6 sticky top-20 z-20 bg-gray-50 pt-2 pb-2">
-				<div class="relative">
-					<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-						<svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-						</svg>
+				<div class="flex gap-2">
+					<div class="relative flex-1">
+						<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+							<svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+							</svg>
+						</div>
+						<input
+							type="search"
+							bind:value={searchQuery}
+							oninput={handleSearchInput}
+							placeholder="Search your scan history..."
+							class="w-full pl-10 px-4 py-3 rounded-lg border outline-none transition-colors border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+						/>
 					</div>
-					<Input
-						type="search"
-						bind:value={searchQuery}
-						placeholder="Search by title, author, or ISBN..."
-						class="w-full pl-10"
-					/>
+					<select
+						bind:value={searchType}
+						onchange={handleSearchInput}
+						class="px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+					>
+						<option value="all">All Fields</option>
+						<option value="title">Title</option>
+						<option value="author">Author</option>
+						<option value="subject">Subject</option>
+					</select>
 				</div>
+			</div>
+		{/if}
+
+		<!-- Results count -->
+		{#if data.query}
+			<div class="mb-4 text-sm text-gray-600">
+				Found {data.scans.length} result{data.scans.length !== 1 ? 's' : ''} for "{data.query}"
+				{#if data.searchType !== 'all'}
+					in {data.searchType}
+				{/if}
 			</div>
 		{/if}
 
@@ -155,13 +185,13 @@
 			</div>
 		
 		<!-- No Search Results -->
-		{:else if filteredScans.length === 0}
+		{:else if data.scans.length === 0 && data.query}
 			<div transition:fade>
 				<Card padding="lg">
 					<EmptyState
 						icon="search"
-						title={`No scans match "${searchQuery}"`}
-						description="Try a different search term"
+						title={`No scans match "${data.query}"`}
+						description="Try a different search term or change the filter"
 					/>
 				</Card>
 			</div>
@@ -181,7 +211,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-gray-200">
-							{#each filteredScans as scan (scan.id)}
+							{#each data.scans as scan (scan.id)}
 								<tr
 									class="hover:bg-blue-50/50 transition-colors cursor-pointer group"
 									onclick={() => openScanDetails(scan)}
@@ -223,7 +253,7 @@
 
 			<!-- Mobile Card View -->
 			<div class="md:hidden space-y-4">
-				{#each filteredScans as scan (scan.id)}
+				{#each data.scans as scan (scan.id)}
 					<div
 						class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:scale-[0.99] transition-transform"
 						role="button"

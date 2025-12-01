@@ -144,7 +144,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
     const scan = await db
       .prepare(
         `
-			SELECT id, user_id, isbn, title, json_data, status, created_at, updated_at
+            SELECT id, user_id, isbn, title, json_data, status, created_at, updated_at, is_ai_enhanced, enhanced_at
 			FROM scans 
 			WHERE id = ? AND user_id = ?
 		`,
@@ -180,6 +180,8 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       status: scan.status,
       created_at: scan.created_at,
       updated_at: scan.updated_at,
+      is_ai_enhanced: !!scan.is_ai_enhanced,
+      enhanced_at: scan.enhanced_at ? Number(scan.enhanced_at) : null,
       data: bookData,
     });
   } catch (err) {

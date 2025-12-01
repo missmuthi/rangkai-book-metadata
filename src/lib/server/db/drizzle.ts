@@ -5,7 +5,12 @@ import { logger, LogEvents } from "$lib/server/logger";
 
 export async function findAnyScanByIsbn(db: DrizzleDB, isbn: string) {
   const rows = await db
-    .select({ id: scans.id, json_data: scans.json_data })
+    .select({
+      id: scans.id,
+      json_data: scans.json_data,
+      is_ai_enhanced: scans.is_ai_enhanced,
+      enhanced_at: scans.enhanced_at,
+    })
     .from(scans)
     .where(eq(scans.isbn, isbn))
     .limit(1);
