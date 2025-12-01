@@ -38,6 +38,25 @@ test("AI Clean updates metadata and shows saved state", async ({ page }) => {
     });
   });
 
+  // Intercept POST /api/scan to simulate saved scans (the UI posts to create a scan)
+  await page.route("**/api/scan", async (route) => {
+    const request = route.request();
+    const body = await request.postDataJSON();
+    if (!body || !body.isbn) {
+      return route.fulfill({ status: 400, body: JSON.stringify({ error: 'Missing isbn' }) });
+    }
+
+    const scan = {
+      id: 123,
+      user_id: 'user-123',
+      isbn: body.isbn,
+      json_data: JSON.stringify(fixture),
+      created_at: new Date().toISOString(),
+    };
+
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, scan, cached: false }) });
+  });
+
   // Mock AI Clean POST endpoint
   const cleanedResponse = {
     ...fixture,
@@ -73,12 +92,12 @@ test("AI Clean updates metadata and shows saved state", async ({ page }) => {
   const harvestBtn = page.locator('button:has-text("Harvest")');
   await expect(harvestBtn).toBeVisible();
   await harvestBtn.click();
-  await expect(page.locator('p.text-xl:has-text("Clean Code")')).toBeVisible({ timeout: 10000 });
+  // Wait for the card title to appear (use the actual DOM tag/class)
+  const bookCard = page.locator('button:has-text("Clean Code")');
+  await expect(bookCard).toBeVisible({ timeout: 10000 });
 
-  // Open detail modal by clicking the card's 'View details' button
-  const viewDetailsBtn = page.locator('button[aria-label^="View details for"]');
-  await expect(viewDetailsBtn).toBeVisible();
-  await viewDetailsBtn.click();
+  // Open the detail modal by clicking the book card (the button is the card)
+  await bookCard.click();
 
   // Now the modal is open; AI Clean button text appears inside the modal
   const aiCleanBtn = page.locator('button', { hasText: 'AI Clean' });
