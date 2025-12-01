@@ -293,11 +293,14 @@ export async function createScan(
   title: string,
   jsonData: string,
   status: "draft" | "published" | "archived" = "draft",
-  authors?: string,
+  authors?: string[] | string,
   subjects?: string,
   ddc?: string,
   lcc?: string,
 ): Promise<number> {
+  // Normalize authors to string if array
+  const authorsStr = Array.isArray(authors) ? authors.join('; ') : authors;
+
   try {
     // Check if scan already exists for this user+isbn
     const existing = await db
@@ -316,10 +319,10 @@ export async function createScan(
           title,
           jsonData,
           status,
-          authors,
-          subjects,
-          ddc,
-          lcc,
+          authorsStr || null,
+          subjects || null,
+          ddc || null,
+          lcc || null,
           existing.id,
           userId,
         )
@@ -341,7 +344,7 @@ export async function createScan(
         `INSERT INTO scans (user_id, isbn, title, json_data, status, authors, subjects, ddc, lcc, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       )
-      .bind(userId, isbn, title, jsonData, status, authors, subjects, ddc, lcc)
+      .bind(userId, isbn, title, jsonData, status, authorsStr || null, subjects || null, ddc || null, lcc || null)
       .run();
 
     if (!result.success) {

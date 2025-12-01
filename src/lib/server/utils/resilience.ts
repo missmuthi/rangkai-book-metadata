@@ -42,9 +42,16 @@ const DEFAULT_CONFIG: CircuitBreakerConfig = {
   resetTimeoutSec: 300, // 5 minutes
 };
 
+// In-memory fallback for Circuit Breaker state since KV is removed
+const CIRCUIT_BREAKER_STATE = new Map<string, { failures: number; openUntil?: number }>();
+
 /**
  * Circuit Breaker
- * Manages the health of an external service using KV to store state.
+ * Manages the health of an external service.
+ *
+ * Update: Uses In-Memory Map instead of KV for Free Tier optimization.
+ * Note: State is now local to the worker instance and not shared globally,
+ * which is acceptable for resilience logic.
  */
 export class CircuitBreaker {
   constructor(
@@ -61,93 +68,54 @@ export class CircuitBreaker {
    * Check if the circuit is open (service is down)
    */
   async isOpen(): Promise<boolean> {
-    if (!this.kv) return false; // If KV is missing, fail open (allow requests) or closed (block)? Standard is allow.
+    // In-Memory Implementation
+    const state = CIRCUIT_BREAKER_STATE.get(this.key);
 
-    try {
-      const state = await this.kv.get<{ failures: number; openUntil?: number }>(
-        this.key,
-        "json",
-      );
+    if (!state) return false;
 
-      if (!state) return false;
-
-      // If circuit is explicitly open
-      if (state.openUntil && Date.now() < state.openUntil) {
-        return true;
-      }
-
-      // If failures exceed threshold, open the circuit now (lazy open)
-      if (state.failures >= this.config.failureThreshold) {
-        await this.open();
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      logger.error("circuitbreaker_check_failed", { serviceName: this.serviceName, error });
-      return false; // Fail safe
+    // If circuit is explicitly open
+    if (state.openUntil && Date.now() < state.openUntil) {
+      return true;
     }
+
+    // If failures exceed threshold, open the circuit now (lazy open)
+    if (state.failures >= this.config.failureThreshold) {
+      await this.open();
+      return true;
+    }
+
+    return false;
   }
 
   /**
    * Record a success - resets the failure count
    */
   async success(): Promise<void> {
-    if (!this.kv) return;
-    // Only delete/reset if there was a record to save writes, but simplest is to delete
-    // Optimization: only delete if it exists?
-    // For now, let's just delete the key to reset.
-    try {
-      await this.kv.delete(this.key);
-    } catch (error) {
-      logger.error("circuitbreaker_success_failed", { serviceName: this.serviceName, error });
-    }
+    CIRCUIT_BREAKER_STATE.delete(this.key);
   }
 
   /**
    * Record a failure - increments count and may open circuit
    */
   async failure(): Promise<void> {
-    if (!this.kv) return;
+    const state = CIRCUIT_BREAKER_STATE.get(this.key) || { failures: 0 };
+    state.failures += 1;
 
-    try {
-      const state = (await this.kv.get<{
-        failures: number;
-        openUntil?: number;
-      }>(this.key, "json")) || { failures: 0 };
-
-      state.failures += 1;
-
-      if (state.failures >= this.config.failureThreshold) {
-        state.openUntil = Date.now() + this.config.resetTimeoutSec * 1000;
-      }
-
-      // Use the reset timeout as TTL if open, or a safe default (e.g. 1 hour) if just counting failures
-      const ttl = state.openUntil ? this.config.resetTimeoutSec : 3600;
-
-      await this.kv.put(this.key, JSON.stringify(state), {
-        expirationTtl: ttl,
-      });
-    } catch (error) {
-      logger.error("circuitbreaker_failure_failed", { serviceName: this.serviceName, error });
+    if (state.failures >= this.config.failureThreshold) {
+      state.openUntil = Date.now() + this.config.resetTimeoutSec * 1000;
     }
+
+    CIRCUIT_BREAKER_STATE.set(this.key, state);
   }
 
   /**
    * Manually open the circuit
    */
   async open(): Promise<void> {
-    if (!this.kv) return;
-    try {
-      const state = {
-        failures: this.config.failureThreshold,
-        openUntil: Date.now() + this.config.resetTimeoutSec * 1000,
-      };
-      await this.kv.put(this.key, JSON.stringify(state), {
-        expirationTtl: this.config.resetTimeoutSec,
-      });
-    } catch (error) {
-      logger.error("circuitbreaker_open_failed", { serviceName: this.serviceName, error });
-    }
+    const state = {
+      failures: this.config.failureThreshold,
+      openUntil: Date.now() + this.config.resetTimeoutSec * 1000,
+    };
+    CIRCUIT_BREAKER_STATE.set(this.key, state);
   }
 }

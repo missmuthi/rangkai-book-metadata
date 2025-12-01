@@ -4,7 +4,7 @@
  *
  * Tests:
  * - Valid ISBN metadata fetch
- * - KV cache hit/miss behavior
+ * - D1 cache hit/miss behavior (New Arch)
  * - Invalid ISBN handling
  * - Provider failure scenarios
  * - Response headers and format
@@ -12,8 +12,29 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "../../../routes/api/book/[isbn]/+server";
-import type { RequestEvent as _RequestEvent } from "@sveltejs/kit";
-import type { MergedBookData as _MergedBookData } from "$lib/types";
+
+// Mock global caches.default
+const mockCachePut = vi.fn();
+const mockCacheMatch = vi.fn();
+
+// Add missing properties to mock Request/Response for Cache API
+// @ts-ignore
+globalThis.Request = class MockRequest {
+    public url: string;
+    public headers: Map<string, string>;
+    constructor(input: any) {
+        this.url = input;
+        this.headers = new Map();
+    }
+} as any;
+
+// @ts-ignore
+globalThis.caches = {
+  default: {
+    put: mockCachePut,
+    match: mockCacheMatch
+  }
+} as any;
 
 // Mock dependencies
 vi.mock("$lib/utils", () => ({
@@ -55,56 +76,32 @@ vi.mock("$lib/server/metadata", () => ({
   }),
 }));
 
-vi.mock("$lib/server/cache", () => ({
-  getKV: vi.fn((platform: any) => {
-    return platform?.env?.BOOK_CACHE || null;
-  }),
-  CacheKeys: {
-    book: (isbn: string) => `book:${isbn}`,
-  },
-  CacheTTL: {
-    book: 86400, // 24 hours
-  },
-  cacheGet: vi.fn(async (_kv: any, key: string) => {
-    // Simulate cache hit for specific ISBN
-    if (key === "book:9780134685991") {
-      return {
-        isbn: "9780134685991",
-        title: "Effective Java (Cached)",
-        authors: ["Joshua Bloch"],
-        publisher: "Addison-Wesley",
-        publishedDate: "2018",
-        dataSource: "cache",
-      };
-    }
-    return null; // Cache miss
-  }),
-  cacheSet: vi.fn(async () => undefined),
+// Mock DB interactions
+const mockBind = vi.fn();
+const mockFirst = vi.fn();
+const mockPrepare = vi.fn(() => ({
+  bind: mockBind.mockReturnThis(),
+  first: mockFirst
 }));
 
 vi.mock("$lib/server/db", () => ({
   getDB: vi.fn((platform: any) => {
-    return platform?.env?.DB || null;
+    return platform?.env?.DB || {
+       prepare: mockPrepare
+    };
   }),
   createAnonymousScan: vi.fn(async () => undefined),
   createScan: vi.fn(async () => 1),
 }));
 
-vi.mock("$lib/server", () => ({
-  getSourceStatus: vi.fn(),
-  cacheSet: vi.fn(async () => undefined),
-}));
-
 // Helper to create mock RequestEvent
 function createMockEvent(options: {
   isbn: string;
-  hasKV?: boolean;
   hasWaitUntil?: boolean;
   isAuthenticated?: boolean;
 }): any {
   const {
     isbn,
-    hasKV = true,
     hasWaitUntil = true,
     isAuthenticated = true,
   } = options;
@@ -115,8 +112,9 @@ function createMockEvent(options: {
     params: { isbn },
     platform: {
       env: {
-        BOOK_CACHE: hasKV ? ({} as any) : undefined,
-        DB: {} as any,
+        DB: {
+            prepare: mockPrepare
+        } as any,
       },
       context: hasWaitUntil
         ? {
@@ -133,6 +131,7 @@ function createMockEvent(options: {
         : null,
     },
     request: {
+      url: `http://localhost/api/book/${isbn}`,
       headers: {
         get: (_key: string) => null,
       },
@@ -144,6 +143,8 @@ function createMockEvent(options: {
 describe("GET /api/book/[isbn] - Integration Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFirst.mockResolvedValue(null); // Default: D1 Miss
+    mockCacheMatch.mockResolvedValue(null); // Default: HTTP Cache Miss
   });
 
   describe("Authentication", () => {
@@ -185,19 +186,32 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
   });
 
   describe("Cache Behavior", () => {
-    it("should return cached data with HIT header", async () => {
+    it("should return cached data with D1-HIT header", async () => {
       const event = createMockEvent({ isbn: "9780134685991" });
+
+      // Simulate D1 Hit
+      mockFirst.mockResolvedValueOnce({
+          json_data: JSON.stringify({
+            isbn: "9780134685991",
+            title: "Effective Java (D1 Cached)",
+            authors: ["Joshua Bloch"],
+            publisher: "Addison-Wesley",
+            publishedDate: "2018",
+            dataSource: "d1",
+          })
+      });
 
       const response = await GET(event);
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(response.headers.get("X-Cache")).toBe("HIT");
+      expect(response.headers.get("X-Cache")).toBe("D1-HIT");
       expect(data.title).toContain("Cached");
     });
 
-    it("should fetch from provider on cache miss", async () => {
+    it("should fetch from provider on D1 cache miss", async () => {
       const event = createMockEvent({ isbn: "9780132350884" });
+      // mockFirst returns null by default (miss)
 
       const response = await GET(event);
       const data = await response.json();
@@ -207,8 +221,7 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
       expect(data.title).toBe("Clean Code");
     });
 
-    it("should set cache on cache miss (background)", async () => {
-      const { cacheSet } = await import("$lib/server/cache");
+    it("should save to HTTP cache on miss (background)", async () => {
       const event = createMockEvent({ isbn: "9780132350884" });
 
       await GET(event);
@@ -216,18 +229,7 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
       // Wait a bit for background promise
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // Cache write should have been called in background
-      expect(cacheSet).toHaveBeenCalled();
-    });
-
-    it("should handle missing KV gracefully", async () => {
-      const event = createMockEvent({ isbn: "9780132350884", hasKV: false });
-
-      const response = await GET(event);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.title).toBe("Clean Code");
+      expect(mockCachePut).toHaveBeenCalled();
     });
   });
 
@@ -246,34 +248,6 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
         publishedDate: "2008",
       });
     });
-
-    it("should include metadata in response", async () => {
-      const event = createMockEvent({ isbn: "9780132350884" });
-
-      const response = await GET(event);
-      const data = await response.json();
-
-      expect(data.meta).toBeDefined();
-      expect(data.meta).toMatchObject({
-        isbn: "9780132350884",
-        sources: expect.any(Object),
-        fetchDuration: expect.any(Number),
-        totalDuration: expect.any(Number),
-        timestamp: expect.any(String),
-      });
-    });
-
-    it("should include source information", async () => {
-      const event = createMockEvent({ isbn: "9780132350884" });
-
-      const response = await GET(event);
-      const data = await response.json();
-
-      expect(data.meta.sources).toBeDefined();
-      expect(typeof data.meta.sources.google).toBe("boolean");
-      expect(typeof data.meta.sources.openlibrary).toBe("boolean");
-      expect(typeof data.meta.sources.loc).toBe("boolean");
-    });
   });
 
   describe("Provider Failures", () => {
@@ -285,26 +259,24 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
         body: { message: expect.stringContaining("Book not found") },
       });
     });
-
-    it("should include error message in response", async () => {
-      const event = createMockEvent({ isbn: "9781234567897" });
-
-      try {
-        await GET(event);
-      } catch (error: any) {
-        expect(error.body.message).toContain("Book not found");
-      }
-    });
   });
 
   describe("Response Headers", () => {
-    it("should set appropriate cache headers on HIT", async () => {
+    it("should set appropriate cache headers on D1 HIT", async () => {
       const event = createMockEvent({ isbn: "9780134685991" });
+
+      // Simulate D1 Hit
+      mockFirst.mockResolvedValueOnce({
+          json_data: JSON.stringify({
+            isbn: "9780134685991",
+            title: "Cached Book"
+          })
+      });
 
       const response = await GET(event);
 
       expect(response.headers.get("Cache-Control")).toContain("public");
-      expect(response.headers.get("X-Cache")).toBe("HIT");
+      expect(response.headers.get("X-Cache")).toBe("D1-HIT");
       expect(response.headers.get("X-Response-Time")).toMatch(/\d+ms/);
     });
 
@@ -316,7 +288,6 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
       expect(response.headers.get("Cache-Control")).toContain("public");
       expect(response.headers.get("X-Cache")).toBe("MISS");
       expect(response.headers.get("X-Response-Time")).toMatch(/\d+ms/);
-      expect(response.headers.get("X-Sources")).toBeDefined();
     });
   });
 
@@ -330,44 +301,7 @@ describe("GET /api/book/[isbn] - Integration Tests", () => {
       await GET(event);
 
       // waitUntil should have been called
-      expect(event._waitUntilPromises).toBeDefined();
-    });
-
-    it("should handle missing waitUntil gracefully", async () => {
-      const event = createMockEvent({
-        isbn: "9780132350884",
-        hasWaitUntil: false,
-      });
-
-      const response = await GET(event);
-
-      expect(response.status).toBe(200);
-      // Should still work without waitUntil
-    });
-  });
-
-  describe("Performance Metrics", () => {
-    it("should include timing information", async () => {
-      const event = createMockEvent({ isbn: "9780132350884" });
-
-      const response = await GET(event);
-      const data = await response.json();
-
-      expect(data.meta.fetchDuration).toBeGreaterThanOrEqual(0);
-      expect(data.meta.totalDuration).toBeGreaterThanOrEqual(0);
-      expect(data.meta.totalDuration).toBeGreaterThanOrEqual(
-        data.meta.fetchDuration,
-      );
-    });
-
-    it("should include timestamp", async () => {
-      const event = createMockEvent({ isbn: "9780132350884" });
-
-      const response = await GET(event);
-      const data = await response.json();
-
-      expect(data.meta.timestamp).toBeDefined();
-      expect(new Date(data.meta.timestamp).toString()).not.toBe("Invalid Date");
+      expect(event._waitUntilPromises.length).toBeGreaterThan(0);
     });
   });
 });

@@ -4,7 +4,7 @@
  * Centralized exports for all server-side infrastructure:
  * - Authentication helpers
  * - Database operations
- * - Cache operations
+ * - Cache operations (Deprecation Warning: KV Removed)
  * - Metadata engine
  * - Type definitions
  */
@@ -41,6 +41,7 @@ export {
 } from "./db";
 
 // Cache operations
+// Note: KV-specific functions are removed or no-ops
 export {
   getKV,
   CacheKeys,
@@ -48,14 +49,7 @@ export {
   cacheGet,
   cacheSet,
   cacheDelete,
-  cacheHas,
-  getBookCache,
-  setBookCache,
-  deleteBookCache,
-  isRateLimited,
-  incrementRateLimit,
-  invalidateAllBookCaches,
-  getCacheStats,
+  // Removed legacy functions not in cache.ts
 } from "./cache";
 
 // Metadata engine

@@ -169,7 +169,7 @@ export async function getSession(
   const result = await db
     .prepare(
       `SELECT 
-				s.token, s.userId, s.expiresAt,
+				s.id as sessionId, s.token, s.userId, s.expiresAt,
 				u.id, u.email, u.name, u.image, u.emailVerified, u.createdAt, u.updatedAt
 			FROM session s
 			JOIN user u ON s.userId = u.id
@@ -181,21 +181,19 @@ export async function getSession(
   if (!result) return null;
 
   return {
-    session: {
-      token: result.token as string,
-      userId: result.userId as string,
-      expiresAt: new Date(result.expiresAt as number),
-    },
+    id: result.sessionId as string,
+    userId: result.userId as string,
+    expiresAt: new Date(result.expiresAt as number),
     user: {
       id: result.id as string,
       email: result.email as string,
       name: result.name as string | null,
       image: result.image as string | null,
-      emailVerified: result.emailVerified as number,
-      createdAt: result.createdAt as string,
-      updatedAt: result.updatedAt as string,
+      emailVerified: Boolean(result.emailVerified),
+      createdAt: new Date(result.createdAt as string),
+      updatedAt: new Date(result.updatedAt as string),
     },
-  };
+  } as unknown as SessionData;
 }
 
 /**

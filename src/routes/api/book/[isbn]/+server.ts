@@ -2,7 +2,8 @@
  * High-Performance Book API Route
  *
  * Features:
- * - KV Cache with 24-hour TTL (instant responses)
+ * - HTTP Cache (CDN) as First Layer (Free Tier Optimized)
+ * - D1 Database as "Source of Truth" Cache
  * - 3-Source Data Fetching via metadata engine
  * - Background Writes (waitUntil pattern)
  * - Type-safe operations
@@ -13,14 +14,6 @@
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import type { MergedBookData } from "$lib/types";
-// zod import removed (not used in this route)
-import {
-  getKV,
-  CacheKeys,
-  CacheTTL,
-  cacheGet,
-  cacheSet,
-} from "$lib/server/cache";
 import { getDB, createScan } from "$lib/server/db";
 import { fetchBookByIsbn } from "$lib/server/metadata";
 import { logger } from "$lib/server/logger";
@@ -78,30 +71,46 @@ export const GET: RequestHandler = async ({
     );
   }
 
-  // === STEP 1: Cache Check (KV) ===
-  const kv = getKV(platform);
-  let responseData:
-    | (MergedBookData & { meta?: Record<string, unknown> })
-    | null = null;
-  let cacheHit = false;
+  // === STEP 1: HTTP Cache Check (CDN) ===
+  // Use Cloudflare Cache API (caches.default)
+  const cache = (globalThis as any).caches?.default;
+  let cacheKey: Request | undefined;
 
-  if (kv) {
+  if (cache) {
     try {
-      const cached = await cacheGet<MergedBookData>(kv, CacheKeys.book(isbn));
-      if (cached) {
-        logger.info("metadata_cache_hit", {
-          isbn,
-          duration: Math.round(performance.now() - startTime),
-        });
-        responseData = cached;
-        cacheHit = true;
-      }
-    } catch (cacheError) {
-      logger.warn("cache_get_failed", { error: cacheError });
+        const cacheUrl = new URL(request.url);
+        cacheKey = new Request(cacheUrl.toString(), request);
+        const cachedResponse = await cache.match(cacheKey);
+
+        if (cachedResponse) {
+             logger.info("http_cache_hit", { isbn });
+             return cachedResponse;
+        }
+    } catch (e) {
+        logger.warn("http_cache_check_failed", { error: e });
     }
   }
 
-  // === STEP 2: Fetch via Metadata Engine (if not in cache) ===
+  // === STEP 2: Check D1 (Source of Truth) ===
+  const db = getDB(platform);
+  let responseData: MergedBookData | null = null;
+  let cacheHit = false;
+  let source = "fetch";
+
+  try {
+      // Check D1 for ANY scan with this ISBN (Global Cache)
+      const existingScan = await db.prepare("SELECT json_data FROM scans WHERE isbn = ? LIMIT 1").bind(isbn).first<{json_data: string}>();
+      if (existingScan) {
+           responseData = JSON.parse(existingScan.json_data);
+           cacheHit = true;
+           source = "d1";
+           logger.info("d1_cache_hit", { isbn });
+      }
+  } catch (e) {
+      logger.error("d1_cache_check_failed", { error: e });
+  }
+
+  // === STEP 3: Fetch via Metadata Engine (if not in D1) ===
   if (!responseData) {
     const fetchStartTime = performance.now();
     let mergedData: MergedBookData;
@@ -155,19 +164,22 @@ export const GET: RequestHandler = async ({
         timestamp: new Date().toISOString(),
       },
     };
+  }
 
-    // === STEP 3: Save to Database & Cache ===
-    // Note: Database write is now BLOCKING to ensure history is saved reliably
-    // Uses UPSERT logic to prevent duplicates (see createScan in db.ts)
-    if (platform?.env?.DB) {
-      const db = getDB(platform);
+  if (!responseData) {
+    // Should not happen given the flow, but typescript safeguard
+    throw error(500, "Internal Server Error");
+  }
 
+  // === STEP 4: Save to Database (User History) ===
+  // We ALWAYS attempt to save to the user's history, even if it was a D1 global hit.
+  // This ensures that when a user scans a book, it appears in THEIR list, even if someone else scanned it before.
+  // The createScan function handles UPSERT logic.
+  if (platform?.env?.DB) {
       try {
         const title = responseData.title || "Unknown Title";
         const jsonData = JSON.stringify(responseData);
 
-        // ✅ Use authenticated user ID (Fix for saving to history)
-        // createScan now uses UPSERT logic - returns existing scan_id if found
         const scanId = await createScan(
           db,
           locals.user.id,
@@ -181,44 +193,16 @@ export const GET: RequestHandler = async ({
           responseData.lcc,
         );
 
-        // CRITICAL: Include scan_id in response so frontend can store it
-        // This prevents duplicates when user cleans the same book later
+        // Update response with the correct scan_id for THIS user
         responseData.scan_id = scanId;
 
-        logger.info("scan_created", { userId: locals.user.id, scanId });
+        logger.info("scan_saved_to_history", { userId: locals.user.id, scanId, source });
       } catch (dbError) {
         logger.error("db_write_failed", { error: dbError });
-        // We don't throw here to ensure the user still gets the book data
-        // but we log it for debugging
       }
-    }
-
-    // KV Cache Write (Background)
-    if (platform?.context?.waitUntil && kv) {
-      platform.context.waitUntil(
-        (async () => {
-          try {
-            await cacheSet(
-              kv,
-              CacheKeys.book(isbn),
-              responseData,
-              CacheTTL.book,
-            );
-            logger.info("cache_set_success", { isbn });
-          } catch (kvError) {
-            logger.error("cache_set_failed", { error: kvError });
-          }
-        })(),
-      );
-    }
   }
 
-  if (!responseData) {
-    // Should not happen given the flow, but typescript safeguard
-    throw error(500, "Internal Server Error");
-  }
-
-  // === STEP 4: ETag and Response ===
+  // === STEP 5: ETag and Response ===
   const etag = await generateETag(responseData);
   const ifNoneMatch = request?.headers?.get("if-none-match");
 
@@ -227,25 +211,32 @@ export const GET: RequestHandler = async ({
       status: 304,
       headers: {
         ETag: etag,
-        "Cache-Control": "public, max-age=3600",
-        "X-Cache": cacheHit ? "HIT" : "MISS",
+        "Cache-Control": "public, max-age=86400, s-maxage=86400",
+        "X-Cache": cacheHit ? "D1-HIT" : "MISS",
       },
     });
   }
 
   const totalDuration = Math.round(performance.now() - startTime);
 
-  return json(responseData, {
+  const response = json(responseData, {
     headers: {
       ETag: etag,
-      "Cache-Control": "public, max-age=3600", // 1 hour
-      "X-Cache": cacheHit ? "HIT" : "MISS",
+      "Cache-Control": "public, max-age=86400, s-maxage=86400", // 1 day
+      "X-Cache": cacheHit ? "D1-HIT" : "MISS",
       "X-Response-Time": `${totalDuration}ms`,
       "X-Sources": responseData.meta
         ? JSON.stringify(responseData.meta.sources)
         : "cache",
     },
   });
+
+  // === STEP 6: Save to HTTP Cache (Background) ===
+  if (cache && cacheKey && platform?.context?.waitUntil) {
+      platform.context.waitUntil(cache.put(cacheKey, response.clone()));
+  }
+
+  return response;
 };
 
 /**
