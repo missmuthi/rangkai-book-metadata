@@ -35,12 +35,14 @@ function delay(ms: number) {
 }
 
 /**
- * AI Clean Endpoint with Write-Through Persistence
+ * AI Clean Endpoint
  *
  * This endpoint:
- * 1. Cleans book metadata using AI with aggressive completion
+ * 1. Cleans book metadata using AI
  * 2. Deep merges data to prevent loss
- * 3. Auto-saves to D1 database with audit log
+ * 3. Auto-saves to D1 database
+ *
+ * NOTE: KV Cache usage has been removed (optimization).
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
   // Enhanced authentication check with detailed error logging
@@ -135,27 +137,11 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
     // 2. GENERATE DATA (defensive: handle failures in production)
     let rawAiResult: unknown = null;
-    let usedCache = false;
-
-    // CHECK CACHE FIRST
     const isbn = book.isbn13 || book.isbn10 || book.isbn;
-    const cacheKey = isbn ? `book-clean:${isbn}` : null;
 
-    if (cacheKey && platform?.env?.BOOK_CACHE) {
-      try {
-        const cached = await platform.env.BOOK_CACHE.get(cacheKey, "json");
-        if (cached) {
-          logger.info("ai_clean_cache_hit", { isbn });
-          rawAiResult = cached;
-          usedCache = true;
-        }
-      } catch (cacheErr) {
-        logger.warn("ai_clean_cache_read_failed", { error: cacheErr });
-      }
-    }
+    // NO KV CACHE CHECK - Proceed to Generate
 
-    if (!usedCache) {
-      try {
+    try {
         logger.debug("ai_clean_groq_call_started", {});
         const startTime = Date.now();
 
@@ -215,15 +201,6 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           }
         }
 
-        // WRITE TO CACHE (Aggressive: 7 days)
-        if (rawAiResult && cacheKey && platform?.env?.BOOK_CACHE) {
-          platform.context.waitUntil(
-            platform.env.BOOK_CACHE.put(cacheKey, JSON.stringify(rawAiResult), {
-              expirationTtl: 60 * 60 * 24 * 7, // 7 days
-            })
-          );
-        }
-
         const duration = Date.now() - startTime;
         logger.info("ai_clean_groq_success", { duration });
       } catch (aiError) {
@@ -245,14 +222,6 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
               try {
                 rawAiResult = JSON.parse(outputText);
                 logger.debug('ai_clean_fallback_raw', { rawAiResult });
-                // if parsed, cache it
-                if (rawAiResult && cacheKey && platform?.env?.BOOK_CACHE) {
-                  platform.context.waitUntil(
-                    platform.env.BOOK_CACHE.put(cacheKey, JSON.stringify(rawAiResult), {
-                      expirationTtl: 60 * 60 * 24 * 7,
-                    })
-                  );
-                }
               } catch (parseErr) {
                 logger.warn('ai_clean_generateText_parse_failed', { parseErr });
               }
@@ -305,7 +274,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           { status: 503 },
         );
       }
-    }
+
 
     // 3. NORMALIZE & OPTIMIZE
     if (!rawAiResult) {
@@ -365,7 +334,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
     const logEntry = {
       timestamp: Date.now(),
-      model: usedCache ? "Llama 3.3 70B Versatile (Cached)" : "Llama 3.3 70B Versatile",
+      model: "Llama 3.3 70B Versatile",
       changes: changes.length > 0 ? changes : ["No changes detected"],
     };
 

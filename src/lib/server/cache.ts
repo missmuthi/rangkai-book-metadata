@@ -1,271 +1,72 @@
 /**
- * KV Cache operations layer
+ * Caching Utilities
  *
- * Single source of truth for Cloudflare KV operations.
- * Provides consistent key naming and TTL management.
+ * NOTE: Cloudflare KV (BOOK_CACHE) usage is DEPRECATED in favor of
+ * HTTP Cache (caches.default) + D1 (Source of Truth).
+ *
+ * This file remains for type compatibility or potential future Redis support.
  */
 
-import type { KVNamespace } from "./types";
-import { logger } from "$lib/server/logger";
-import { Analytics } from "$lib/services/analytics";
+// import type { KVNamespace } from "./types";
+import { logger } from "./logger";
 
 /**
- * Get KV namespace from platform context
- * Returns null if KV is not available (graceful degradation)
- */
-export function getKV(platform: App.Platform | undefined): KVNamespace | null {
-  return platform?.env?.BOOK_CACHE || null;
-}
-
-/**
- * Key naming conventions
+ * Standard Cache Keys
  */
 export const CacheKeys = {
   book: (isbn: string) => `book:${isbn}`,
-  bookMetadata: (isbn: string) => `metadata:${isbn}`,
-  userSession: (token: string) => `session:${token}`,
-  apiRateLimit: (source: string) => `ratelimit:${source}`,
-} as const;
+  scan: (userId: string, scanId: number) => `scan:${userId}:${scanId}`,
+  userHistory: (userId: string) => `history:${userId}`,
+};
 
 /**
- * Default TTL values (in seconds)
+ * Standard TTLs (in seconds)
  */
 export const CacheTTL = {
-  book: 24 * 60 * 60, // 24 hours
-  metadata: 7 * 24 * 60 * 60, // 7 days
-  session: 7 * 24 * 60 * 60, // 7 days
-  rateLimit: 60, // 1 minute
-} as const;
-
-// ============================================================================
-// GENERIC KV OPERATIONS
-// ============================================================================
+  book: 86400 * 7, // 7 days (Aggressive)
+  scan: 3600, // 1 hour
+  userHistory: 300, // 5 minutes
+};
 
 /**
- * Get a value from KV cache
- *
- * @param kv - KV namespace
- * @param key - Cache key
- * @returns Cached value or null if not found
+ * Helper to get KV namespace safely
+ * @deprecated KV is removed. Returns null.
  */
-export async function cacheGet<T = unknown>(
-  kv: KVNamespace | null,
-  key: string,
-): Promise<T | null> {
-  if (!kv) return null;
-
-  try {
-    const value = await kv.get(key, "json");
-    return value as T | null;
-  } catch (error) {
-    logger.error("cache_get_failed", { key, error });
-    return null;
-  }
+export function getKV(platform: any): any | null {
+  return null;
 }
 
 /**
- * Set a value in KV cache
- *
- * @param kv - KV namespace
- * @param key - Cache key
- * @param value - Value to cache (will be JSON serialized)
- * @param ttl - Time to live in seconds (optional)
+ * Generic wrapper to get data from KV with error handling
+ * @deprecated KV is removed. Always returns null.
+ */
+export async function cacheGet<T>(
+  kv: any,
+  key: string,
+): Promise<T | null> {
+  return null;
+}
+
+/**
+ * Generic wrapper to set data to KV with error handling
+ * @deprecated KV is removed. No-op.
  */
 export async function cacheSet(
-  kv: KVNamespace | null,
+  kv: any,
   key: string,
   value: unknown,
-  ttl?: number,
+  ttl: number,
 ): Promise<void> {
-  if (!kv) return;
-
-  try {
-    await kv.put(key, JSON.stringify(value), {
-      expirationTtl: ttl,
-    });
-    // Track cache set success - non-fatal but useful for telemetry
-    try {
-      const inferKeyType = (k: string) => {
-        if (k.startsWith("book:")) return "book" as const;
-        if (k.startsWith("metadata:")) return "metadata" as const;
-        if (k.startsWith("session:")) return "userSession" as const;
-        if (k.startsWith("ratelimit:")) return "apiRateLimit" as const;
-        return undefined;
-      };
-
-      Analytics.track("cache_set", {
-        cache_type: "kv",
-        key,
-        key_type: inferKeyType(key),
-        is_isbn: key.startsWith("book:"),
-        ttl,
-        success: true,
-      });
-    } catch (err) {
-      // Analytics failures should not affect cache operations
-      logger.debug("analytics_cache_event_failed", { key, error: err instanceof Error ? err.message : String(err) });
-    }
-  } catch (error) {
-    logger.error("cache_set_failed", { key, error });
-    try {
-      Analytics.track("cache_set", {
-        cache_type: "kv",
-        key,
-        key_type: key.startsWith("book:") ? "book" : undefined,
-        is_isbn: key.startsWith("book:"),
-        ttl,
-        success: false,
-        message: error instanceof Error ? error.message : String(error),
-      });
-    } catch (err) {
-      logger.debug("analytics_cache_event_failed", { key, error: err instanceof Error ? err.message : String(err) });
-    }
-    // Don't throw - cache failures should be non-fatal
-  }
+  return;
 }
 
 /**
- * Delete a value from KV cache
- *
- * @param kv - KV namespace
- * @param key - Cache key
+ * Generic wrapper to delete data from KV
+ * @deprecated KV is removed. No-op.
  */
 export async function cacheDelete(
-  kv: KVNamespace | null,
+  kv: any,
   key: string,
 ): Promise<void> {
-  if (!kv) return;
-
-  try {
-    await kv.delete(key);
-  } catch (error) {
-    logger.error("cache_delete_failed", { key, error });
-  }
-}
-
-/**
- * Check if a key exists in KV cache
- *
- * @param kv - KV namespace
- * @param key - Cache key
- * @returns true if key exists, false otherwise
- */
-export async function cacheHas(
-  kv: KVNamespace | null,
-  key: string,
-): Promise<boolean> {
-  if (!kv) return false;
-
-  try {
-    const value = await kv.get(key);
-    return value !== null;
-  } catch (error) {
-    logger.error("cache_has_failed", { key, error });
-    return false;
-  }
-}
-
-// ============================================================================
-// BOOK METADATA CACHE OPERATIONS
-// ============================================================================
-
-/**
- * Get book metadata from cache
- */
-export async function getBookCache<T = unknown>(
-  kv: KVNamespace | null,
-  isbn: string,
-): Promise<T | null> {
-  return cacheGet<T>(kv, CacheKeys.book(isbn));
-}
-
-/**
- * Set book metadata in cache
- */
-export async function setBookCache(
-  kv: KVNamespace | null,
-  isbn: string,
-  data: unknown,
-  ttl: number = CacheTTL.book,
-): Promise<void> {
-  return cacheSet(kv, CacheKeys.book(isbn), data, ttl);
-}
-
-/**
- * Delete book metadata from cache
- */
-export async function deleteBookCache(
-  kv: KVNamespace | null,
-  isbn: string,
-): Promise<void> {
-  return cacheDelete(kv, CacheKeys.book(isbn));
-}
-
-// ============================================================================
-// RATE LIMITING HELPERS
-// ============================================================================
-
-/**
- * Check if an API source is rate limited
- *
- * @param kv - KV namespace
- * @param source - API source identifier (e.g., 'google', 'openlibrary')
- * @returns true if rate limited, false otherwise
- */
-export async function isRateLimited(
-  kv: KVNamespace | null,
-  source: string,
-): Promise<boolean> {
-  if (!kv) return false;
-
-  const key = CacheKeys.apiRateLimit(source);
-  const value = await cacheGet<{ count: number }>(kv, key);
-
-  // Simple rate limit: max 100 requests per minute
-  return (value?.count || 0) > 100;
-}
-
-/**
- * Increment rate limit counter for an API source
- */
-export async function incrementRateLimit(
-  kv: KVNamespace | null,
-  source: string,
-): Promise<void> {
-  if (!kv) return;
-
-  const key = CacheKeys.apiRateLimit(source);
-  const current = await cacheGet<{ count: number }>(kv, key);
-  const newCount = (current?.count || 0) + 1;
-
-  await cacheSet(kv, key, { count: newCount }, CacheTTL.rateLimit);
-}
-
-// ============================================================================
-// CACHE WARMING / INVALIDATION
-// ============================================================================
-
-/**
- * Invalidate all book caches (use with caution)
- */
-export async function invalidateAllBookCaches(
-  kv: KVNamespace | null,
-): Promise<void> {
-  if (!kv) return;
-
-  // Note: KV doesn't support wildcard deletes, so we'd need to track keys
-  // This is a placeholder for future implementation
-  logger.warn("cache_bulk_invalidation_unimplemented", {});
-}
-
-/**
- * Get cache statistics (approximate)
- */
-export async function getCacheStats(_kv: KVNamespace | null) {
-  // KV doesn't provide built-in stats
-  // This is a placeholder for custom tracking
-  return {
-    supported: false,
-    message: "KV does not provide native statistics",
-  };
+  return;
 }

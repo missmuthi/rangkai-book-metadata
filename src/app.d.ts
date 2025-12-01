@@ -34,8 +34,6 @@ declare global {
       env: {
         /** D1 Database for persistent storage */
         DB: D1Database;
-        /** KV Namespace for 24-hour book metadata cache */
-        BOOK_CACHE: KVNamespace;
         /** Better Auth secret for session encryption */
         BETTER_AUTH_SECRET: string;
         /** Better Auth base URL for OAuth callbacks */

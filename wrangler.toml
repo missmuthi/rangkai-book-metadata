@@ -9,10 +9,7 @@ binding = "DB"
 database_name = "rangkai-scans"
 database_id = "c3d6dcc2-e7b8-4537-8b23-67d8921b3233"
 
-# KV Namespace Bindings (for caching book metadata)
-[[kv_namespaces]]
-binding = "BOOK_CACHE"
-id = "0844494af5e74ac1b28600f686a060c2"
+# KV Namespace Bindings removed (using D1 + HTTP Cache)
 
 # Optional: Cloudflare AI Gateway Binding
 # Uncomment if using Cloudflare AI features
