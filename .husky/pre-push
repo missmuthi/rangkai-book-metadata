@@ -1,0 +1,19 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Pre-push hook: Run type-check (svelte-check) and tests
+# - Run checks to prevent commits where type errors or test failures would fail CI
+
+npm run check
+if [ $? -ne 0 ]; then
+  echo "npm run check failed. Aborting push."
+  exit 1
+fi
+
+npm test
+if [ $? -ne 0 ]; then
+  echo "npm test failed. Aborting push."
+  exit 1
+fi
+
+exit 0

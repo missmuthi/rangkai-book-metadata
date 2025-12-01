@@ -9,7 +9,7 @@
     "dev:full": "npm run build && npm run dev:wrangler",
     "build": "vite build",
     "preview": "vite preview",
-    "prepare": "svelte-kit sync || echo ''",
+    "prepare": "husky install && svelte-kit sync || echo ''",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
