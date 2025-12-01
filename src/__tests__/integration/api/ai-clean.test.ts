@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '../../../routes/api/ai/clean/+server';
 
 // Mock dependencies
-vi.mock('ai', () => ({ generateObject: vi.fn() }));
+vi.mock('ai', () => ({ generateObject: vi.fn(), generateText: vi.fn() }));
 
 vi.mock('$lib/server/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 
@@ -64,10 +64,26 @@ describe('POST /api/ai/clean - Integration', () => {
     const event = createMockEvent({ body });
 
     const res = await POST(event as any);
-    expect(res.status).toBe(200);
     const data = await res.json();
+    console.warn('FALLBACK POST RESPONSE', { status: res.status, body: data });
+    expect(res.status).toBe(200);
     expect(data.scan_id).toBeDefined();
     expect(data.ddc).toBe('005.133');
     expect(data.lcc).toBe('QA76.73.J38');
+  });
+
+  it('falls back to generateText when model does not support json_schema', async () => {
+    const { generateObject, generateText } = await import('ai') as any;
+    (generateObject as any).mockRejectedValue(new Error('This model does not support response format `json_schema`'));
+    const textOutput = JSON.stringify({ title: 'Fallback Title', ddc: '005.100', lcc: 'QA76.1', changes: ['Generated DDC: 005.100'] });
+    (generateText as any).mockResolvedValue({ output_text: textOutput });
+
+    const event = createMockEvent({ body: { title: 'Fallback' } });
+    const res = await POST(event as any);
+    const data = await res.json();
+    console.warn('FALLBACK POST RESPONSE', { status: res.status, body: data });
+    expect(res.status).toBe(200);
+    expect(data.title).toBe('Fallback Title');
+    expect(data.ddc).toBe('005.100');
   });
 });

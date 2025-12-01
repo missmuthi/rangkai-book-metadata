@@ -160,6 +160,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
         let attempt = 0;
         let gen;
+        let lastError: unknown = null;
 
         // RETRY LOGIC for 429 Errors
         while (attempt < 3) {
@@ -173,6 +174,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
             break; // Success
           } catch (e: any) {
             attempt++;
+            lastError = e;
             const errorMessage = e instanceof Error ? e.message : String(e);
             const isRateLimit = errorMessage.includes("quota") || errorMessage.includes("429");
 
@@ -192,6 +194,21 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
         rawAiResult = gen?.object ?? null;
 
+        // If generation failed due to unsupported `json_schema` format, attempt text fallback
+        if (!rawAiResult && lastError && String(lastError).includes('json_schema')) {
+          try {
+            logger.info('ai_clean_groq_fallback_to_generateText_loop', {});
+            const fallbackPromptLoop = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
+            const textResultLoop = await generateText({ model: groq("llama-3.3-70b-versatile"), prompt: fallbackPromptLoop });
+            const outputTextLoop = (textResultLoop as any).output_text || (textResultLoop as any).output?.[0]?.content?.find((c: any) => c.type === 'output_text')?.text || (textResultLoop as any).output?.[0]?.content?.[0]?.text;
+            if (typeof outputTextLoop === 'string') {
+              rawAiResult = JSON.parse(outputTextLoop);
+            }
+          } catch (fallbackLoopErr) {
+            logger.error('ai_clean_generateText_fallback_failed_loop', { fallbackLoopErr });
+          }
+        }
+
         // WRITE TO CACHE (Aggressive: 7 days)
         if (rawAiResult && cacheKey && platform?.env?.BOOK_CACHE) {
           platform.context.waitUntil(
@@ -206,18 +223,22 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       } catch (aiError) {
         const errorMessage =
           aiError instanceof Error ? aiError.message : String(aiError);
+        logger.debug('ai_clean_groq_failed_message', { errorMessage });
         logger.error("ai_clean_groq_failed", { errorMessage });
 
         // Fallback for models that don't support json_schema: try a plain text JSON output and parse
         if (errorMessage.includes("json_schema")) {
           try {
             logger.info('ai_clean_groq_fallback_to_generateText', {});
+            logger.debug('ai_clean_fallback_invoking_generateText_start', {});
             const fallbackPrompt = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
             const textResult = await generateText({ model: groq("llama-3.3-70b-versatile"), prompt: fallbackPrompt });
+            logger.debug('ai_clean_fallback_invoking_generateText_end', {});
             const outputText = (textResult as any).output_text || (textResult as any).output?.[0]?.content?.find((c: any) => c.type === 'output_text')?.text || (textResult as any).output?.[0]?.content?.[0]?.text;
             if (typeof outputText === 'string') {
               try {
                 rawAiResult = JSON.parse(outputText);
+                logger.debug('ai_clean_fallback_raw', { rawAiResult });
                 // if parsed, cache it
                 if (rawAiResult && cacheKey && platform?.env?.BOOK_CACHE) {
                   platform.context.waitUntil(
@@ -276,10 +297,18 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
     }
 
     // 3. NORMALIZE & OPTIMIZE
+    if (!rawAiResult) {
+      logger.warn('ai_clean_no_ai_result', {});
+    }
+    logger.debug('ai_clean_raw_result', { rawAiResult });
+    // DEV: Also console.warn the parsed raw result for CI debugging
+    logger.debug('ai_clean_raw_result', { rawAiResult });
     const aiResult = normalizeKeys(
-      rawAiResult as import("$lib/utils/metadata").AIResultInput,
+      (rawAiResult ?? {}) as import("$lib/utils/metadata").AIResultInput,
     );
-    const cleanAiResult = deepClean(aiResult);
+    const cleanAiResult = deepClean(aiResult) ?? {};
+    logger.debug('ai_clean_normalized', { aiResult, cleanAiResult });
+    logger.debug('ai_clean_normalized_console', { aiResult, cleanAiResult });
 
     // 4. DEEP MERGE (The Fix for Data Loss)
     // Parse existing JSON from book data (may be in json_data field or scattered in book object)
@@ -304,12 +333,12 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       ...existingJson,
       ...cleanAiResult,
       // Explicitly set these to ensure they aren't lost in nesting
-      ddc: cleanAiResult.ddc,
-      lcc: cleanAiResult.lcc,
-      language: cleanAiResult.language,
-      subjects: cleanAiResult.subjects,
-      series: cleanAiResult.series,
-      edition: cleanAiResult.edition,
+      ddc: (cleanAiResult as any).ddc,
+      lcc: (cleanAiResult as any).lcc,
+      language: (cleanAiResult as any).language,
+      subjects: (cleanAiResult as any).subjects,
+      series: (cleanAiResult as any).series,
+      edition: (cleanAiResult as any).edition,
     };
 
     // 5. AUDIT LOG (Smart Tracking)

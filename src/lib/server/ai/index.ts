@@ -183,7 +183,7 @@ Return the cleaned AND completed fields with a comprehensive changes log.`,
           logger.debug('ai_generateText_result', { result: textResult });
 
           // Try to pull the textual output in a few known shapes
-          let text = (textResult as any).output_text || (textResult as any).output?.[0]?.content?.find((c: any) => c.type === 'output_text')?.text || (textResult as any).output?.[0]?.content?.[0]?.text;
+          const text = (textResult as any).output_text || (textResult as any).output?.[0]?.content?.find((c: any) => c.type === 'output_text')?.text || (textResult as any).output?.[0]?.content?.[0]?.text;
           if (typeof text === 'string') {
             try {
               const parsed = JSON.parse(text);
