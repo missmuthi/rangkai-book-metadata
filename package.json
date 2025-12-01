@@ -22,6 +22,7 @@
     "typegen": "wrangler types && svelte-kit sync",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --reporter=list --workers=1",
+    "test:e2e:smoke": "playwright test --grep 'Search by ISBN displays merged metadata card' --workers=1 --reporter=list",
     "db:migrate:local": "wrangler d1 execute DB --local --file=./schema.sql",
     "db:migrate:prod": "wrangler d1 execute DB --remote --file=./schema.sql",
     "diagnostic": "node diagnostic.js",

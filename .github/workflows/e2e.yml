@@ -9,6 +9,30 @@ on:
       - main
 
 jobs:
+  smoke:
+    name: PR Smoke Tests (fast)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Quick Smoke E2E test
+        run: npm run test:e2e:smoke
+
   e2e:
     name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
