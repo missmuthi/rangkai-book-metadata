@@ -1,1 +1,19 @@
-npm run check && npm test -- --run
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run Prettier first, stage any formatting changes, then run checks and tests.
+echo "Running Prettier (npm run format) and auto-staging formatted files..."
+npm run format
+if [ $? -ne 0 ]; then
+	echo "Prettier formatting failed. Aborting commit."
+	exit 1
+fi
+
+# Stage any changes made by the formatter
+git add -A
+
+# Run type checks and tests; abort commit on failure
+npm run check || { echo "npm run check failed. Aborting commit."; exit 1; }
+npm test -- --run || { echo "npm test failed. Aborting commit."; exit 1; }
+
+exit 0
