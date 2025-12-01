@@ -1,6 +1,10 @@
 <script lang="ts">
+	let { data }: { data: any } = $props(); // Superforms data from load via $props() rune
 		import { browser } from '$app/environment';
 		import { onMount, tick } from 'svelte';
+		import { enhance } from '$app/forms';
+		import Field from '$lib/components/form/Field.svelte';
+		import Validation from '$lib/components/form/Validation.svelte';
 		import { checkGoogleBooksLimit as _checkGoogleBooksLimit, checkOpenLibraryLimit as _checkOpenLibraryLimit } from '$lib/rateLimiter';
         import { scanHistory } from '$lib/stores/history.svelte';
         import { processAndRenderMergedData } from '$lib/merge';
@@ -216,6 +220,9 @@
                         toastTimeout = null;
                 }, 2000);
         }
+
+	// Initialize manualForm data from server
+	const manualFormData = data?.form ?? { data: { isbn: '', title: '' }, errors: {} };
 
 	/**
 	 * Play audio feedback for scan success/error
@@ -834,6 +841,21 @@
 						Harvest
 					</button>
 				</div>
+			</div>
+
+			<!-- Manual Entry Form -->
+			<div class="mt-3">
+				<form method="post" use:enhance class="flex gap-3 items-start flex-wrap">
+					<Field name="isbn" label="ISBN">
+						<input id="manual-isbn" name="isbn" class="block rounded-md border-gray-300 shadow-sm sm:text-sm px-3 py-2" placeholder="9780134092669" />
+						<Validation form={manualFormData} name="isbn" />
+					</Field>
+					<Field name="title" label="Title" required>
+						<input id="manual-title" name="title" class="block rounded-md border-gray-300 shadow-sm sm:text-sm px-3 py-2" placeholder="Book title" />
+						<Validation form={manualFormData} name="title" />
+					</Field>
+					<button type="submit" class="rounded-full bg-blue-600 text-white px-5 py-2 hover:bg-blue-700">Add</button>
+				</form>
 			</div>
 
 			<!-- Scanner Mode Toggle & Stats -->

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { createInsertSchema } from "drizzle-zod";
+import { scans } from "$lib/server/db/schema";
 
 /**
  * Zod Schemas for Data Validation
@@ -38,4 +40,24 @@ export const scanUpdateSchema = z.object({
   title: z.string().optional(),
   json_data: z.string().optional(), // For raw JSON updates if needed
   // ... other updatable fields
+});
+
+// Derived schema for scans table using drizzle-zod
+export const scanInsertSchema = createInsertSchema(scans);
+
+// Refined scan schema for form UX
+export const scanFormSchema = scanInsertSchema.extend({
+  isbn: z
+    .string()
+    .transform((val) => val.replace(/[-\s]/g, ""))
+    .pipe(z.string().regex(/^(97(8|9))?\d{9}(\d|X)$/, "Invalid ISBN format")),
+  title: z.string().min(1, { message: "Title is required" }),
+});
+
+// Manual scan form schema (simplified) for use with Superforms to avoid adapter mismatches
+export const manualScanSchema = z.object({
+  isbn: isbnSchema,
+  title: z.string().min(1, { message: "Title is required" }),
+  json_data: z.any().optional(),
+  status: z.string().optional(),
 });
