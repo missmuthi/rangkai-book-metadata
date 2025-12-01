@@ -201,7 +201,7 @@
                                         throw new Error(errorMessage);
                                     }
 
-									clientLog('warn', '💡 TIP: Check Cloudflare Pages → Settings → Environment Variables → GOOGLE_GENERATIVE_AI_API_KEY');
+									clientLog('warn', '💡 TIP: Check Cloudflare Pages → Settings → Environment Variables → GROQ_API_KEY');
 							} catch (innerError) {
                                     // If we already identified a rate limit error, rethrow immediately
                                     // to avoid trying to read res.text() (which would fail since body is consumed)

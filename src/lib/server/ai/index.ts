@@ -1,4 +1,4 @@
-import { google } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import type { MergedBookData } from "$lib/types";
@@ -69,8 +69,13 @@ function delay(ms: number) {
 export const aiService = {
   async cleanMetadata(book: MergedBookData): Promise<AIMergedBookData> {
     try {
-      if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
-        logger.warn("ai_api_key_missing", { service: "google_generative" });
+      const groq = createOpenAI({
+        baseURL: 'https://api.groq.com/openai/v1',
+        apiKey: env.GROQ_API_KEY,
+      });
+
+      if (!env.GROQ_API_KEY) {
+        logger.warn("ai_api_key_missing", { service: "groq" });
         return {};
       }
 
@@ -97,7 +102,7 @@ export const aiService = {
       while (attempt < 3) {
         try {
           const result = await generateObject({
-            model: google("gemini-2.0-flash"),
+            model: groq("llama-3.3-70b-versatile"),
             schema: cleanedBookSchema,
             prompt: `You are an expert Librarian and Cataloger. Your goal is to create a COMPLETE Bibliographic Record.
 

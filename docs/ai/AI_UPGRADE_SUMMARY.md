@@ -163,7 +163,7 @@ fieldsToCheck.forEach((field) => {
   "is_ai_enhanced": true,
   "ai_log": [
     {
-      "model": "Gemini 2.0 Flash",
+      "model": "Llama 3.3 70B Versatile (Groq)",
       "changes": [
         "Updated Title Case",
         "Updated author: Removed academic titles",
@@ -213,7 +213,7 @@ See `AI_COMPLETER_EXAMPLES.ts` for comprehensive test cases:
 
 ```bash
 # 1. Set your API key
-echo "GOOGLE_GENERATIVE_AI_API_KEY=your_key" >> .env
+echo "GROQ_API_KEY=your_groq_key" >> .env
 
 # 2. Start dev server
 npm run dev:wrangler
@@ -235,7 +235,7 @@ npm run dev:wrangler
 To use the enhanced AI Clean feature:
 
 1. ✅ Code is ready to use
-2. Set `GOOGLE_GENERATIVE_AI_API_KEY` in environment
+2. Set `GROQ_API_KEY` in environment
 3. Deploy to production
 4. Monitor AI-generated metadata quality
 5. Collect user feedback for further improvements
@@ -250,5 +250,5 @@ To use the enhanced AI Clean feature:
 
 **Status**: ✅ Implementation Complete
 **Version**: 2.0 - Metadata Completer
-**Model**: Gemini 2.0 Flash
+**Model**: Llama 3.3 70B Versatile (Groq)
 **Date**: 2025-11-27

@@ -39,7 +39,7 @@ function createMockEvent({ body, isAuthenticated = true }:{ body: unknown; isAut
       session: isAuthenticated ? { id: 'session-1' } : null,
       user: isAuthenticated ? { id: 'user-1', email: 'test@example.com' } : null,
     },
-    platform: { env: { DB: createMockDB(), GOOGLE_GENERATIVE_AI_API_KEY: 'TEST_KEY' } },
+    platform: { env: { DB: createMockDB(), GROQ_API_KEY: 'TEST_KEY', GOOGLE_GENERATIVE_AI_API_KEY: 'TEST_KEY' } },
   } as any;
 }
 

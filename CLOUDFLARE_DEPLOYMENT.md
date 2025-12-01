@@ -35,7 +35,7 @@ In the Cloudflare Pages dashboard for your project:
 ### Required Variables
 
 ```
-GOOGLE_AI_API_KEY=<your-google-ai-api-key>
+GROQ_API_KEY=<your-groq-api-key>
 ```
 
 ### Optional Variables (if not using GitHub OAuth)
@@ -93,11 +93,10 @@ git push origin main
 
 ## Step 7: Monitor AI Usage
 
-### Check Google AI API Usage
+### Check Groq / Llama API Usage
 
-1. Go to [Google AI Studio](https://aistudio.google.com/)
-2. Navigate to API settings
-3. Monitor your request count and rate limits
+1. Check Groq API dashboard if available for usage limits (or refer to the provider docs)
+2. For free-tier limits, monitor your request counts and implement caching to avoid hits
 
 ### Cloudflare Analytics
 
@@ -126,9 +125,9 @@ wrangler pages deployment tail --project-name=rangkai-book-metadata
 - Ensure all dependencies are in `package.json`
 - Verify Node version compatibility
 
-### Environment Variable Issues
+- ### Environment Variable Issues
 
-- Ensure `GOOGLE_AI_API_KEY` is set correctly
+- Ensure `GROQ_API_KEY` is set correctly
 - Check for typos in variable names
 - Verify API key is active in Google AI Studio
 
@@ -138,9 +137,9 @@ wrangler pages deployment tail --project-name=rangkai-book-metadata
 - Check database ID matches `wrangler.toml`
 - Verify KV namespace exists and ID is correct
 
-### AI API Rate Limits
+- ### AI API Rate Limits
 
-- Google AI has rate limits (default: 60 requests/minute)
+- Groq (or your provider) has rate limits (check docs for defaults)
 - Implement caching to reduce API calls
 - Consider upgrading to paid tier if needed
 
@@ -178,5 +177,6 @@ wrangler pages deployment tail --project-name=rangkai-book-metadata
 
 - [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/)
 - [SvelteKit Cloudflare Adapter](https://kit.svelte.dev/docs/adapter-cloudflare)
-- [Google AI API Docs](https://ai.google.dev/docs)
+- [Groq API Docs](https://groq.com/docs)  
+   (Or see your provider's LLM documentation)
 - [Wrangler CLI Docs](https://developers.cloudflare.com/workers/wrangler/)

@@ -3,7 +3,7 @@ import type { RequestHandler } from "./$types";
 import { generateObject } from "ai";
 import { logger } from "$lib/server/logger";
 import { z } from "zod";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { deepClean, normalizeKeys } from "$lib/utils/metadata";
 import type { MergedBookData } from "$lib/types";
 
@@ -85,20 +85,20 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
       );
     }
 
-    const apiKey = platform.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const apiKey = platform.env.GROQ_API_KEY;
     if (!apiKey) {
       logger.error("ai_clean_missing_api_key", {});
       return json(
         {
           error:
-            "AI service is not configured (missing GOOGLE_GENERATIVE_AI_API_KEY).",
+            "AI service is not configured (missing GROQ_API_KEY).",
           code: "AI_NOT_CONFIGURED",
         },
         { status: 500 },
       );
     }
 
-    const googleProvider = createGoogleGenerativeAI({ apiKey });
+    const groq = createOpenAI({ baseURL: 'https://api.groq.com/openai/v1', apiKey });
 
     logger.debug("ai_clean_request_validated", { title: book.title || 'Untitled', isbn: book.isbn || 'N/A' });
 
@@ -155,7 +155,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
     if (!usedCache) {
       try {
-        logger.debug("ai_clean_gemini_call_started", {});
+        logger.debug("ai_clean_groq_call_started", {});
         const startTime = Date.now();
 
         let attempt = 0;
@@ -165,7 +165,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
         while (attempt < 3) {
           try {
             gen = await generateObject({
-              model: googleProvider("gemini-2.0-flash-exp"),
+              model: groq("llama-3.3-70b-versatile"),
               schema: metadataSchema,
               system: systemPrompt,
               prompt: `Complete the bibliographic record for: "${book.title || "Unknown Title"}" by ${book.author || "Unknown Author"}. ISBN: ${book.isbn13 || book.isbn10 || book.isbn || "N/A"}`,
@@ -198,25 +198,25 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
         }
 
         const duration = Date.now() - startTime;
-        logger.info("ai_clean_gemini_success", { duration });
+        logger.info("ai_clean_groq_success", { duration });
       } catch (aiError) {
         const errorMessage =
           aiError instanceof Error ? aiError.message : String(aiError);
-        logger.error("ai_clean_gemini_failed", { errorMessage });
+        logger.error("ai_clean_groq_failed", { errorMessage });
 
         // Check for common issues
         let userMessage = "AI metadata service is currently unavailable.";
         let errorCode = "AI_SERVICE_UNAVAILABLE";
 
-        if (
+          if (
           errorMessage.includes("API key") ||
           errorMessage.includes("authentication") ||
           errorMessage.includes("401")
         ) {
           userMessage =
-            "AI service not configured. Please contact the administrator to set up GOOGLE_GENERATIVE_AI_API_KEY.";
+            "AI service not configured. Please contact the administrator to set up GROQ_API_KEY.";
           errorCode = "AI_NOT_CONFIGURED";
-          logger.warn("ai_clean_fix_suggestion", { suggestion: 'Add GOOGLE_GENERATIVE_AI_API_KEY to Cloudflare Pages env' });
+          logger.warn("ai_clean_fix_suggestion", { suggestion: 'Add GROQ_API_KEY to Cloudflare Pages env' });
         } else if (
           errorMessage.includes("quota") ||
           errorMessage.includes("429")
@@ -297,7 +297,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
     const logEntry = {
       timestamp: Date.now(),
-      model: usedCache ? "Gemini 2.0 Flash (Cached)" : "Gemini 2.0 Flash",
+      model: usedCache ? "Llama 3.3 70B Versatile (Cached)" : "Llama 3.3 70B Versatile",
       changes: changes.length > 0 ? changes : ["No changes detected"],
     };
 

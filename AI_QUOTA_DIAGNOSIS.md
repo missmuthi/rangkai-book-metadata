@@ -3,7 +3,7 @@
 ## Executive Summary
 
 **Status:** INVESTIGATING - QUOTA MISMATCH DETECTED  
-**Issue:** Server reports quota exceeded (limit: 0) but Google AI Studio shows available quota  
+**Issue:** Server reports quota exceeded (limit: 0) but Groq provider dashboard shows available quota  
   - RPM: 4/15 used ✓
   - TPM: 2.11K/1M used ✓  
   - RPD: 11/200 used ✓
@@ -21,27 +21,26 @@
 **Step 1: Verify API Key Identity**
 ```bash
 # Get the first 15 chars of the key in use (locally)
-grep "GOOGLE_GENERATIVE_AI_API_KEY" .env | cut -d= -f2 | head -c 15
+grep "GROQ_API_KEY" .env | cut -d= -f2 | head -c 15
 
 # Get the key from Cloudflare Pages (via dashboard)
-# Settings → Environment Variables → GOOGLE_GENERATIVE_AI_API_KEY (first 15 chars)
+# Settings → Environment Variables → GROQ_API_KEY (first 15 chars)
 ```
 
 **Step 2: Check Cloudflare Pages Env**
 1. Go to **Cloudflare Dashboard** → **Pages** → `rangkai-book-metadata`
 2. **Settings** → **Environment variables**
-3. Verify `GOOGLE_GENERATIVE_AI_API_KEY` exists and matches the one in Google AI Studio
+3. Verify `GROQ_API_KEY` exists and matches the one in your Groq dashboard or provider console
 
-**Step 3: Verify Billing Setup**
-1. Go to **https://console.cloud.google.com/billing**
-2. Check if billing account is active
-3. Check if project has a valid payment method attached
+**Step 3: Verify Billing Setup (Groq / Provider)**
+1. Go to your Groq or LLM provider billing console (or provider documentation)
+2. Check if your account is active and billing is set up if required
+3. Confirm whether your account is still within free-tier limits or requires an upgrade
 
-**Step 4: Check Google Cloud Project Settings**
-1. Go to **https://console.cloud.google.com/iam-admin/quotas**
-2. Search for `generativelanguage.googleapis.com`
-3. Verify quotas are not set to 0
-4. Check if there are any active limits or restrictions
+**Step 4: Check Provider Quotas & Limits**
+1. Go to your LLM provider's usage or quota dashboard
+2. Verify the relevant model request quotas and token limits are not set to 0
+3. Check for hard caps or throttles imposed by the provider
 
 ---
 
@@ -62,11 +61,10 @@ From server logs during AI Clean endpoint invocation:
 {
   "timestamp": "2025-12-01T07:33:28.689Z",
   "level": "ERROR",
-  "event": "ai_clean_gemini_failed",
-  "errorMessage": "Failed after 3 attempts. Last error: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/usage?tab=rate-limit.
+  "event": "ai_clean_groq_failed",
+  "errorMessage": "Failed after 3 attempts. Last error: You exceeded your current quota, please check your plan and billing details. For more information on this error, check your LLM provider's rate limit docs.
 
-  * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-exp
-  * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-exp
+  * Quota exceeded for metric: <provider-specific>
 
   Please retry in 29.669644758s."
 }
@@ -104,7 +102,7 @@ const additionalInfo = aiError && typeof aiError === "object"
       response: (aiError as Record<string, unknown>).response,
     }
   : undefined;
-logger.error("ai_clean_gemini_failed", {
+logger.error("ai_clean_groq_failed", {
   errorMessage,
   ...(additionalInfo || {}),
 });
@@ -243,7 +241,7 @@ if (!AICleanRateLimiter.canUse(userId)) {
 [WebServer] {
   "timestamp": "2025-12-01T07:33:28.689Z",
   "level": "ERROR",
-  "event": "ai_clean_gemini_failed",
+  "event": "ai_clean_groq_failed",
   "errorMessage": "Failed after 3 attempts. Last error: You exceeded your current quota..."
 }
 
@@ -256,7 +254,7 @@ Received: 503
 ```
 [WebServer] {"level": "WARN", "event": "ai_clean_rate_limit_retry", "attempt": 1, "waitTime": 2000}
 [WebServer] {"level": "WARN", "event": "ai_clean_rate_limit_retry", "attempt": 2, "waitTime": 4000}
-[WebServer] {"level": "ERROR", "event": "ai_clean_gemini_failed", ...}
+[WebServer] {"level": "ERROR", "event": "ai_clean_groq_failed", ...}
 ```
 
 ---

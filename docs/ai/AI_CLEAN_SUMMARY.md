@@ -22,7 +22,7 @@ Tasks:
 
 POST /api/ai/clean
 ├─ Authenticate user
-├─ Call Gemini AI (2-3 seconds)
+├─ Call Groq Llama 3.3 (2-3 seconds)
 ├─ Inject is_ai_enhanced: true, enhanced_at: timestamp
 ├─ Return cleaned data immediately
 └─ Background (non-blocking):
@@ -93,7 +93,7 @@ BookDetailModal.svelte:
 
 ## 🔧 Technical Details
 
-- **Model:** Google Gemini 2.0 Flash
+- **Model:** Groq Llama 3.3 70B Versatile (`llama-3.3-70b-versatile`)
 - **Processing Time:** ~2-3 seconds
 - **Cache TTL:** 30 days (KV)
 - **Database:** D1 SQLite (scans table)

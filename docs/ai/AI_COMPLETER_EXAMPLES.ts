@@ -219,7 +219,7 @@ export const testScenarios = [
  * 1. Start the development server with Wrangler:
  *    npm run dev:wrangler
  *
- * 2. Set GOOGLE_GENERATIVE_AI_API_KEY in .env
+ * 2. Set GROQ_API_KEY in .env
  *
  * 3. Make a POST request to /api/ai/clean:
  *    ```typescript

@@ -13,7 +13,7 @@
 
 - [ ] GitHub repository connected to Cloudflare Pages
 - [ ] Build settings configured (see CLOUDFLARE_DEPLOYMENT.md)
-- [ ] Environment variable `GOOGLE_AI_API_KEY` set
+- [ ] Environment variable `GROQ_API_KEY` set
 - [ ] D1 database binding configured (DB → rangkai-scans)
 - [ ] KV namespace binding configured (BOOK_CACHE → 0844494af5e74ac1b28600f686a060c2)
 - [ ] Automatic deployment triggered from main branch

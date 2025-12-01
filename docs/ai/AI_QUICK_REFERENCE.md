@@ -70,7 +70,7 @@ Upgraded AI Clean from "typo fixer" → **Metadata Completer**
 {
   "ai_log": [{
     "timestamp": 1701234567890,
-    "model": "Gemini 2.0 Flash",
+    "model": "Llama 3.3 70B Versatile (Groq)",
     "changes": [
       "Generated DDC: 005.133",
       "Generated language: eng",
@@ -158,7 +158,7 @@ npm run build
 ### 1. Set API Key
 
 ```bash
-echo "GOOGLE_GENERATIVE_AI_API_KEY=your_key" >> .env
+echo "GROQ_API_KEY=your_groq_key" >> .env
 ```
 
 ### 2. Start Server
@@ -209,5 +209,5 @@ console.log(enhanced.ai_log); // See all changes
 ---
 
 **Status**: ✅ Ready to Use
-**Model**: Gemini 2.0 Flash
+**Model**: Llama 3.3 70B Versatile (Groq)
 **Version**: 2.0

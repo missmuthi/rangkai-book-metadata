@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.0] - 2025-12-01 - **Smart Search API & Database Optimization** 🔍
 
+## [3.0.1] - 2025-12-01 - **AI Provider Migration: Google Gemini → Groq (Llama 3.3)** 🔄
+
+### 🔁 Migration Summary
+
+- **Goal:** Migrate AI service from Google Gemini to Groq's Llama 3.3 (free tier) to avoid billing issues and leverage generous free limits.
+- **Action:** Replaced `@ai-sdk/google` with `@ai-sdk/openai` and configured `createOpenAI()` with Groq baseURL.
+- **Model:** `llama-3.3-70b-versatile` (used in `generateObject()` calls).
+- **Schema:** All existing Zod validation schemas, rules, and system prompts retained unchanged.
+
+### ✅ What Changed
+
+- Code:
+  - `src/lib/server/ai/index.ts` now uses Groq with `createOpenAI()` and `GROQ_API_KEY`.
+  - `src/routes/api/ai/clean/+server.ts` updated to use Groq provider and model selection.
+  - Tests and integration scripts updated to use `GROQ_API_KEY` and `@ai-sdk/openai` mock patterns.
+- Docs:
+  - `.env.example` now includes `GROQ_API_KEY`.
+  - Updated Cloudflare deployment docs and AI docs to reference Groq Llama 3.3 model and `GROQ_API_KEY`.
+
+### 📝 Notes
+
+- Please run `npm install` to refresh `package-lock.json` after removing `@ai-sdk/google`.
+- During the transition, both `GROQ_API_KEY` and `GOOGLE_GENERATIVE_AI_API_KEY` may be present for backward compatibility, but the code now prefers `GROQ_API_KEY`.
+
 ### ✨ Major Features
 
 - **Smart Search API**: High-performance search across book metadata

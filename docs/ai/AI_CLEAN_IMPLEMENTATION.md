@@ -2,7 +2,7 @@
 
 ## Overview
 
-The AI Clean feature allows librarians to enhance book metadata using Google Gemini AI. The cleaned metadata is automatically saved to both KV Cache and D1 Database for future users.
+The AI Clean feature allows librarians to enhance book metadata using Groq's Llama model (Llama 3.3 70B Versatile). The cleaned metadata is automatically saved to both KV Cache and D1 Database for future users.
 
 ## Implementation Summary
 
@@ -11,7 +11,7 @@ The AI Clean feature allows librarians to enhance book metadata using Google Gem
 **Flow:**
 
 1. Receive raw book data from client
-2. Call Gemini AI to clean/enhance metadata (Indonesian librarian standards)
+2. Call Groq Llama 3.3 to clean/enhance metadata (Indonesian librarian standards)
 3. Inject `is_ai_enhanced: true` and `enhanced_at: timestamp`
 4. Return cleaned data immediately (non-blocking response)
 5. **Background writes** (using `platform.context.waitUntil()`):
@@ -134,7 +134,7 @@ export interface MergedBookData {
 
 ## Performance Characteristics
 
-- **AI Processing Time:** ~2-3 seconds (Gemini 2.0 Flash)
+- **AI Processing Time:** ~2-3 seconds (Groq Llama 3.3 70B Versatile - free tier may vary)
 - **Response Time:** Same as AI processing (writes are async)
 - **KV Cache TTL:** 30 days (auto-refresh on access)
 - **Token Savings:** ~95% reduction (one AI call serves all users)
@@ -169,7 +169,9 @@ export interface MergedBookData {
 ## Environment Requirements
 
 ```env
-GOOGLE_GENERATIVE_AI_API_KEY=your_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
+GOOGLE_GENERATIVE_AI_API_KEY=your_api_key_here  # Optional: legacy key (kept for backward compatibility)
 ```
 
 ## Testing Checklist

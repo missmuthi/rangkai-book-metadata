@@ -5,7 +5,7 @@
  * This will make a real API call to verify the API key works
  */
 
-import { google } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import "dotenv/config";
@@ -35,21 +35,21 @@ const testBook = {
 };
 
 async function testAI() {
-  console.log("🧪 Testing Google AI API integration...\n");
+  console.log("🧪 Testing Groq Llama 3.3 API integration...\n");
   console.log("📚 Original Book Data:");
   console.log(JSON.stringify(testBook, null, 2));
   console.log("\n");
 
   try {
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
-      console.error("❌ GOOGLE_GENERATIVE_AI_API_KEY is not set in .env file");
+      console.error("❌ GROQ_API_KEY is not set in .env file");
       process.exit(1);
     }
 
     console.log("✅ API Key found:", apiKey.substring(0, 10) + "...");
-    console.log("🔄 Calling Google AI API...\n");
+    console.log("🔄 Calling Groq Llama API...\n");
 
     const bookContext = JSON.stringify({
       title: testBook.title,
@@ -59,8 +59,9 @@ async function testAI() {
       date: testBook.date,
     });
 
+    const groq = createOpenAI({ baseURL: 'https://api.groq.com/openai/v1', apiKey });
     const { object } = await generateObject({
-      model: google("gemini-2.0-flash"),
+      model: groq("llama-3.3-70b-versatile"),
       schema: cleanedBookSchema,
       prompt: `You are a strict library cataloger.
       Input JSON: ${bookContext}

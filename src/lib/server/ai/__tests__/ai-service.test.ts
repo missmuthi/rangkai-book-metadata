@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock SvelteKit env import and set env var to bypass missing API key early exit
-vi.mock('$env/dynamic/private', () => ({ env: { GOOGLE_GENERATIVE_AI_API_KEY: 'TEST_KEY' } }));
+vi.mock('$env/dynamic/private', () => ({ env: { GROQ_API_KEY: 'TEST_KEY' } }));
 
 // Mock the ai and google model dependencies
 vi.mock('ai', async () => ({
   generateObject: vi.fn(),
 }));
-vi.mock('@ai-sdk/google', async () => ({
-  google: (name: string) => ({ model: name }),
+vi.mock('@ai-sdk/openai', async () => ({
+  createOpenAI: (opts: unknown) => (name: string) => ({ model: name, opts }),
 }));
 
 import { generateObject } from 'ai';

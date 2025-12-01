@@ -380,7 +380,7 @@ print(f"Response Time: {response.headers.get('X-Response-Time')}")
 
 ## Future Enhancements
 
-- [ ] **AI Summarization**: Add Gemini-powered book summaries
+- [ ] **AI Summarization**: Add Groq Llama 3.3 powered book summaries
 - [ ] **Batch API**: Support multiple ISBNs in one request
 - [ ] **Webhook Support**: Notify on successful scan
 - [ ] **GraphQL Endpoint**: Alternative to REST API

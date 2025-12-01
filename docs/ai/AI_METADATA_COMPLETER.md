@@ -160,7 +160,7 @@ fieldsToCheck.forEach((field) => {
 ```typescript
 const logEntry = {
   timestamp: Date.now(),
-  model: "Gemini 2.0 Flash",
+  model: "Llama 3.3 70B Versatile (Groq)",
   changes: allChanges.length > 0 ? allChanges : ["No changes detected"],
 };
 
@@ -230,7 +230,7 @@ const cleanedBook = {
   "ai_log": [
     {
       "timestamp": 1701234567890,
-      "model": "Gemini 2.0 Flash",
+      "model": "Llama 3.3 70B Versatile (Groq)",
       "changes": [
         "Updated Title Case",
         "Updated author: Removed academic titles",
@@ -307,4 +307,4 @@ npm run build
 
 **Status**: ✅ Fully Implemented & Type-Safe
 **Version**: 2.0 - Metadata Completer
-**Model**: Gemini 2.0 Flash
+**Model**: Llama 3.3 70B Versatile (Groq)

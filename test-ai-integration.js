@@ -4,7 +4,7 @@
  * Integration test - simulates the full aiService.cleanMetadata() flow
  */
 
-import { google } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import "dotenv/config";
@@ -59,8 +59,8 @@ async function testAIService(book) {
   console.log("=".repeat(60));
 
   try {
-    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-      throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error("GROQ_API_KEY is not set");
     }
 
     console.log("\n📥 INPUT:");
@@ -77,8 +77,9 @@ async function testAIService(book) {
       date: book.input.date,
     });
 
+    const groq = createOpenAI({ baseURL: 'https://api.groq.com/openai/v1', apiKey: process.env.GROQ_API_KEY });
     const { object } = await generateObject({
-      model: google("gemini-2.0-flash"),
+      model: groq("llama-3.3-70b-versatile"),
       schema: cleanedBookSchema,
       prompt: `You are a strict library cataloger.
       Input JSON: ${bookContext}
