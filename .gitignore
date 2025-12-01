@@ -2,7 +2,7 @@
 # Rangkai Book Metadata - .gitignore
 # ============================================
 # Optimized for SvelteKit + Cloudflare + D1 + Better Auth
-# Last Updated: 2025-11-21 (v1.3.0)
+# Last Updated: 2025-12-01 (v3.0.0)
 
 # ============================================
 # Dependencies
@@ -165,6 +165,38 @@ oauth-tokens.json
 *.pid.lock
 
 # ============================================
+# Project-Specific Build/Debug Artifacts
+# ============================================
+# Test output and reports
+test-results/
+playwright-report/
+*.test-results.json
+
+# Diagnostic and debug files
+diagnostic.js.output
+debug-*.log
+verify-*.py.output
+verify_*.png
+*_debug.png
+
+# SQL migrations and backups
+*.sql.bak
+*backup*.sql
+reset-database.sql
+
+# Lint and validation output
+lint-*.txt
+validate-*.txt
+
+# E2E test screenshots
+e2e/screenshots/
+e2e/**/*.png
+
+# GitHub issue/PR templates (if any)
+.github/ISSUE_TEMPLATE/
+.github/PULL_REQUEST_TEMPLATE/
+
+# ============================================
 # Deployment Platforms
 # ============================================
 .vercel/
@@ -204,7 +236,7 @@ screenshots/
 __screenshots__/
 
 # ============================================
-# Security Notes (v2.0 - Zero Trust Policy)
+# Security Notes (v3.0.0 - Zero Trust Policy)
 # ============================================
 # NEVER commit:
 # - .env files with real credentials
@@ -221,4 +253,7 @@ __screenshots__/
 # ✅ Use different GOOGLE_CLIENT_ID for dev/staging/production
 # ✅ Enable 2FA on Google Cloud Console
 # ✅ Review authorized redirect URIs regularly
+# ✅ Configure CORS headers for external API calls
+# ✅ Enable rate limiting on Cloudflare Workers
+# ✅ Review D1 database backups and retention policy
 # ============================================
