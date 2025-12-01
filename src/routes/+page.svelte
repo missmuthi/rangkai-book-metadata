@@ -766,602 +766,392 @@
 	}
 </script>
 
-<!-- Main Content Area (No header - using layout header) -->
-<div class="min-h-screen bg-gray-50 text-gray-900 font-sans">
-	<main class="max-w-7xl mx-auto px-4 py-12">
+<div class="min-h-screen bg-[#fafafa] text-gray-900 font-sans selection:bg-blue-100 selection:text-blue-900 overflow-x-hidden">
+	<!-- Gradient Background Spotlights -->
+	<div class="fixed inset-0 pointer-events-none z-0">
+		<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-gradient-to-br from-blue-100/40 to-transparent rounded-full blur-3xl opacity-60"></div>
+		<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-gradient-to-tl from-indigo-100/40 to-transparent rounded-full blur-3xl opacity-60"></div>
+	</div>
+
+	<main class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 flex flex-col items-center">
 		
-		<div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-			<!-- Main Content Column -->
-			<div class="lg:col-span-3">
-		
-		<!-- Search Bar (from your design) -->
-		<div class="text-center mb-12 space-y-4 max-w-3xl mx-auto">
-			<h1 class="text-4xl font-bold text-gray-900">Katalogisasi Buku Otomatis untuk SLiMS</h1>
-			<p class="text-lg text-gray-700 max-w-2xl mx-auto">
-				Scan ISBN dengan kamera ponsel, ambil metadata lengkap dari Google Books, OpenLibrary, dan Library of Congress. 
-				Export langsung ke format SLiMS CSV atau MARCXML. 100% gratis, tidak perlu registrasi.
+		<!-- Hero Typography -->
+		<div class="text-center max-w-5xl mx-auto mb-16 animate-fade-in-up">
+			<h1 class="text-6xl md:text-8xl font-bold tracking-tight text-gray-900 mb-8 text-balance leading-[0.9]">
+				Katalogisasi Buku.<br class="hidden md:block"/>
+				<span class="text-gray-400">Selesai dalam Detik.</span>
+			</h1>
+			<p class="text-xl md:text-2xl text-gray-500 max-w-2xl mx-auto font-medium leading-relaxed text-balance">
+				Otomatisasi metadata SLiMS dengan kecepatan cahaya.
+				<span class="text-gray-900">100% Gratis.</span>
 			</p>
-			<p class="text-sm text-gray-600">
-				<strong>Hemat waktu katalogisasi:</strong> 50 buku dalam 5 menit. 
-				Metadata otomatis termasuk DDC, LCC, ISBN, penerbit, dan subjek. 
-				Sempurna untuk perpustakaan yang menggunakan SLiMS atau sistem katalog MARC21.
-			</p>
-			
-			<div class="flex gap-2 max-w-lg mx-auto mt-6 relative">
-				<input 
-					type="text" 
-					bind:this={searchInputRef}
-					bind:value={searchQuery}
-					oninput={handleInputChange}
-					onfocus={(e) => {
-						e.currentTarget.select();
-					}}
-					onkeydown={(e) => {
-						if (e.key === 'Enter') {
-							// Clear debounce timer for instant search on Enter
-							if (debounceTimer) {
-								clearTimeout(debounceTimer);
-								debounceTimer = null;
+		</div>
+
+		<!-- Main Interaction Area (Search) -->
+		<div class="w-full max-w-3xl mx-auto mb-8 relative z-20">
+			<div class="relative group">
+				<!-- Blur Glow -->
+				<div class="absolute -inset-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+				
+				<!-- Input Container -->
+				<div class="relative flex items-center bg-white/80 backdrop-blur-2xl rounded-full p-2 ring-1 ring-black/5 shadow-2xl transition-all">
+					<div class="pl-6 text-gray-400">
+						{#if isLoading}
+							<svg class="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							</svg>
+						{:else}
+							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+							</svg>
+						{/if}
+					</div>
+
+					<input
+						type="text"
+						bind:this={searchInputRef}
+						bind:value={searchQuery}
+						oninput={handleInputChange}
+						onkeydown={(e) => {
+							if (e.key === 'Enter') {
+								if (debounceTimer) {
+									clearTimeout(debounceTimer);
+									debounceTimer = null;
+								}
+								handleSearch();
 							}
-							handleSearch();
-						}
-					}}
-					placeholder={scannerModeEnabled ? "Scan barcode or enter ISBN..." : "e.g. 9780134092669 or Akulah Angin Bambang"}
-					class="w-full px-4 py-3 rounded-lg border {scannerModeEnabled ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm transition-all"
-				/>
-				
-				<button 
-					onclick={handleSearch}
-					disabled={isLoading}
-					class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
-				>
-					{#if isLoading}
-						<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-						</svg>
-						Processing...
-					{:else}
-						Harvest
-					{/if}
-				</button>
-			</div>
-			
-			<!-- Scanner Mode Toggle -->
-			<div class="flex flex-col items-center justify-center gap-3 mt-4">
-				<div class="flex items-center gap-3">
+						}}
+						placeholder={scannerModeEnabled ? "Ready to Scan..." : "Scan ISBN (e.g. 9780134092669) or type title"}
+						class="flex-1 bg-transparent border-0 focus:ring-0 text-lg md:text-xl px-4 py-4 text-gray-900 placeholder-gray-400 w-full"
+					/>
+
 					<button
-						onclick={toggleScannerMode}
-						class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all {scannerModeEnabled ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+						onclick={handleSearch}
+						disabled={isLoading}
+						class="bg-gray-900 hover:bg-black text-white rounded-full px-8 py-3 md:py-4 font-semibold transition-all hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
 					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-						</svg>
-						{scannerModeEnabled ? 'Scanner Mode: ON' : 'Enable Scanner Mode'}
+						Harvest
 					</button>
-					{#if scannerModeEnabled}
-						<span class="text-xs text-gray-500">📦 Scanned: {scanHistory.count}</span>
-					{/if}
 				</div>
+			</div>
+
+			<!-- Scanner Mode Toggle & Stats -->
+			<div class="mt-6 flex flex-wrap items-center justify-center gap-4 animate-fade-in text-sm text-gray-500">
+				<button
+					onclick={toggleScannerMode}
+					class="flex items-center gap-2 px-4 py-2 rounded-full transition-all border {scannerModeEnabled ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white/50 text-gray-600 border-gray-200 hover:bg-white'}"
+				>
+					<div class="w-2 h-2 rounded-full {scannerModeEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}"></div>
+					{scannerModeEnabled ? 'Scanner Mode Active' : 'Enable Scanner Mode'}
+				</button>
 				
-                                <!-- Auto-Add Toggle (High-Velocity Scanning) -->
-                                {#if scannerModeEnabled}
-                                        <label class="flex items-center gap-3 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
-                                                <input
-                                                        type="checkbox"
-                                                        bind:checked={autoAddEnabled}
-                                                        onchange={() => {
-                                                                Analytics.track('user_interaction', {
-                                                                        action: 'auto_add_mode_toggled',
-                                                                        enabled: autoAddEnabled
-                                                                });
-                                                                if (autoAddEnabled) {
-                                                                        showToast('Added scans will save automatically', 'success');
-                                                                }
-                                                        }}
-                                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                                        disabled={!isNetworkOnline}
-                                                        aria-disabled={!isNetworkOnline}
-                                                        title={isNetworkOnline ? 'Automatically add scans to the batch' : 'Auto-Add is disabled while offline'}
-                                                />
-                                                <div class="flex items-center gap-2">
-                                                        <span class="text-lg">⚡</span>
-                                                        <div class="flex flex-col leading-tight">
-                                                                <span class="text-sm font-semibold text-gray-800">Auto-Add to Batch</span>
-                                                                <span class="text-xs text-gray-500">Skip review card, keep scanning</span>
-                                                        </div>
-                                                </div>
-                                        </label>
-                                        {#if !isNetworkOnline}
-                                                <p class="text-xs font-semibold text-amber-600">Offline detected — Auto-Add is paused until you reconnect.</p>
-                                        {/if}
-                                {/if}
-                        </div>
-                </div>
+				{#if scannerModeEnabled}
+					<label class="flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer transition-all border {autoAddEnabled ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white/50 text-gray-600 border-gray-200'}">
+						<input type="checkbox" bind:checked={autoAddEnabled} disabled={!isNetworkOnline} class="rounded text-blue-600 focus:ring-offset-0 focus:ring-0 w-4 h-4" />
+						<span>Auto-Add {autoAddEnabled ? 'On' : 'Off'}</span>
+					</label>
+
+					<div class="px-4 py-2 bg-white/50 backdrop-blur border border-gray-200 rounded-full font-mono">
+						Scanned: <span class="font-bold text-gray-900">{scanHistory.count}</span>
+					</div>
+				{/if}
+			</div>
+		</div>
 
 		<!-- Error Message -->
 		{#if error}
-			<div class="max-w-3xl mx-auto p-4 bg-red-100 text-red-700 rounded-lg mb-6">
+			<div class="w-full max-w-2xl mx-auto p-4 bg-red-50/80 backdrop-blur border border-red-200 text-red-600 rounded-2xl mb-8 text-center animate-shake">
 				{error}
 			</div>
 		{/if}
 
-		<!-- === Main UI State Swap === -->
 
-		{#if isLoading && !mergedData && googleResults.length === 0}
-			<!-- Enhanced Loading State with Skeletons -->
-			<div class="max-w-3xl mx-auto">
-				<div class="flex flex-col items-center justify-center p-8 text-gray-500 mb-6">
-					<svg class="animate-spin h-12 w-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-					</svg>
-					<p class="mt-4 text-lg">Harvesting data from Google Books & OpenLibrary...</p>
-					<p class="text-sm text-gray-400 mt-1">This may take a few seconds</p>
+		<!-- Dynamic Content Area -->
+		<div class="w-full max-w-7xl mx-auto transition-all duration-500">
+
+			<!-- State: Loading Skeletons -->
+			{#if isLoading && !mergedData && googleResults.length === 0}
+				<div class="max-w-3xl mx-auto mt-12 space-y-6 animate-pulse">
+					<div class="h-64 bg-white/60 rounded-3xl w-full"></div>
+					<div class="grid grid-cols-2 gap-4">
+						<div class="h-40 bg-white/60 rounded-3xl w-full"></div>
+						<div class="h-40 bg-white/60 rounded-3xl w-full"></div>
+					</div>
 				</div>
-				
-				<!-- Show skeleton cards for title searches -->
-				{#if searchQuery && !/^\d{10}(\d{3})?$/.test(searchQuery.replace(/[^0-9]/g, ''))}
-					<div class="space-y-4">
-						<h3 class="text-lg font-semibold text-gray-700">Loading results...</h3>
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<div class="space-y-3">
-								<h4 class="text-sm font-medium text-gray-600">Google Books</h4>
-								{#each Array(3) as _}
-									<SkeletonCard />
-								{/each}
-							</div>
-							<div class="space-y-3">
-								<h4 class="text-sm font-medium text-gray-600">OpenLibrary</h4>
-								{#each Array(3) as _}
-									<SkeletonCard />
-								{/each}
-							</div>
-						</div>
-					</div>
-				{/if}
-			</div>
-		
-		{:else if currentView === 'result' && mergedData}
-			<!-- === SLiMS Result Card === -->
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-				<div class="md:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-lg">
-				<!-- Data Source Status Banner -->
-				{#if mergedData.dataSource === 'all-three'}
-					<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
-						<svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-						</svg>
-						<div class="flex-1">
-							<p class="text-sm font-medium text-green-900">Complete Data Retrieved</p>
-							<p class="text-xs text-green-700 mt-1">
-								All 3 sources available: Google Books, OpenLibrary, and Library of Congress. Classification data is authoritative.
-							</p>
-						</div>
-					</div>
-				{:else if mergedData.dataSource === 'google-loc'}
-					<div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
-						<svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-						</svg>
-						<div class="flex-1">
-							<p class="text-sm font-medium text-blue-900">Using Google Books + Library of Congress</p>
-							<p class="text-xs text-blue-700 mt-1">
-								OpenLibrary temporarily unavailable. LCC from authoritative LoC source. DDC may be incomplete.
-							</p>
-						</div>
-					</div>
-				{:else if mergedData.dataSource === 'google-openlibrary'}
-					<div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-						<svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-						</svg>
-						<div class="flex-1">
-							<p class="text-sm font-medium text-amber-900">Using Google Books + OpenLibrary</p>
-							<p class="text-xs text-amber-700 mt-1">
-								Library of Congress temporarily unavailable. LCC data from OpenLibrary (less authoritative).
-							</p>
-						</div>
-					</div>
-				{:else if mergedData.isPartialData}
-					<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-						<svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-						</svg>
-						<div class="flex-1">
-							<p class="text-sm font-medium text-red-900">Limited Data Available</p>
-							<p class="text-xs text-red-700 mt-1">
-								Only {mergedData.dataSource?.replace('-only', '').replace(/-/g, ' ').toUpperCase()} available. Classification data may be incomplete.
-							</p>
-						</div>
-					</div>
-				{/if}
-					<div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-					<button onclick={handleBackToSearch} class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-						&larr; Back to Search Results
-					</button>
-					
-					<!-- Export Buttons -->
-					<div class="flex gap-2">
-						<button
-							onclick={() => handleExportSLiMSCSV(mergedData!)}
-							class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 transition-colors"
-							title="Download as SLiMS CSV for direct import"
-						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-							</svg>
-							Download SLiMS CSV
-						</button>
-						
-						<button
-							onclick={() => handleExportMARCXML(mergedData!)}
-							class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 transition-colors"
-							title="Download as MARCXML for library catalog systems"
-						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-							</svg>
-							Download MARCXML
-						</button>
-					</div>
-				</div>					<h2 class="text-xl font-bold mb-4 border-b pb-2">SLiMS-Ready Data (Merged)</h2>
-					
-					<div class="space-y-4">
-					{#if mergedData}
-						{@const secureProxiedCover = getSecureProxyUrl(mergedData.cover)}
-						<div class="w-1/3 float-right ml-4 mb-4">
-							<div class="aspect-[2/3] w-full bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden shadow-md">
-								{#if secureProxiedCover === FALLBACK_COVER}
-									<span class="text-sm px-4 text-center text-gray-500">No Cover Available</span>
-								{:else}
-									<img 
-										src={secureProxiedCover}
-										alt="{mergedData.title} book cover"
-										class="w-full h-full object-cover"
-										loading="lazy"
-										decoding="async"
-										onerror={handleCoverError}
-									/>
-								{/if}
-							</div>
-						</div>
-					{/if}					<div>
-						<span class="text-sm font-medium text-gray-500">Title</span>
-						<p class="text-xl font-semibold text-gray-900">{mergedData.title}</p>
-					</div>
 
-					<div class="grid grid-cols-3 gap-x-4 gap-y-3 pt-4 border-t">
-						<span class="text-sm font-medium text-gray-500 col-span-1">GMD</span>
-						<p class="text-base text-gray-700 col-span-2">{mergedData.gmd}</p>
-						
-						<span class="text-sm font-medium text-gray-500 col-span-1">Series Title</span>
-						<p class="text-base text-gray-700 col-span-2">{mergedData.series}</p>
-
-						<span class="text-sm font-medium text-gray-500 col-span-1">Call Number</span>
-						<div class="col-span-2 flex items-center gap-2">
-							<p class="font-mono text-blue-700 bg-blue-100 px-2 py-1 rounded-md inline-block">{mergedData.callNumber}</p>
+			<!-- State: Result Card -->
+			{:else if currentView === 'result' && mergedData}
+				<div class="mt-12 animate-fade-in-up">
+					<!-- Keep existing mergedData logic but wrap in cleaner container -->
+					<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+						<div class="md:col-span-2 bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/40 shadow-xl ring-1 ring-black/5">
 							
-							<!-- Library of Congress Trust Badge -->
-							{#if mergedData.lcc !== '-' && mergedData.dataSource?.includes('loc')}
-								<span
-									class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-800 bg-blue-50 border border-blue-300 rounded-md"
-									title="LCC classification from authoritative Library of Congress source"
-								>
-									🏛️ Official LoC
-								</span>
-							{:else if mergedData.isPartialData && (mergedData.callNumber === '-' || mergedData.ddc === '-')}
-								<span
-									class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-md"
-									title="Classification sources temporarily unavailable. Data may be incomplete."
-								>
-									⚠️ Classification Unavailable
-								</span>
-							{/if}
-						</div>
-						
-						<span class="text-sm font-medium text-gray-500 col-span-1">Publisher</span>
-						<p class="text-base text-gray-700 col-span-2">{mergedData.publisherString}</p>
+							<!-- Action Bar -->
+							<div class="flex items-center justify-between mb-8 pb-6 border-b border-gray-100">
+								<button onclick={handleBackToSearch} class="text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-2 font-medium">
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+									Back
+								</button>
 
-						<span class="text-sm font-medium text-gray-500 col-span-1">Collation</span>
-						<p class="text-base text-gray-700 col-span-2">{mergedData.collation}</p>
-
-						<span class="text-sm font-medium text-gray-500 col-span-1">Language</span>
-						<p class="text-base text-gray-700 col-span-2">{mergedData.language}</p>
-
-						<span class="text-sm font-medium text-gray-500 col-span-1">ISBN/ISSN</span>
-						<p class="text-base text-gray-700 col-span-2">{mergedData.isbn13}</p>
-
-						<span class="text-sm font-medium text-gray-500 col-span-1">Classification</span>
-						<div class="col-span-2 flex items-center gap-2">
-							<p class="text-base text-gray-700">{mergedData.classification}</p>
-							
-							<!-- Library of Congress Trust Badge for LCC -->
-							{#if mergedData.lcc !== '-' && mergedData.classification === mergedData.lcc && mergedData.dataSource?.includes('loc')}
-								<span
-									class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-800 bg-blue-50 border border-blue-300 rounded-md"
-									title="Authoritative LCC from Library of Congress"
-								>
-									🏛️ Authoritative
-								</span>
-							{:else if mergedData.isPartialData && (mergedData.classification === 'NONE' || mergedData.classification === '-')}
-								<span
-									class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-md"
-									title="Classification sources temporarily unavailable. Using subject mapping fallback."
-								>
-									⚠️ Data Incomplete
-								</span>
-							{/if}
-						</div>
-
-						<span class="text-sm font-medium text-gray-500 col-span-1">Content Type</span>
-						<p class="text-base text-gray-700 col-span-2">text</p>
-
-						<span class="text-sm font-medium text-gray-500 col-span-1">Media Type</span>
-						<p class="text-base text-gray-700 col-span-2">unmediated</p>
-
-					<span class="text-sm font-medium text-gray-500 col-span-1">Carrier Type</span>
-					<p class="text-base text-gray-700 col-span-2">volume</p>
-
-					{#if mergedData.edition && mergedData.edition !== '-' && mergedData.edition !== ''}
-						<span class="text-sm font-medium text-gray-500 col-span-1">Edition</span>
-						<p class="text-base text-gray-700 col-span-2">{mergedData.edition}</p>
-					{/if}
-
-					<span class="text-sm font-medium text-gray-500 col-span-1">Subject(s)</span>
-						<p class="text-base text-gray-700 col-span-2">{mergedData.subjects}</p>
-
-						<span class="text-sm font-medium text-gray-500 col-span-1">Specific Detail Info</span>
-						<p class="text-base text-gray-700 col-span-2">{mergedData.specificDetail}</p>
-
-						<span class="text-sm font-medium text-gray-500 col-span-1">Statement of Responsibility</span>
-						<p class="text-lg text-gray-700 col-span-2">{mergedData.author}</p>
-						
-						<span class="text-sm font-medium text-gray-500 col-span-1">Electronic Source</span>
-						<p class="text-base text-gray-700 col-span-2">
-							{#if mergedData.infoLink !== '-'}
-								<a href={mergedData.infoLink} target="_blank" class="text-blue-600 hover:underline break-all">View on Google Books</a>
-							{:else}
-								-
-							{/if}
-						</p>
-						</div>
-
-						<div>
-							<span class="text-sm font-medium text-gray-500">Description / Abstract</span>
-							<div class="text-base text-gray-800 max-h-32 overflow-y-auto bg-gray-50 p-3 rounded-md border border-gray-200 mt-1">
-								{mergedData.description}
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Raw Data Sources -->
-				<div class="md:col-span-1 space-y-4">
-					<h3 class="text-lg font-semibold text-gray-800">Data Sources</h3>
-					
-					<div>
-						<h4 class="text-base font-medium text-gray-700">1. Google Books</h4>
-						<pre class="w-full h-48 p-3 mt-1 bg-gray-900 text-green-400 text-xs rounded-lg shadow-inner overflow-auto">{googleRaw}</pre>
-					</div>
-					
-					<div>
-						<h4 class="text-base font-medium text-gray-700">2. OpenLibrary</h4>
-						<pre class="w-full h-48 p-3 mt-1 bg-gray-900 text-green-400 text-xs rounded-lg shadow-inner overflow-auto">{openLibraryRaw}</pre>
-					</div>
-				</div>
-			</div>
-
-		{:else if currentView === 'search' && (googleResults.length > 0 || (openLibraryResults && openLibraryResults.length > 0))}
-			<!-- === Search Result Lists === -->
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-				<!-- Google Results -->
-				{#if googleResults.length > 0}
-					<div>
-						<h2 class="text-xl font-bold mb-4">Results from Google Books</h2>
-						<div class="space-y-3 max-h-[60vh] overflow-y-auto">
-							{#each googleResults as item, index}
-								{@const info = item.volumeInfo}
-								{@const title = info.title || 'No Title'}
-								{@const author = info.authors ? info.authors[0] : 'Unknown Author'}
-								{@const cover = info.imageLinks?.smallThumbnail || FALLBACK_COVER}
-                                                                {@const secureProxiedCover = getSecureProxyUrl(cover)}
-								
-							<button type="button" onclick={() => handleBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
-								<img src={secureProxiedCover} alt="{title} book cover" class="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0" onerror={handleCoverError} loading="lazy" decoding="async"  />
-								<div>
-									<div class="font-semibold text-base text-blue-700">{title}</div>
-									<div class="text-sm text-gray-600">{author}</div>
-								</div>
-							</button>
-							{/each}
-						</div>
-					</div>
-				{/if}
-
-				<!-- OpenLibrary Results -->
-				{#if openLibraryResults && openLibraryResults.length > 0}
-					<div>
-						<h2 class="text-xl font-bold mb-4">Results from OpenLibrary</h2>
-						<div class="space-y-3 max-h-[60vh] overflow-y-auto">
-						{#each openLibraryResults as doc, index}
-							{@const title = doc.title || 'No Title'}
-							{@const author = doc.author_name ? doc.author_name[0] : 'Unknown Author'}
-						<button type="button" onclick={() => handleOpenLibraryBookSelection(index)} class="w-full p-4 bg-white border border-gray-200 rounded-lg flex gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors shadow-sm text-left">
-								<div>
-									<div class="font-semibold text-base text-green-700">{title}</div>
-									<div class="text-sm text-gray-600">{author}</div>
-								</div>
-							</button>
-							{/each}
-						</div>
-					</div>
-				{/if}
-			</div>
-
-		{:else if !isLoading}
-			<!-- === Initial Placeholder === -->
-			<div class="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center max-w-3xl mx-auto">
-				<div class="text-gray-400 mb-2">
-					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 006 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-					</svg>
-				</div>
-				<h3 class="text-lg font-medium text-gray-900">No Data Harvested Yet</h3>
-				<p class="text-gray-500 mt-1">Search for a book to see the merged metadata here.</p>
-			</div>
-		{/if}
-		
-		</div>
-		<!-- End Main Content Column -->
-		
-		<!-- Performance Dashboard (Advanced Users) -->
-		{#if scannerModeEnabled}
-			<aside class="lg:col-span-1 space-y-4">
-				<!-- Recent Scans Sidebar -->
-				<div class="sticky top-20 bg-white rounded-xl border-2 border-green-200 shadow-lg p-4">
-					<div class="flex items-center justify-between mb-4">
-						<h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-							<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-							</svg>
-							Recent Scans
-						</h3>
-						<span class="text-sm font-medium text-green-700 bg-green-100 px-2 py-1 rounded-full">
-							{scanHistory.count}
-						</span>
-					</div>
-					
-					{#if scanHistory.isEmpty}
-						<div class="text-center py-8 text-gray-400 text-sm">
-							<svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-							</svg>
-							<p>No scans yet</p>
-							<p class="text-xs mt-1">Start scanning ISBNs</p>
-						</div>
-					{:else}
-						<!-- Batch Export Button -->
-						<div class="mb-3">
-							<button
-								onclick={exportBatchToCSV}
-								class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 transition-colors"
-							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-								</svg>
-								Download All ({scanHistory.count}) as CSV
-							</button>
-						</div>
-						
-						<!-- Clear All Button -->
-						<button
-							onclick={() => {
-								if (confirm(`Clear all ${scanHistory.count} scanned books from history?`)) {
-									scanHistory.clear();
-								}
-							}}
-							class="w-full mb-3 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-						>
-							Clear All
-						</button>
-						
-						<!-- Scanned Books List -->
-						<div class="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-							{#each scanHistory.items as book (book.isbn13)}
-								<div class="group relative bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition-colors">
-									<div class="pr-8">
-										<h4 class="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">
-											{book.title}
-										</h4>
-										<p class="text-xs text-gray-600 font-mono">
-											{book.isbn13}
-										</p>
-										<p class="text-xs text-gray-500 mt-1">
-											{book.author}
-										</p>
-									</div>
-									
-									<!-- Remove Button -->
-									<button
-										onclick={() => scanHistory.remove(book.isbn13)}
-										class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-										title="Remove from history"
-									>
-										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-										</svg>
+								<div class="flex gap-2">
+									<button onclick={() => handleExportSLiMSCSV(mergedData!)} class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-black transition-all">
+										CSV
+									</button>
+									<button onclick={() => handleExportMARCXML(mergedData!)} class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all">
+										MARCXML
 									</button>
 								</div>
-							{/each}
+							</div>
+
+							<!-- Book Content -->
+							<div class="flex flex-col md:flex-row gap-8">
+								<!-- Cover -->
+								<div class="w-full md:w-1/3">
+									<div class="aspect-[2/3] rounded-xl overflow-hidden shadow-lg bg-gray-100 relative group">
+										<img
+											src={getSecureProxyUrl(mergedData.cover)}
+											alt={mergedData.title}
+											class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+											onerror={handleCoverError}
+										/>
+									</div>
+								</div>
+
+								<!-- Details -->
+								<div class="flex-1 space-y-6">
+									<div>
+										<h2 class="text-3xl font-bold text-gray-900 leading-tight mb-2">{mergedData.title}</h2>
+										<p class="text-xl text-gray-500">{mergedData.author}</p>
+									</div>
+
+									<div class="grid grid-cols-2 gap-4 text-sm">
+										<div class="p-4 bg-gray-50/50 rounded-2xl">
+											<span class="block text-gray-400 mb-1">ISBN</span>
+											<span class="font-mono font-medium text-gray-900">{mergedData.isbn13}</span>
+										</div>
+										<div class="p-4 bg-gray-50/50 rounded-2xl">
+											<span class="block text-gray-400 mb-1">Publisher</span>
+											<span class="font-medium text-gray-900">{mergedData.publisherString}</span>
+										</div>
+										<div class="p-4 bg-gray-50/50 rounded-2xl">
+											<span class="block text-gray-400 mb-1">DDC/Call Number</span>
+											<span class="font-mono font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded inline-block">{mergedData.callNumber}</span>
+										</div>
+										<div class="p-4 bg-gray-50/50 rounded-2xl">
+											<span class="block text-gray-400 mb-1">Pages</span>
+											<span class="font-medium text-gray-900">{mergedData.pages}</span>
+										</div>
+									</div>
+
+									<div class="prose prose-sm text-gray-600 max-w-none">
+										{mergedData.description || 'No description available.'}
+									</div>
+								</div>
+							</div>
 						</div>
-					{/if}
-				</div>
-				
-				<!-- Performance Stats -->
-				<div class="bg-white rounded-xl border border-gray-200 shadow-lg p-4">
-					<h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-						<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-						</svg>
-						Performance
-					</h3>
-					
-					<div class="space-y-3 text-sm">
-						<div class="flex justify-between">
-							<span class="text-gray-600">Cache Hit Rate</span>
-							<span class="font-mono text-green-600">
-								{Math.round((googleCache.getStats().totalHits / Math.max(1, googleCache.getStats().size + googleCache.getStats().totalHits)) * 100)}%
-							</span>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-gray-600">Google Cache</span>
-							<span class="font-mono text-blue-600">{googleCache.getStats().size} items</span>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-gray-600">OL Cache</span>
-							<span class="font-mono text-green-600">{openLibraryCache.getStats().size} items</span>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-gray-600">Avg Response</span>
-							<span class="font-mono text-purple-600">
-								{Math.round((googleCache.getStats().averageAge + openLibraryCache.getStats().averageAge) / 2 / 1000)}s
-							</span>
+
+						<!-- Source & Debug Sidebar -->
+						<div class="space-y-6">
+							<div class="bg-white/60 backdrop-blur p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+								<h3 class="font-semibold text-gray-900 mb-4">Data Composition</h3>
+								<div class="space-y-3 text-sm">
+									<div class="flex justify-between items-center">
+										<span class="text-gray-500">Google Books</span>
+										<div class="w-2 h-2 rounded-full {mergedData.dataSource?.includes('google') ? 'bg-green-500' : 'bg-gray-300'}"></div>
+									</div>
+									<div class="flex justify-between items-center">
+										<span class="text-gray-500">OpenLibrary</span>
+										<div class="w-2 h-2 rounded-full {mergedData.dataSource?.includes('openlibrary') ? 'bg-green-500' : 'bg-gray-300'}"></div>
+									</div>
+									<div class="flex justify-between items-center">
+										<span class="text-gray-500">LoC (LCC)</span>
+										<div class="w-2 h-2 rounded-full {mergedData.dataSource?.includes('loc') ? 'bg-green-500' : 'bg-gray-300'}"></div>
+									</div>
+								</div>
+							</div>
+							
+							<!-- JSON Debug (Collapsed by default or small) -->
+							<div class="bg-gray-900 p-6 rounded-[2rem] shadow-inner overflow-hidden">
+								<h3 class="text-gray-400 text-xs font-mono mb-2 uppercase tracking-wider">Raw Output</h3>
+								<div class="text-xs font-mono text-green-400 overflow-x-auto whitespace-pre">{JSON.stringify({title: mergedData.title, isbn: mergedData.isbn13}, null, 2)}</div>
+							</div>
 						</div>
 					</div>
 				</div>
-			</aside>
-		{/if}
-		<!-- End Recent Scans Sidebar -->
-		
+
+			<!-- State: Search Results List -->
+			{:else if currentView === 'search' && (googleResults.length > 0 || (openLibraryResults && openLibraryResults.length > 0))}
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12 animate-fade-in-up">
+					<!-- Google Results -->
+					{#if googleResults.length > 0}
+						<div class="bg-white/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-sm border border-white/50">
+							<h3 class="text-xl font-bold text-gray-900 mb-6 px-2">Google Books</h3>
+							<div class="space-y-2">
+								{#each googleResults as item, index}
+									<button onclick={() => handleBookSelection(index)} class="w-full text-left p-4 hover:bg-white rounded-2xl transition-all hover:shadow-md flex items-center gap-4 group">
+										<img src={getSecureProxyUrl(item.volumeInfo.imageLinks?.smallThumbnail)} class="w-12 h-16 object-cover rounded shadow-sm group-hover:scale-110 transition-transform" alt="" />
+										<div>
+											<div class="font-semibold text-gray-900">{item.volumeInfo.title}</div>
+											<div class="text-sm text-gray-500">{item.volumeInfo.authors?.[0] || 'Unknown'}</div>
+										</div>
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					<!-- OpenLibrary Results -->
+					{#if openLibraryResults && openLibraryResults.length > 0}
+						<div class="bg-white/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-sm border border-white/50">
+							<h3 class="text-xl font-bold text-gray-900 mb-6 px-2">OpenLibrary</h3>
+							<div class="space-y-2">
+								{#each openLibraryResults as doc, index}
+									<button onclick={() => handleOpenLibraryBookSelection(index)} class="w-full text-left p-4 hover:bg-white rounded-2xl transition-all hover:shadow-md flex items-center gap-4">
+										<div class="w-12 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">OL</div>
+										<div>
+											<div class="font-semibold text-gray-900">{doc.title}</div>
+											<div class="text-sm text-gray-500">{doc.author_name?.[0] || 'Unknown'}</div>
+										</div>
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
+
+			<!-- State: Landing Bento Grid (Initial View) -->
+			{:else if !isLoading}
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 animate-fade-in-up">
+					
+					<!-- Card 1: Velocity Engine -->
+					<div class="md:col-span-2 bg-white rounded-[2.5rem] p-10 shadow-[0_2px_20px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500 border border-gray-100 flex flex-col justify-between overflow-hidden relative group">
+						<div class="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-blue-100/80"></div>
+						<div class="relative z-10">
+							<div class="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-lg shadow-blue-600/20">🚀</div>
+							<h3 class="text-3xl font-bold text-gray-900 mb-3 tracking-tight">The Velocity Engine.</h3>
+							<p class="text-lg text-gray-500 max-w-md leading-relaxed">
+								Scanner mode unjammable. Waterfall fetching paralel.
+								<span class="text-gray-900 font-medium">Scan 50 buku dalam 5 menit.</span>
+							</p>
+						</div>
+					</div>
+
+					<!-- Card 2: Data Brain -->
+					<div class="bg-gray-50 rounded-[2.5rem] p-10 border border-gray-100 hover:bg-white hover:shadow-xl transition-all duration-500 relative overflow-hidden group">
+						<div class="w-14 h-14 bg-purple-600 text-white rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-lg shadow-purple-600/20">🧠</div>
+						<h3 class="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Data Brain.</h3>
+						<p class="text-gray-500 leading-relaxed">
+							Merger otomatis 3 sumber (Google, OpenLibrary, LoC). Klasifikasi DDC & LCC akurat.
+						</p>
+					</div>
+
+					<!-- Card 3: Anywhere Workflow -->
+					<div class="bg-gray-50 rounded-[2.5rem] p-10 border border-gray-100 hover:bg-white hover:shadow-xl transition-all duration-500 group">
+						<div class="w-14 h-14 bg-green-600 text-white rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-lg shadow-green-600/20">📱</div>
+						<h3 class="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Anywhere.</h3>
+						<p class="text-gray-500 leading-relaxed">
+							Mobile PWA offline-ready. Gunakan kamera HP sebagai barcode scanner.
+						</p>
+					</div>
+
+					<!-- Card 4: SLiMS Export -->
+					<div class="md:col-span-2 bg-gray-900 rounded-[2.5rem] p-10 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group">
+						<div class="absolute inset-0 bg-gradient-to-r from-gray-800 to-gray-900"></div>
+						<div class="relative z-10">
+							<h3 class="text-2xl font-bold mb-2 tracking-tight">Siap untuk SLiMS.</h3>
+							<p class="text-gray-400 max-w-sm">
+								Export CSV dengan encoding UTF-8 BOM yang sempurna. Import langsung tanpa edit.
+							</p>
+						</div>
+						<div class="relative z-10 flex gap-4">
+							<div class="px-6 py-3 bg-white/10 backdrop-blur rounded-xl border border-white/10 text-sm font-medium">CSV</div>
+							<div class="px-6 py-3 bg-white/10 backdrop-blur rounded-xl border border-white/10 text-sm font-medium">MARCXML</div>
+						</div>
+					</div>
+
+				</div>
+			{/if}
 		</div>
-		<!-- End Grid Layout -->
+		
+		<!-- History Sidebar (Only in Scanner Mode) -->
+		{#if scannerModeEnabled}
+			<div class="fixed right-6 bottom-6 z-50">
+				<div class="bg-white/90 backdrop-blur-xl border border-gray-200 shadow-2xl rounded-2xl p-4 w-80 max-h-[50vh] overflow-hidden flex flex-col animate-fade-in-up">
+					<div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+						<h3 class="font-bold text-gray-900">Session History</h3>
+						<span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">{scanHistory.count}</span>
+					</div>
+					
+					<div class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+						{#each scanHistory.items as book}
+							<div class="text-sm p-3 bg-gray-50 rounded-xl">
+								<div class="font-medium text-gray-900 truncate">{book.title}</div>
+								<div class="text-xs text-gray-500">{book.isbn13}</div>
+							</div>
+						{/each}
+						{#if scanHistory.isEmpty}
+							<div class="text-center py-8 text-gray-400 text-xs">No books scanned yet</div>
+						{/if}
+					</div>
+
+					{#if !scanHistory.isEmpty}
+						<div class="mt-4 pt-3 border-t border-gray-100">
+							<button onclick={exportBatchToCSV} class="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium transition-colors">
+								Download Batch CSV
+							</button>
+						</div>
+					{/if}
+				</div>
+			</div>
+		{/if}
 
 	</main>
 	
-        <!-- Toast Notification Container -->
-        {#if toast}
-                <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-                        <div
-                                class="flex items-center gap-3 px-5 py-3 rounded-full shadow-lg border backdrop-blur-sm"
-                                class:bg-green-50={toast.type === 'success'}
-                                class:border-green-300={toast.type === 'success'}
-                                class:text-green-800={toast.type === 'success'}
-                                class:bg-red-50={toast.type === 'error'}
-                                class:border-red-300={toast.type === 'error'}
-                                class:text-red-800={toast.type === 'error'}
-                        >
-                                {#if toast.type === 'success'}
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                {:else}
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                {/if}
-                                <p class="text-sm font-semibold">{toast.message}</p>
-                        </div>
-                </div>
-        {/if}
+	<!-- Toast -->
+	{#if toast}
+		<div class="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-down">
+			<div class="flex items-center gap-3 px-6 py-3 rounded-full shadow-2xl border backdrop-blur-xl {toast.type === 'success' ? 'bg-white/90 text-green-700 border-green-100' : 'bg-red-50/90 text-red-700 border-red-100'}">
+				{#if toast.type === 'success'}
+					<span class="text-xl">✅</span>
+				{:else}
+					<span class="text-xl">❌</span>
+				{/if}
+				<p class="text-sm font-semibold">{toast.message}</p>
+			</div>
+		</div>
+	{/if}
 </div>
+
+<style>
+	/* Custom Utilities */
+	.text-balance {
+		text-wrap: balance;
+	}
+
+	/* Animations */
+	@keyframes fade-in-up {
+		from { opacity: 0; transform: translateY(20px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+	.animate-fade-in-up {
+		animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+	}
+
+	@keyframes fade-in-down {
+		from { opacity: 0; transform: translateY(-20px) translateX(-50%); }
+		to { opacity: 1; transform: translateY(0) translateX(-50%); }
+	}
+	.animate-fade-in-down {
+		animation: fade-in-down 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+	}
+
+	@keyframes shake {
+		0%, 100% { transform: translateX(0); }
+		25% { transform: translateX(-5px); }
+		75% { transform: translateX(5px); }
+	}
+	.animate-shake {
+		animation: shake 0.4s ease-in-out;
+	}
+</style>
