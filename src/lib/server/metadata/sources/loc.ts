@@ -47,10 +47,18 @@ export async function fetchLibraryOfCongress(
         response.status === 429 ||
         response.status === 404
       ) {
+        const reason = `${response.status} ${response.statusText}`;
         logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
           provider: "loc",
           status: response.status,
           fallback: "other_sources",
+        });
+        Analytics.track("metadata_source_degraded", {
+          provider: "loc",
+          status: response.status,
+          reason,
+          fallback: "other_sources",
+          isbn,
         });
         throw new Error(
           `Library of Congress API error: ${response.status} ${response.statusText}`,
@@ -117,7 +125,7 @@ export async function fetchLibraryOfCongressWithTimeout(
   const breaker = new CircuitBreaker(kv, "loc");
 
   if (await breaker.isOpen()) {
-    console.warn("[LoC] Circuit open, skipping request");
+    logger.warn("loc_circuit_open", { isbn });
     return null;
   }
 
@@ -131,7 +139,7 @@ export async function fetchLibraryOfCongressWithTimeout(
     return result;
   } catch (error) {
     await breaker.failure();
-    console.error("[LoC] Request failed:", error);
+    logger.error("loc_request_failed", { isbn, error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }

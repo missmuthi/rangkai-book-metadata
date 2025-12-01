@@ -1,4 +1,5 @@
 import type { KVNamespace } from "$lib/server/types";
+import { logger } from "$lib/server/logger";
 
 /**
  * Rate Limiter using Token Bucket / Sliding Window (simplified)
@@ -42,10 +43,7 @@ export class RateLimiter {
 
       return true;
     } catch (error) {
-      console.error(
-        `[RateLimiter] Error checking limit for ${identifier}:`,
-        error,
-      );
+      logger.error("ratelimiter_check_error", { identifier, error });
       return true; // Fail open on error
     }
   }

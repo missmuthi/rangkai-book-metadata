@@ -31,7 +31,7 @@ export async function fetchGoogleBooks(
     const response = await fetchFn(url);
     const duration = Math.round(performance.now() - startTime);
 
-    if (!response.ok) {
+      if (!response.ok) {
       const errorType =
         response.status === 503
           ? "api_503"
@@ -43,9 +43,24 @@ export async function fetchGoogleBooks(
         source: "google",
         message: `${response.status} ${response.statusText}`,
       });
-      throw new Error(
-        `Google Books API error: ${response.status} ${response.statusText}`,
-      );
+          if (response.status === 503 || response.status === 429) {
+            logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
+              provider: "google",
+              status: response.status,
+              fallback: "openlibrary",
+            });
+            Analytics.track("metadata_source_degraded", {
+              provider: "google",
+              status: response.status,
+              reason: `${response.status} ${response.statusText}`,
+              fallback: "openlibrary",
+              query: isIsbn ? undefined : query,
+            });
+          }
+
+          throw new Error(
+            `Google Books API error: ${response.status} ${response.statusText}`,
+          );
     }
 
     const data: GoogleBooksResponse = await response.json();
@@ -91,7 +106,7 @@ export async function fetchGoogleBooksWithTimeout(
   const breaker = new CircuitBreaker(kv, "google");
 
   if (await breaker.isOpen()) {
-    console.warn("[GoogleBooks] Circuit open, skipping request");
+    logger.warn("google_books_circuit_open", { query, isIsbn });
     return null;
   }
 
@@ -105,7 +120,7 @@ export async function fetchGoogleBooksWithTimeout(
     return result;
   } catch (error) {
     await breaker.failure();
-    console.error("[GoogleBooks] Request failed:", error);
+    logger.error("google_books_request_failed", { query, isIsbn, error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }

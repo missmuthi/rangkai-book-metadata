@@ -1,4 +1,5 @@
 import type { KVNamespace } from "$lib/server/types";
+import { logger } from "$lib/server/logger";
 
 /**
  * Timeout Wrapper
@@ -83,10 +84,7 @@ export class CircuitBreaker {
 
       return false;
     } catch (error) {
-      console.error(
-        `[CircuitBreaker] Failed to check state for ${this.serviceName}:`,
-        error,
-      );
+      logger.error("circuitbreaker_check_failed", { serviceName: this.serviceName, error });
       return false; // Fail safe
     }
   }
@@ -102,10 +100,7 @@ export class CircuitBreaker {
     try {
       await this.kv.delete(this.key);
     } catch (error) {
-      console.error(
-        `[CircuitBreaker] Failed to record success for ${this.serviceName}:`,
-        error,
-      );
+      logger.error("circuitbreaker_success_failed", { serviceName: this.serviceName, error });
     }
   }
 
@@ -134,10 +129,7 @@ export class CircuitBreaker {
         expirationTtl: ttl,
       });
     } catch (error) {
-      console.error(
-        `[CircuitBreaker] Failed to record failure for ${this.serviceName}:`,
-        error,
-      );
+      logger.error("circuitbreaker_failure_failed", { serviceName: this.serviceName, error });
     }
   }
 
@@ -155,10 +147,7 @@ export class CircuitBreaker {
         expirationTtl: this.config.resetTimeoutSec,
       });
     } catch (error) {
-      console.error(
-        `[CircuitBreaker] Failed to open circuit for ${this.serviceName}:`,
-        error,
-      );
+      logger.error("circuitbreaker_open_failed", { serviceName: this.serviceName, error });
     }
   }
 }

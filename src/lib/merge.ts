@@ -458,7 +458,11 @@ export function processAndRenderMergedData(
     merged.classificationTrust = "high";
   }
   // Medium Trust: DDC/LCC from OpenLibrary (community-contributed)
-  else if ((merged.ddc !== "-" || merged.lcc !== "-") && hasOpenLib && !hasLoC) {
+  else if (
+    (merged.ddc !== "-" || merged.lcc !== "-") &&
+    hasOpenLib &&
+    !hasLoC
+  ) {
     merged.classificationTrust = "medium";
   }
   // Low Trust: Classification derived from subjects (fallback mapping)

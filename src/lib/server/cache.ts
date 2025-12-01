@@ -6,6 +6,8 @@
  */
 
 import type { KVNamespace } from "./types";
+import { logger } from "$lib/server/logger";
+import { Analytics } from "$lib/services/analytics";
 
 /**
  * Get KV namespace from platform context
@@ -56,7 +58,7 @@ export async function cacheGet<T = unknown>(
     const value = await kv.get(key, "json");
     return value as T | null;
   } catch (error) {
-    console.error(`[Cache] Failed to get key "${key}":`, error);
+    logger.error("cache_get_failed", { key, error });
     return null;
   }
 }
@@ -81,8 +83,43 @@ export async function cacheSet(
     await kv.put(key, JSON.stringify(value), {
       expirationTtl: ttl,
     });
+    // Track cache set success - non-fatal but useful for telemetry
+    try {
+      const inferKeyType = (k: string) => {
+        if (k.startsWith("book:")) return "book" as const;
+        if (k.startsWith("metadata:")) return "metadata" as const;
+        if (k.startsWith("session:")) return "userSession" as const;
+        if (k.startsWith("ratelimit:")) return "apiRateLimit" as const;
+        return undefined;
+      };
+
+      Analytics.track("cache_set", {
+        cache_type: "kv",
+        key,
+        key_type: inferKeyType(key),
+        is_isbn: key.startsWith("book:"),
+        ttl,
+        success: true,
+      });
+    } catch (err) {
+      // Analytics failures should not affect cache operations
+      logger.debug("analytics_cache_event_failed", { key, error: err instanceof Error ? err.message : String(err) });
+    }
   } catch (error) {
-    console.error(`[Cache] Failed to set key "${key}":`, error);
+    logger.error("cache_set_failed", { key, error });
+    try {
+      Analytics.track("cache_set", {
+        cache_type: "kv",
+        key,
+        key_type: key.startsWith("book:") ? "book" : undefined,
+        is_isbn: key.startsWith("book:"),
+        ttl,
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } catch (err) {
+      logger.debug("analytics_cache_event_failed", { key, error: err instanceof Error ? err.message : String(err) });
+    }
     // Don't throw - cache failures should be non-fatal
   }
 }
@@ -102,7 +139,7 @@ export async function cacheDelete(
   try {
     await kv.delete(key);
   } catch (error) {
-    console.error(`[Cache] Failed to delete key "${key}":`, error);
+    logger.error("cache_delete_failed", { key, error });
   }
 }
 
@@ -123,7 +160,7 @@ export async function cacheHas(
     const value = await kv.get(key);
     return value !== null;
   } catch (error) {
-    console.error(`[Cache] Failed to check key "${key}":`, error);
+    logger.error("cache_has_failed", { key, error });
     return false;
   }
 }
@@ -218,7 +255,7 @@ export async function invalidateAllBookCaches(
 
   // Note: KV doesn't support wildcard deletes, so we'd need to track keys
   // This is a placeholder for future implementation
-  console.warn("[Cache] Bulk invalidation not implemented for KV");
+  logger.warn("cache_bulk_invalidation_unimplemented", {});
 }
 
 /**

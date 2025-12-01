@@ -16,6 +16,8 @@ export type AnalyticsEvent =
   | SearchPerformedEvent
   | CacheHitEvent
   | DataSourceUsedEvent
+  | MetadataSourceDegradedEvent
+  | CacheSetEvent
   | ScannerModeToggledEvent
   | BatchExportEvent
   | SingleExportEvent
@@ -146,6 +148,40 @@ interface ApiTimingEvent {
     endpoint: string;
     duration_ms: number;
     success: boolean;
+    timestamp: string;
+  };
+}
+
+/**
+ * Metadata source degraded
+ * Tracks when an upstream metadata provider returns 503/429/404 or otherwise is unreliable
+ */
+interface MetadataSourceDegradedEvent {
+  name: "metadata_source_degraded";
+  properties: {
+    provider: "google" | "openlibrary" | "loc" | "other";
+    status?: number | string;
+    reason?: string;
+    fallback?: string;
+    isbn?: string;
+    query?: string;
+    timestamp: string;
+  };
+}
+
+/**
+ * Cache set tracking
+ */
+interface CacheSetEvent {
+  name: "cache_set";
+  properties: {
+    cache_type: "google" | "openlibrary" | "loc" | "kv";
+    key: string;
+    key_type?: "book" | "metadata" | "userSession" | "apiRateLimit";
+    is_isbn?: boolean;
+    ttl?: number;
+    success: boolean;
+    message?: string;
     timestamp: string;
   };
 }
@@ -306,9 +342,11 @@ class AnalyticsService {
   private getEventEmoji(eventName: string): string {
     const emojiMap: Record<string, string> = {
       cache_hit: "⚡",
+      cache_set: "💾",
       cache_miss: "💨",
       search_performed: "🔍",
       data_source_used: "📊",
+      metadata_source_degraded: "⚠️",
       scanner_mode_toggled: "📱",
       batch_export: "📦",
       single_export: "💾",
@@ -327,9 +365,11 @@ class AnalyticsService {
   private getEventColor(eventName: string): string {
     const colorMap: Record<string, string> = {
       cache_hit: "#10b981", // green
+      cache_set: "#10b981",
       cache_miss: "#6b7280", // gray
       search_performed: "#3b82f6", // blue
       data_source_used: "#8b5cf6", // purple
+      metadata_source_degraded: "#f59e0b",
       scanner_mode_toggled: "#f59e0b", // amber
       batch_export: "#ec4899", // pink
       single_export: "#06b6d4", // cyan
@@ -419,4 +459,6 @@ export type {
   UserInteractionEvent,
   AutoAddTriggeredEvent,
   ScanLatencyEvent,
+  MetadataSourceDegradedEvent,
+  CacheSetEvent,
 };

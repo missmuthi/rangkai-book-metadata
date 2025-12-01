@@ -3,6 +3,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import type { MergedBookData } from "$lib/types";
 import { env } from "$env/dynamic/private";
+import { logger } from "$lib/server/logger";
 
 // Define the schema for the cleaned data - COMPREHENSIVE METADATA COMPLETION
 const cleanedBookSchema = z.object({
@@ -65,9 +66,7 @@ export const aiService = {
   async cleanMetadata(book: MergedBookData): Promise<AIMergedBookData> {
     try {
       if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
-        console.warn(
-          "GOOGLE_GENERATIVE_AI_API_KEY is not set. Skipping AI cleaning.",
-        );
+        logger.warn("ai_api_key_missing", { service: "google_generative" });
         return {};
       }
 
@@ -171,7 +170,7 @@ Return the cleaned AND completed fields with a comprehensive changes log.`,
 
       return updates;
     } catch (error) {
-      console.error("AI Cleaning Failed:", error);
+      logger.error("ai_clean_failed", { error });
       // Return empty object so we fail gracefully (original data remains)
       return { aiWarning: "AI cleaning service unavailable" };
     }

@@ -312,7 +312,17 @@ export async function createScan(
           `UPDATE scans SET title = ?, json_data = ?, status = ?, authors = ?, subjects = ?, ddc = ?, lcc = ?, updated_at = datetime('now')
            WHERE id = ? AND user_id = ?`,
         )
-        .bind(title, jsonData, status, authors, subjects, ddc, lcc, existing.id, userId)
+        .bind(
+          title,
+          jsonData,
+          status,
+          authors,
+          subjects,
+          ddc,
+          lcc,
+          existing.id,
+          userId,
+        )
         .run();
 
       logger.info(LogEvents.SCAN_CREATED, {

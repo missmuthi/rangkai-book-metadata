@@ -1,4 +1,5 @@
 import { error } from "@sveltejs/kit";
+import { logger } from "$lib/server/logger";
 
 export async function queryOpenLibrary(
   query: string,
@@ -27,14 +28,10 @@ export async function queryOpenLibrary(
     });
 
     if (!response.ok) {
-      console.error(
-        `OpenLibrary API error: ${response.status} ${response.statusText}`,
-      );
+      logger.error("openlibrary_api_error", { status: response.status, statusText: response.statusText });
 
       if (response.status === 429 || response.status === 503) {
-        console.warn(
-          "⚠️ OpenLibrary rate limit or service unavailable - client should use cached data or Google Books only",
-        );
+        logger.warn("openlibrary_rate_limit_or_unavailable", {});
         return {
           error: "OpenLibrary temporarily unavailable",
           retryAfter: response.headers.get("Retry-After") || "60",
@@ -49,7 +46,7 @@ export async function queryOpenLibrary(
     return data;
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
-    console.error("OpenLibrary API fetch error:", err);
+    logger.error("openlibrary_fetch_error", { error: errorMessage });
     return { error: `Failed to fetch from OpenLibrary: ${errorMessage}` };
   }
 }

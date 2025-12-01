@@ -63,10 +63,19 @@ export async function fetchOpenLibrary(
       });
 
       if (response.status === 503 || response.status === 429) {
+        const reason = `${response.status} ${response.statusText}`;
         logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
           provider: "openlibrary",
           status: response.status,
           fallback: "google_books",
+        });
+        // Track in analytics (typed)
+        Analytics.track("metadata_source_degraded", {
+          provider: "openlibrary",
+          status: response.status,
+          reason,
+          fallback: "google_books",
+          query: isIsbn ? undefined : query,
         });
         // We should throw to trigger circuit breaker failure counting
         throw new Error(
@@ -91,6 +100,11 @@ export async function fetchOpenLibrary(
           message: data.error,
         });
         logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
+          provider: "openlibrary",
+          reason: "temporarily_unavailable",
+          fallback: "google_books",
+        });
+        Analytics.track("metadata_source_degraded", {
           provider: "openlibrary",
           reason: "temporarily_unavailable",
           fallback: "google_books",
@@ -145,7 +159,7 @@ export async function fetchOpenLibraryWithTimeout(
   const breaker = new CircuitBreaker(kv, "openlibrary");
 
   if (await breaker.isOpen()) {
-    console.warn("[OpenLibrary] Circuit open, skipping request");
+    logger.warn("openlibrary_circuit_open", { query, isIsbn });
     return null;
   }
 
@@ -161,7 +175,7 @@ export async function fetchOpenLibraryWithTimeout(
     await breaker.failure();
     // Return null on failure instead of throwing, to allow other sources to succeed
     // But log the error
-    console.error("[OpenLibrary] Request failed:", error);
+    logger.error("openlibrary_request_failed", { query, isIsbn, error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
