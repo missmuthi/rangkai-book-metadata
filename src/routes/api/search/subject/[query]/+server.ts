@@ -32,7 +32,12 @@ export const GET: RequestHandler = async (event) => {
 
   try {
     const db = getDB(event.platform);
-    const results = await searchUserScansBySubject(db, userId, subjectQuery.trim(), limit);
+    const results = await searchUserScansBySubject(
+      db,
+      userId,
+      subjectQuery.trim(),
+      limit,
+    );
 
     // Transform results to include parsed metadata
     const transformedResults = results.map((scan) => {

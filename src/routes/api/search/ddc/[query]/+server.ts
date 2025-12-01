@@ -41,7 +41,12 @@ export const GET: RequestHandler = async (event) => {
 
   try {
     const db = getDB(event.platform);
-    const results = await searchUserScansByDDC(db, userId, ddcQuery.trim(), limit);
+    const results = await searchUserScansByDDC(
+      db,
+      userId,
+      ddcQuery.trim(),
+      limit,
+    );
 
     // Transform results to include parsed metadata
     const transformedResults = results.map((scan) => {

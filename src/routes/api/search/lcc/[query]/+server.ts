@@ -36,12 +36,20 @@ export const GET: RequestHandler = async (event) => {
 
   // Validate LCC format (should start with letters, optionally followed by numbers)
   if (!/^[A-Z]+[A-Z0-9]*(\.[A-Z0-9]+)?$/.test(lccQuery.trim().toUpperCase())) {
-    throw error(400, "LCC query must be in valid format (e.g., 'QA76', 'P', 'H62')");
+    throw error(
+      400,
+      "LCC query must be in valid format (e.g., 'QA76', 'P', 'H62')",
+    );
   }
 
   try {
     const db = getDB(event.platform);
-    const results = await searchUserScansByLCC(db, userId, lccQuery.trim().toUpperCase(), limit);
+    const results = await searchUserScansByLCC(
+      db,
+      userId,
+      lccQuery.trim().toUpperCase(),
+      limit,
+    );
 
     // Transform results to include parsed metadata
     const transformedResults = results.map((scan) => {

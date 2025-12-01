@@ -1,6 +1,7 @@
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import type { MergedBookData } from "$lib/types";
+import { logger } from "$lib/server/logger";
 import { bookSchema } from "$lib/schemas";
 
 /**
@@ -29,7 +30,7 @@ export const PATCH: RequestHandler = async ({
 
   // Check D1 database binding
   if (!platform?.env?.DB) {
-    console.error("[Scans API] D1 database not available");
+    logger.error("scans_api_db_not_available", {});
     throw error(503, "Database not available");
   }
 
@@ -41,8 +42,10 @@ export const PATCH: RequestHandler = async ({
     const parseResult = bookSchema.partial().safeParse(rawBody);
 
     if (!parseResult.success) {
-         const errorMessage = parseResult.error.issues.map(issue => issue.message).join(', ');
-         throw error(400, `Invalid update data: ${errorMessage}`);
+      const errorMessage = parseResult.error.issues
+        .map((issue) => issue.message)
+        .join(", ");
+      throw error(400, `Invalid update data: ${errorMessage}`);
     }
     const body = parseResult.data;
 
@@ -65,9 +68,7 @@ export const PATCH: RequestHandler = async ({
     }
 
     if (existing.user_id !== userId) {
-      console.warn(
-        `[Scans API] User ${userId} attempted to update scan ${scanId} owned by ${existing.user_id}`,
-      );
+      logger.warn("scans_api_update_forbidden_attempt", { userId, scanId, ownerId: existing.user_id });
       throw error(403, "Forbidden: You do not own this scan");
     }
 
@@ -91,9 +92,7 @@ export const PATCH: RequestHandler = async ({
       throw error(500, "Failed to update scan");
     }
 
-    console.warn(
-      `[Scans API] ✅ Updated scan ID: ${scanId} for user: ${userId}`,
-    );
+    logger.info("scans_api_scan_updated", { scanId, userId });
 
     return json({
       success: true,
@@ -106,7 +105,7 @@ export const PATCH: RequestHandler = async ({
       throw err;
     }
 
-    console.error("[Scans API] Update error:", err);
+    logger.error("scans_api_update_error", { err });
     throw error(500, "Internal server error");
   }
 };
@@ -167,7 +166,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
     try {
       bookData = JSON.parse(scan.json_data);
     } catch {
-      console.warn(`[Scans API] Failed to parse json_data for scan ${scanId}`);
+      logger.warn("scans_api_json_parse_failed", { scanId });
     }
 
     return json({
@@ -185,7 +184,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       throw err;
     }
 
-    console.error("[Scans API] Fetch error:", err);
+    logger.error("scans_api_fetch_error", { err });
     throw error(500, "Internal server error");
   }
 };
@@ -231,9 +230,7 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
       throw error(404, "Scan not found or already deleted");
     }
 
-    console.warn(
-      `[Scans API] 🗑️ Deleted scan ID: ${scanId} for user: ${userId}`,
-    );
+    logger.info("scans_api_scan_deleted", { scanId, userId });
 
     return json({
       success: true,
@@ -245,7 +242,7 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
       throw err;
     }
 
-    console.error("[Scans API] Delete error:", err);
+    logger.error("scans_api_delete_error", { err });
     throw error(500, "Internal server error");
   }
 };
