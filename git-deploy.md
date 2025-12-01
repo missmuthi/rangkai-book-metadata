@@ -57,3 +57,95 @@ Post-Deploy: output the live URL.
 Action:
 
 Begin the sequence. Report status at each step.
+
+---
+
+## Release Checklist (Automated + Manual)
+
+Use this checklist to ensure releases are automated and gated behind the same pre-flight checks that were run manually.
+
+1. Manual Pre-Flight (Ad-hoc release from a workstation)
+	 - Ensure the repo is clean and on `main` (git status --porcelain, git branch --show-current).
+	 - Run `npm ci` or `npm install` to install dependencies.
+	 - Run the full pre-flight sequence:
+		 - `npm run check` (Type safety)
+		 - `npm run lint` (Linting)
+		 - `npm test` (Unit tests)
+		 - `npm run build` (Production build simulation)
+	 - If all checks pass, run `npm run deploy` or `wrangler pages deploy .svelte-kit/cloudflare --project-name=rangkai-book-metadata`.
+
+2. Automated CI Pre-Flight (GitHub Actions recommended)
+	 - Create a CI job to run on `push`/`pull_request` targeting `main` and release branches.
+	 - The CI job should run the following steps and FAIL the job on any non-zero exit code:
+		 1. `npm ci`
+		 2. `npm run check`
+		 3. `npm run lint` (optional: consider treating warnings as errors in CI to maintain higher quality)
+		 4. `npm test` (All tests must pass)
+		 5. `npm run build` (Verify build artifacts are produced)
+	 - If CI passes, create a separate job to deploy (only on protected `main` branch):
+		 - `wrangler pages deploy .svelte-kit/cloudflare --project-name=rangkai-book-metadata`
+	 - Example (GitHub Actions) snippet (paste this into `.github/workflows/preflight.yml`):
+
+```yaml
+name: Preflight & Deploy
+on:
+	push:
+		branches: [ main ]
+	pull_request:
+		branches: [ main ]
+
+jobs:
+	preflight:
+		runs-on: ubuntu-latest
+		steps:
+			- uses: actions/checkout@v4
+			- name: Setup Node
+				uses: actions/setup-node@v4
+				with:
+					node-version: 20
+			- name: Install dependencies
+				run: npm ci
+			- name: Type check
+				run: npm run check
+			- name: Lint
+				run: npm run lint
+			- name: Unit tests
+				run: npm test
+			- name: Build
+				run: npm run build
+
+	deploy:
+		needs: preflight
+		if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+		runs-on: ubuntu-latest
+		steps:
+			- uses: actions/checkout@v4
+			- name: Setup Node
+				uses: actions/setup-node@v4
+				with:
+					node-version: 20
+			- name: Install and Build
+				run: |
+					npm ci
+					npm run build
+			- name: Deploy to Cloudflare Pages
+				env:
+					CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+				run: |
+					npx wrangler pages deploy .svelte-kit/cloudflare --project-name=rangkai-book-metadata
+```
+
+3. Release Automation Notes
+	 - Keep `CF_API_TOKEN` secret configured in GitHub Actions or CI provider.
+	 - Consider treating eslint warnings as errors in CI to gate quality (particularly `no-explicit-any` in tests or shared code paths).
+	 - Keep the Husky pre-push hook as a local safety net for developers, not a replacement for CI.
+	 - If you need to roll out emergency changes, follow `git-deploy.md` and record the reason in your release notes.
+
+4. Post-Deployment Validation
+	 - Check the live URL reported by `wrangler` or Cloudflare Pages after a deploy — sample format: `https://<random-id>.rangkai-book-metadata.pages.dev`.
+	 - Run a smoke test (a minimal E2E test or curl to `/api/health`) to validate the deployment.
+	 - Monitor logs (Cloudflare Worker metrics) and Analytics for warnings or error spikes.
+
+---
+
+Happy deploys! ✅
