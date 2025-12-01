@@ -19,7 +19,7 @@ jobs:
       - name: Generate Drizzle Migration to Temp Directory
         run: |
           npm run db:migrate:drizzle --silent
-          npx drizzle-kit generate --config ./drizzle.config.ts --out ./drizzle-temp
+          npx drizzle-kit generate --schema ./src/lib/server/db/schema.ts --out ./drizzle-temp --driver d1-http --dialect sqlite
       - name: Check for Diff between migrations and generated
         run: |
           if [ -d ./migrations ]; then

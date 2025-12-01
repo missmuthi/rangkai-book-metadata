@@ -12,6 +12,7 @@ vi.mock("$lib/server/logger", () => ({
 // Mock DB helper
 vi.mock("$lib/server/db", () => ({
   getRawDb: vi.fn((platform: any) => platform.env.DB || null),
+  getDrizzleDB: vi.fn((_platform: any) => undefined),
 }));
 
 // Simple helper to create a mock D1-like database

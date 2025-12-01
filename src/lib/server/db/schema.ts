@@ -59,6 +59,10 @@ export const scans = sqliteTable("scans", {
   lcc: text("lcc"),
   created_at: text("created_at"),
   updated_at: text("updated_at"),
+  // AI enhancement auditing
+  ai_log: text("ai_log"),
+  is_ai_enhanced: integer("is_ai_enhanced").default(0),
+  enhanced_at: integer("enhanced_at"),
 });
 
 // Types

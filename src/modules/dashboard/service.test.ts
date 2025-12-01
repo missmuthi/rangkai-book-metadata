@@ -17,6 +17,7 @@ vi.mock("$lib/server/db", () => ({
       draftScans: mockScans.filter((s) => s.status === "draft").length,
     });
   }),
+  getDrizzleDB: vi.fn(() => undefined),
 }));
 
 vi.mock("$lib/server/logger", () => ({

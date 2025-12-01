@@ -95,6 +95,7 @@ vi.mock("$lib/server/db", () => ({
   }),
   createAnonymousScan: vi.fn(async () => undefined),
   createScan: vi.fn(async () => 1),
+  getDrizzleDB: vi.fn((_platform: any) => undefined),
 }));
 
 // Helper to create mock RequestEvent

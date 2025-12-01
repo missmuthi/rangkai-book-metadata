@@ -38,6 +38,7 @@ vi.mock("$lib/server/db", () => ({
   countUserScans: vi.fn((_db, _userId) => {
     return Promise.resolve(mockScans.length);
   }),
+  getDrizzleDB: vi.fn(() => undefined),
 }));
 
 vi.mock("$lib/server/cache", () => ({
