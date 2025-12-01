@@ -1,5 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import type { MergedBookData } from "$lib/types";
 import { env } from "$env/dynamic/private";
@@ -157,10 +157,56 @@ Return the cleaned AND completed fields with a comprehensive changes log.`,
             await delay(waitTime);
             continue;
           }
-          throw error; // Throw non-retriable or exhausted retries
+          // If the error indicates the model doesn't support json_schema (Groq limitation),
+          // stop retrying and fall through to fallback logic outside the loop.
+          if (String(errorMessage).includes('json_schema')) {
+            break;
+          }
+          throw error; // Throw non-retriable or other errors
         }
       }
 
+
+      // Fallback: Some Groq models do not support structured `json_schema` output.
+      // If we failed due to unsupported response format try generateText and parse JSON.
+      if (!object && lastError) {
+        logger.debug('ai_lastError_message', { lastError: String(lastError) });
+      }
+      if (!object && lastError && String(lastError).includes("json_schema")) {
+        try {
+          const prompt = `Return ONLY a valid JSON object matching this schema: ${cleanedBookSchema.toString()}\n\nINPUT:\n${JSON.stringify(bookContext, null, 2)}`;
+          const textResult = await generateText({
+            model: groq("llama-3.3-70b-versatile"),
+            prompt,
+            system: `You are a helpful assistant. Output a single JSON object with the required fields only.`,
+          });
+          logger.debug('ai_generateText_result', { result: textResult });
+
+          // Try to pull the textual output in a few known shapes
+          let text = (textResult as any).output_text || (textResult as any).output?.[0]?.content?.find((c: any) => c.type === 'output_text')?.text || (textResult as any).output?.[0]?.content?.[0]?.text;
+          if (typeof text === 'string') {
+            try {
+              const parsed = JSON.parse(text);
+              logger.debug('ai_generateText_parsed', { parsedType: typeof parsed, keys: Object.keys(parsed ?? {}) });
+              // Validate parsed object against zod schema
+              const parsedValidated = cleanedBookSchema.safeParse(parsed);
+              if (parsedValidated.success) {
+                object = parsedValidated.data as unknown as z.infer<typeof cleanedBookSchema>;
+                logger.debug('ai_generateText_validated', { fields: Object.keys(object) });
+              } else {
+                logger.warn('ai_generateText_parsed_but_invalid', { issues: parsedValidated.error.issues });
+                // Accept parsed result as a best-effort fallback -- we'll still map fields conservatively
+                object = parsed as unknown as z.infer<typeof cleanedBookSchema>;
+                logger.debug('ai_generateText_fallback_object_assigned', { fields: Object.keys(object) });
+              }
+            } catch (parseErr) {
+              logger.warn('ai_generateText_parse_failed', { parseErr, textSnippet: text?.slice(0, 200) });
+            }
+          }
+        } catch (fallbackErr) {
+          logger.error('ai_generateText_fallback_failed', { fallbackErr });
+        }
+      }
       if (!object) {
         throw lastError || new Error("AI generation failed");
       }

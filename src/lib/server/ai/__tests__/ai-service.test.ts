@@ -6,12 +6,13 @@ vi.mock('$env/dynamic/private', () => ({ env: { GROQ_API_KEY: 'TEST_KEY' } }));
 // Mock the ai and google model dependencies
 vi.mock('ai', async () => ({
   generateObject: vi.fn(),
+  generateText: vi.fn(),
 }));
 vi.mock('@ai-sdk/openai', async () => ({
   createOpenAI: (opts: unknown) => (name: string) => ({ model: name, opts }),
 }));
 
-import { generateObject } from 'ai';
+import { generateObject, generateText } from 'ai';
 import { aiService } from '../index';
 
 describe('aiService.cleanMetadata', () => {
@@ -46,5 +47,27 @@ describe('aiService.cleanMetadata', () => {
     const result = await aiService.cleanMetadata({ title: 'Test' } as any);
 
     expect(result.aiWarning).toBe('AI cleaning service unavailable');
+  });
+
+  it('falls back to generateText when model does not support json_schema', async () => {
+    (generateObject as any).mockRejectedValue(new Error("This model does not support response format `json_schema`"));
+
+    const textOutput = JSON.stringify({
+      title: 'Fallback Title',
+      authors: ['Fallback Author'],
+      publisher: 'Fallback : Publisher, 2024',
+      description: 'Fallback description.',
+      ddc: '005.100',
+      lcc: 'QA76.1',
+      changes: ['Generated DDC: 005.100']
+    });
+
+    (generateText as any).mockResolvedValue({ output_text: textOutput });
+
+    const result = await aiService.cleanMetadata({ title: 'Test' } as any);
+    expect(result.title).toBe('Fallback Title');
+    expect(result.ddc).toBe('005.100');
+    expect(result._changes).toEqual(['Generated DDC: 005.100']);
+    expect((generateText as any)).toHaveBeenCalled();
   });
 });

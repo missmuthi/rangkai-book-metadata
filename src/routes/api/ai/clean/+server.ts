@@ -1,6 +1,6 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import { logger } from "$lib/server/logger";
 import { z } from "zod";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -182,6 +182,10 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
               await delay(waitTime);
               continue;
             }
+            // For json_schema unsupported, break to fallback logic
+            if (String(errorMessage).includes('json_schema')) {
+              break;
+            }
             throw e; // Non-retriable or retries exhausted
           }
         }
@@ -203,6 +207,33 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
         const errorMessage =
           aiError instanceof Error ? aiError.message : String(aiError);
         logger.error("ai_clean_groq_failed", { errorMessage });
+
+        // Fallback for models that don't support json_schema: try a plain text JSON output and parse
+        if (errorMessage.includes("json_schema")) {
+          try {
+            logger.info('ai_clean_groq_fallback_to_generateText', {});
+            const fallbackPrompt = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
+            const textResult = await generateText({ model: groq("llama-3.3-70b-versatile"), prompt: fallbackPrompt });
+            const outputText = (textResult as any).output_text || (textResult as any).output?.[0]?.content?.find((c: any) => c.type === 'output_text')?.text || (textResult as any).output?.[0]?.content?.[0]?.text;
+            if (typeof outputText === 'string') {
+              try {
+                rawAiResult = JSON.parse(outputText);
+                // if parsed, cache it
+                if (rawAiResult && cacheKey && platform?.env?.BOOK_CACHE) {
+                  platform.context.waitUntil(
+                    platform.env.BOOK_CACHE.put(cacheKey, JSON.stringify(rawAiResult), {
+                      expirationTtl: 60 * 60 * 24 * 7,
+                    })
+                  );
+                }
+              } catch (parseErr) {
+                logger.warn('ai_clean_generateText_parse_failed', { parseErr });
+              }
+            }
+          } catch (fallbackErr) {
+            logger.error('ai_clean_generateText_fallback_failed', { fallbackErr });
+          }
+        }
 
         // Check for common issues
         let userMessage = "AI metadata service is currently unavailable.";
