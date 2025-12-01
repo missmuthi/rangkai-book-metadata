@@ -11,6 +11,14 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    include: ["src/**/*.test.{ts,js}"],
+    // Keep the generic pattern but explicitly add __tests__ folders
+    include: [
+      "src/**/*.test.{ts,js}",
+      "src/**/__tests__/**/*.test.{ts,js}",
+      // Also accept alternatives for direct file targeting from CLI (relative paths)
+      "./src/**/__tests__/**/*.test.{ts,js}",
+      // Include the specific integration test so running a single file path succeeds
+      "src/__tests__/integration/api/book-isbn.test.ts",
+    ],
   },
 });
