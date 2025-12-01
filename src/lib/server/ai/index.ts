@@ -62,6 +62,10 @@ interface AIMergedBookData extends Partial<MergedBookData> {
   _changes?: string[];
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export const aiService = {
   async cleanMetadata(book: MergedBookData): Promise<AIMergedBookData> {
     try {
@@ -86,10 +90,16 @@ export const aiService = {
         classification: book.classification,
       });
 
-      const { object } = await generateObject({
-        model: google("gemini-2.0-flash"),
-        schema: cleanedBookSchema,
-        prompt: `You are an expert Librarian and Cataloger. Your goal is to create a COMPLETE Bibliographic Record.
+      let attempt = 0;
+      let object: z.infer<typeof cleanedBookSchema> | null = null;
+      let lastError: unknown = null;
+
+      while (attempt < 3) {
+        try {
+          const result = await generateObject({
+            model: google("gemini-2.0-flash"),
+            schema: cleanedBookSchema,
+            prompt: `You are an expert Librarian and Cataloger. Your goal is to create a COMPLETE Bibliographic Record.
 
 Input JSON: ${bookContext}
 
@@ -124,7 +134,31 @@ In the 'changes' array, document EVERY action you take:
 - For STANDARDIZED data: "Standardized [field]" (e.g., "Standardized Publisher to ISBD")
 
 Return the cleaned AND completed fields with a comprehensive changes log.`,
-      });
+          });
+          object = result.object;
+          break; // Success
+        } catch (error) {
+          lastError = error;
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          const isRateLimit =
+            errorMessage.includes("429") || errorMessage.includes("quota");
+
+          attempt++;
+          if (isRateLimit && attempt < 3) {
+            // Exponential backoff: 2s, 4s
+            const waitTime = 2000 * Math.pow(2, attempt - 1);
+            logger.warn("ai_rate_limit_retry", { attempt, waitTime });
+            await delay(waitTime);
+            continue;
+          }
+          throw error; // Throw non-retriable or exhausted retries
+        }
+      }
+
+      if (!object) {
+        throw lastError || new Error("AI generation failed");
+      }
 
       // Map back to MergedBookData structure
       // Note: MergedBookData uses 'author' string (often semicolon separated or just first author),
@@ -170,6 +204,14 @@ Return the cleaned AND completed fields with a comprehensive changes log.`,
 
       return updates;
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      if (errorMessage.includes("429") || errorMessage.includes("quota")) {
+        logger.error("ai_clean_rate_limited", { error });
+        return { aiWarning: "AI Service Busy (Rate Limit). Try again later." };
+      }
+
       logger.error("ai_clean_failed", { error });
       // Return empty object so we fail gracefully (original data remains)
       return { aiWarning: "AI cleaning service unavailable" };

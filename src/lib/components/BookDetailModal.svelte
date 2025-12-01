@@ -25,11 +25,17 @@
         let copiedField = $state<string | null>(null);
         let _mounted = $state(false);
 
+        // Rate Limit Handling
+        let isRateLimited = $state(false);
+        let rateLimitCountdown = $state(0);
+        let rateLimitTimer: NodeJS.Timeout | undefined;
+
         onMount(() => {
                 // Component mounted - client-side rendering confirmed
                 _mounted = true;
                 return () => {
                         // Component unmounting
+                        if (rateLimitTimer) clearInterval(rateLimitTimer);
                 };
         });
 
@@ -135,7 +141,7 @@
         }
 
 	async function aiClean() {
-				if (isCleaning) return;
+				if (isCleaning || isRateLimited) return;
 				
 				isCleaning = true;
 				saveStatus = 'saving';
@@ -180,12 +186,36 @@
 									clientLog('error', 'Error Code:', errorCode);
 									clientLog('error', 'Error Message:', errorMessage);
 									clientLog('error', 'Full Response:', errorData);
+
+                                    if (errorCode === 'AI_QUOTA_EXCEEDED') {
+                                        isRateLimited = true;
+                                        rateLimitCountdown = 30;
+                                        rateLimitTimer = setInterval(() => {
+                                            rateLimitCountdown--;
+                                            if (rateLimitCountdown <= 0) {
+                                                if (rateLimitTimer) clearInterval(rateLimitTimer);
+                                                isRateLimited = false;
+                                            }
+                                        }, 1000);
+                                        toast = errorMessage;
+                                        throw new Error(errorMessage);
+                                    }
+
 									clientLog('warn', '💡 TIP: Check Cloudflare Pages → Settings → Environment Variables → GOOGLE_GENERATIVE_AI_API_KEY');
-							} catch {
+							} catch (innerError) {
+                                    // If we already identified a rate limit error, rethrow immediately
+                                    // to avoid trying to read res.text() (which would fail since body is consumed)
+                                    if (errorCode === 'AI_QUOTA_EXCEEDED') throw innerError;
+
 									// If JSON parse fails, try text
-									const errorText = await res.text();
-									clientLog('error', '❌ [AI Clean] Non-JSON error response:', errorText);
-									errorMessage = errorText || errorMessage;
+                                    try {
+									    const errorText = await res.text();
+									    clientLog('error', '❌ [AI Clean] Non-JSON error response:', errorText);
+									    errorMessage = errorText || errorMessage;
+                                    } catch (textError) {
+                                        // Ignore text read error if we already have an error message
+                                        clientLog('warn', '❌ [AI Clean] Failed to read response text:', textError);
+                                    }
 							}
 							saveStatus = 'error';
 							toast = errorMessage;
@@ -233,10 +263,14 @@
 						const errorMsg = e instanceof Error ? e.message : 'Cleaning failed. Try again.';
 						toast = errorMsg;
 						clientLog('error', '❌ [AI Clean] Exception:', e);
-						setTimeout(() => {
-								saveStatus = 'idle';
-								toast = null;
-						}, 3000);
+
+                        // Don't clear toast immediately if it's rate limit
+                        if (!isRateLimited) {
+                            setTimeout(() => {
+                                    saveStatus = 'idle';
+                                    toast = null;
+                            }, 3000);
+                        }
 				} finally {
 						isCleaning = false;
 				}
@@ -444,7 +478,7 @@
 							class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
 							type="button"
 							onclick={aiClean}
-							disabled={isCleaning || saveStatus === 'saving'}
+							disabled={isCleaning || saveStatus === 'saving' || isRateLimited}
 						>
 							{#if isCleaning || saveStatus === 'saving'}
 								<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" opacity="0.75"/></svg>
@@ -453,6 +487,8 @@
 								{:else}
 									Cleaning...
 								{/if}
+                            {:else if isRateLimited}
+                                Wait {rateLimitCountdown}s...
 							{:else if saveStatus === 'saved'}
 								<svg class="h-4 w-4 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
