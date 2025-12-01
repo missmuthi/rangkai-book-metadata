@@ -509,7 +509,7 @@ async function getBookMetadata(isbn: string): Promise<MergedBookData> {
 ```bash
 # Via Cloudflare dashboard or API
 curl -X DELETE \
-  -H "Authorization: Bearer $CF_API_TOKEN" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
   "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces/$NAMESPACE_ID/values/book:9786235516981"
 ```
 
