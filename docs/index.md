@@ -23,11 +23,12 @@
 ### For Deployment
 
 5. [Deployment Guide](DEPLOYMENT_GUIDE.md) - Cloudflare Pages deployment
+6. [Release Guide](RELEASE_GUIDE.md) - Release process, rollback, smoke tests
 
 ### For Contributing
 
-6. [Contributing Guide](../CONTRIBUTING.md) - Code standards and workflow
-7. [Agents Documentation](meta/agents_full.md) - AI-assisted development patterns
+7. [Contributing Guide](../CONTRIBUTING.md) - Code standards and workflow
+8. [Agents Documentation](meta/agents_full.md) - AI-assisted development patterns
 
 ---
 
@@ -45,6 +46,7 @@
 | **[SMART_SEARCH_API.md](SMART_SEARCH_API.md)**           | Search API endpoints, classification systems           | Implementing search functionality  |
 | **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)**           | Production deployment, secrets, D1/KV setup            | Deploying to Cloudflare Pages      |
 | **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)**             | Common commands, file locations                        | Quick lookups during development   |
+| **[RELEASE_GUIDE.md](RELEASE_GUIDE.md)**                 | Release process, rollback procedures, smoke tests      | Deploying to production            |
 
 ### Root-Level Documentation
 

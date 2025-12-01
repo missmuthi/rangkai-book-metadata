@@ -70,7 +70,7 @@ export const handle: Handle = async ({ event, resolve }) => {
       header: event.request.headers.get("x-playwright-test-session"),
       cookie: event.request.headers.get("cookie"),
     });
-  } catch (e) {
+  } catch (_e) {
     // ignore
   }
   // === TEST SESSION BYPASS (DEV ONLY) ===
@@ -110,9 +110,9 @@ export const handle: Handle = async ({ event, resolve }) => {
         });
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Swallow errors to avoid interrupting normal flow
-    logger.debug("test_session_injection_failed", { error: e });
+    logger.debug("test_session_injection_failed", { error: _e });
   }
   // Log incoming requests in development
   if (import.meta.env.DEV) {

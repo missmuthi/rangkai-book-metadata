@@ -8,7 +8,7 @@
  */
 
 // import type { KVNamespace } from "./types";
-import { logger } from "./logger";
+// logger removed: unused in current implementation
 
 /**
  * Standard Cache Keys

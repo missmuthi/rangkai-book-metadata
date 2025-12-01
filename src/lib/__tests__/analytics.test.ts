@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 import { Analytics } from "$lib/services/analytics";
 
 describe("Analytics Event Types", () => {
