@@ -2,6 +2,7 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { generateObject, generateText } from "ai";
 import { logger } from "$lib/server/logger";
+import { Analytics } from "$lib/services/analytics";
 import { z } from "zod";
 import { createOpenAI } from "@ai-sdk/openai";
 import { deepClean, normalizeKeys } from "$lib/utils/metadata";
@@ -203,6 +204,11 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
             const outputTextLoop = (textResultLoop as any).output_text || (textResultLoop as any).output?.[0]?.content?.find((c: any) => c.type === 'output_text')?.text || (textResultLoop as any).output?.[0]?.content?.[0]?.text;
             if (typeof outputTextLoop === 'string') {
               rawAiResult = JSON.parse(outputTextLoop);
+              try {
+                Analytics.track('ai_fallback_used', { model: 'llama-3.3-70b-versatile', provider: 'groq', isbn: isbn || undefined, reason: 'json_schema_unsupported' });
+              } catch (analyticsErr) {
+                logger.debug('analytics_track_failed', { analyticsErr });
+              }
             }
           } catch (fallbackLoopErr) {
             logger.error('ai_clean_generateText_fallback_failed_loop', { fallbackLoopErr });
@@ -249,6 +255,11 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
                 }
               } catch (parseErr) {
                 logger.warn('ai_clean_generateText_parse_failed', { parseErr });
+              }
+              try {
+                Analytics.track('ai_fallback_used', { model: 'llama-3.3-70b-versatile', provider: 'groq', isbn: isbn || undefined, reason: 'json_schema_unsupported' });
+              } catch (analyticsErr) {
+                logger.debug('analytics_track_failed', { analyticsErr });
               }
             }
           } catch (fallbackErr) {
@@ -301,14 +312,11 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       logger.warn('ai_clean_no_ai_result', {});
     }
     logger.debug('ai_clean_raw_result', { rawAiResult });
-    // DEV: Also console.warn the parsed raw result for CI debugging
-    logger.debug('ai_clean_raw_result', { rawAiResult });
     const aiResult = normalizeKeys(
       (rawAiResult ?? {}) as import("$lib/utils/metadata").AIResultInput,
     );
     const cleanAiResult = deepClean(aiResult) ?? {};
     logger.debug('ai_clean_normalized', { aiResult, cleanAiResult });
-    logger.debug('ai_clean_normalized_console', { aiResult, cleanAiResult });
 
     // 4. DEEP MERGE (The Fix for Data Loss)
     // Parse existing JSON from book data (may be in json_data field or scattered in book object)

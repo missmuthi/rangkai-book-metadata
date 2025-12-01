@@ -25,7 +25,26 @@ export type AnalyticsEvent =
   | ApiTimingEvent
   | UserInteractionEvent
   | AutoAddTriggeredEvent
-  | ScanLatencyEvent;
+  | ScanLatencyEvent
+  | AiFallbackEvent;
+
+/**
+ * AI Fallback Usage Analytics Event
+ * Tracks when the AI service fell back from structured json_schema generation
+ * to a textual JSON fallback (generateText) for model compatibility.
+ */
+interface AiFallbackEvent {
+  name: "ai_fallback_used";
+  properties: {
+    model: string;
+    provider: string; // e.g. 'groq' or 'openai'
+    isbn?: string;
+    reason?: string;
+    timestamp: string;
+  };
+}
+
+// (AiFallbackEvent is included via the union above)
 
 /**
  * Search tracking (ISBN vs Title, with performance metrics)

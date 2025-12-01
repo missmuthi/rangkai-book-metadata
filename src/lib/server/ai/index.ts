@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { MergedBookData } from "$lib/types";
 import { env } from "$env/dynamic/private";
 import { logger } from "$lib/server/logger";
+import { Analytics } from "$lib/services/analytics";
 
 // Define the schema for the cleaned data - COMPREHENSIVE METADATA COMPLETION
 const cleanedBookSchema = z.object({
@@ -193,6 +194,11 @@ Return the cleaned AND completed fields with a comprehensive changes log.`,
               if (parsedValidated.success) {
                 object = parsedValidated.data as unknown as z.infer<typeof cleanedBookSchema>;
                 logger.debug('ai_generateText_validated', { fields: Object.keys(object) });
+                try {
+                  Analytics.track('ai_fallback_used', { model: 'llama-3.3-70b-versatile', provider: 'groq', isbn: book.isbn || undefined, reason: 'json_schema_unsupported' });
+                } catch (analyticsErr) {
+                  logger.debug('analytics_track_failed', { analyticsErr });
+                }
               } else {
                 logger.warn('ai_generateText_parsed_but_invalid', { issues: parsedValidated.error.issues });
                 // Accept parsed result as a best-effort fallback -- we'll still map fields conservatively
