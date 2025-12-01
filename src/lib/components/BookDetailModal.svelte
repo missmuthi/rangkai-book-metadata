@@ -28,7 +28,7 @@
         // Rate Limit Handling
         let isRateLimited = $state(false);
         let rateLimitCountdown = $state(0);
-        let rateLimitTimer: NodeJS.Timeout | undefined;
+        let rateLimitTimer: ReturnType<typeof setInterval> | undefined;
 
         onMount(() => {
                 // Component mounted - client-side rendering confirmed
