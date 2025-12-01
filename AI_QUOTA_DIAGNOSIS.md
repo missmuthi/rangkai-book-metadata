@@ -2,10 +2,46 @@
 
 ## Executive Summary
 
-**Status:** ROOT CAUSE IDENTIFIED ✓  
-**Issue:** Google Generative AI free tier quota exhausted  
+**Status:** INVESTIGATING - QUOTA MISMATCH DETECTED  
+**Issue:** Server reports quota exceeded (limit: 0) but Google AI Studio shows available quota  
+  - RPM: 4/15 used ✓
+  - TPM: 2.11K/1M used ✓  
+  - RPD: 11/200 used ✓
+**Root Cause Candidates:**
+  1. API key mismatch (Cloudflare secret ≠ checked key)
+  2. Billing configuration issue (free tier validation failure)
+  3. Stale dashboard (Google Studio not reflecting actual usage)
 **Severity:** Production blocking for AI Clean feature  
-**Action Required:** Upgrade API tier or switch providers
+**Action Required:** Verify API key identity and billing status
+
+---
+
+## Immediate Debugging Steps
+
+**Step 1: Verify API Key Identity**
+```bash
+# Get the first 15 chars of the key in use (locally)
+grep "GOOGLE_GENERATIVE_AI_API_KEY" .env | cut -d= -f2 | head -c 15
+
+# Get the key from Cloudflare Pages (via dashboard)
+# Settings → Environment Variables → GOOGLE_GENERATIVE_AI_API_KEY (first 15 chars)
+```
+
+**Step 2: Check Cloudflare Pages Env**
+1. Go to **Cloudflare Dashboard** → **Pages** → `rangkai-book-metadata`
+2. **Settings** → **Environment variables**
+3. Verify `GOOGLE_GENERATIVE_AI_API_KEY` exists and matches the one in Google AI Studio
+
+**Step 3: Verify Billing Setup**
+1. Go to **https://console.cloud.google.com/billing**
+2. Check if billing account is active
+3. Check if project has a valid payment method attached
+
+**Step 4: Check Google Cloud Project Settings**
+1. Go to **https://console.cloud.google.com/iam-admin/quotas**
+2. Search for `generativelanguage.googleapis.com`
+3. Verify quotas are not set to 0
+4. Check if there are any active limits or restrictions
 
 ---
 
