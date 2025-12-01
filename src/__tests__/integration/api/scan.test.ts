@@ -147,7 +147,11 @@ describe("POST /api/scan - Integration Tests", () => {
 
       await expect(POST(event)).rejects.toMatchObject({
         status: 400,
-        body: { message: expect.stringContaining("Invalid input: expected string, received undefined") },
+        body: {
+          message: expect.stringContaining(
+            "Invalid input: expected string, received undefined",
+          ),
+        },
       });
     });
 
