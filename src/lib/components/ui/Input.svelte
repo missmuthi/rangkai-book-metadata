@@ -33,7 +33,7 @@
 	const errorClasses = 'border-red-300 focus:ring-2 focus:ring-red-500 focus:border-red-500';
 	const disabledClasses = 'disabled:bg-gray-100 disabled:cursor-not-allowed';
 	
-	const classes = `${baseClasses} ${error ? errorClasses : normalClasses} ${disabledClasses} ${className}`;
+	let classes = $derived(`${baseClasses} ${error ? errorClasses : normalClasses} ${disabledClasses} ${className}`);
 </script>
 
 <input

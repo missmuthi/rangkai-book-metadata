@@ -53,7 +53,7 @@
 		}
 	};
 	
-	const config = variantConfig[variant];
+	let config = $derived(variantConfig[variant]);
 </script>
 
 <div class="rounded-lg border {config.container} p-4 {className}" role="alert">

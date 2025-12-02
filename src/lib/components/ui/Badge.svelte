@@ -31,7 +31,7 @@
 		md: 'px-2.5 py-1 text-sm'
 	};
 	
-	const classes = `inline-flex items-center font-medium rounded-full ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;
+	let classes = $derived(`inline-flex items-center font-medium rounded-full ${variantClasses[variant]} ${sizeClasses[size]} ${className}`);
 </script>
 
 <span class={classes}>
