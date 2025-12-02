@@ -6,6 +6,7 @@ import { Analytics } from "$lib/services/analytics";
 import { z } from "zod";
 import { createOpenAI } from "@ai-sdk/openai";
 import { deepClean, normalizeKeys } from "$lib/utils/metadata";
+import { normalizeISBN } from "$lib/isbn-helpers";
 import type { MergedBookData } from "$lib/types";
 
 // Define the Schema STRICTLY
@@ -410,7 +411,9 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
     const finalJsonString = JSON.stringify(finalJsonData);
     const auditLogString = JSON.stringify(auditLog);
-    const isbnValue = book.isbn13 || book.isbn10 || book.isbn || "";
+    const isbnRaw = book.isbn13 || book.isbn10 || book.isbn || "";
+    const isbnValue =
+      isbnRaw && typeof isbnRaw === "string" ? normalizeISBN(isbnRaw) : "";
     const titleValue = cleanAiResult.title || book.title || "Untitled";
 
     /**

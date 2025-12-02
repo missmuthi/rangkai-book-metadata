@@ -20,4 +20,23 @@ export function isErrorObject(obj: unknown): obj is { error: string } {
   );
 }
 
+/**
+ * Parse a JSON field that may be a string or an already-parsed object.
+ * Returns null if parsing fails.
+ */
+export function parseJsonStringSafe<T = any>(
+  value: string | object | null | undefined,
+): T | null {
+  if (value == null) return null;
+  if (typeof value === "object") return value as T;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export default parseJsonSafe;

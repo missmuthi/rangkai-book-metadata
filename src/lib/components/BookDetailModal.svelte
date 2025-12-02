@@ -2,6 +2,8 @@
 		import { onMount } from 'svelte';
         import type { MergedBookData } from '$lib/types';
 		import { parseJsonSafe } from '$lib/utils/json';
+		import { scanHistory } from '$lib/stores/history.svelte';
+		import { normalizeISBN } from '$lib/isbn-helpers';
 
         interface BookWithScanId extends MergedBookData {
                 scan_id?: number;
@@ -236,16 +238,33 @@
 						// CRITICAL: Store the returned scan_id so future operations update the same row
 						// This prevents duplicate scans when user cleans the same book multiple times
 						if (cleaned.scan_id && typeof cleaned.scan_id === 'number') {
-								book.scan_id = cleaned.scan_id;
+							book.scan_id = cleaned.scan_id;
 						}
-						
-						// Update local state with cleaned data (preserving scan_id)
-						book = { ...cleaned, scan_id: book.scan_id };
+
+						// Update local state by merging cleaned data onto existing book
+						book = { ...book, ...cleaned, scan_id: book.scan_id };
 						
 						// Check if save was successful
 						if (cleaned.saved === true || cleaned.scan_id) {
 								saveStatus = 'saved';
 								toast = 'Metadata cleaned & saved ✓';
+
+							// Update client-side history store to reflect cleaned metadata
+							try {
+								const key = normalizeISBN(cleaned.isbn13 || cleaned.isbn10 || cleaned.isbn || book.isbn13 || book.isbn10 || book.isbn || '');
+								const all = scanHistory.getAll();
+								const existing = all.find((i) => normalizeISBN(i.isbn13 || i.isbn10 || i.isbn || '') === key);
+								const updatedEntry = { ...(existing || {}), ...cleaned, scan_id: cleaned.scan_id } as any;
+								if (existing) {
+									// Remove old and re-add updated (keeps top order)
+									scanHistory.remove(existing.isbn13 || existing.isbn10 || existing.isbn || '');
+									scanHistory.add(updatedEntry);
+								} else {
+									scanHistory.add(updatedEntry);
+								}
+							} catch (e) {
+								clientLog('warn', 'Failed to update client history after AI clean', e);
+							}
 						} else if (cleaned.saveError) {
 								saveStatus = 'error';
 								toast = `Cleaned but save failed: ${cleaned.saveError}`;

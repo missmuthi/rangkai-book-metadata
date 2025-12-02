@@ -47,6 +47,9 @@ test("Cache header toggles between MISS and HIT across sequential requests", asy
   const fixture = JSON.parse(await readFile(FIXTURE_PATH, "utf-8"));
   let callCount = 0;
 
+  // Set test session header to bypass auth
+  await page.setExtraHTTPHeaders({ "x-playwright-test-session": "1" });
+
   await page.route("**/api/book/9780132350884", (route) => {
     callCount += 1;
     route.fulfill({

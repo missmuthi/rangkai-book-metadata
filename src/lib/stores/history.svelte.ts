@@ -6,6 +6,7 @@
  */
 
 import type { MergedBookData } from "$lib/types";
+import { normalizeISBN } from "$lib/isbn-helpers";
 
 const HISTORY_KEY = "rangkai-scan-history";
 const MAX_HISTORY_ITEMS = 50;
@@ -83,20 +84,31 @@ function createHistoryStore() {
      * - Limits to MAX_HISTORY_ITEMS
      */
     add(book: MergedBookData): void {
-      // Remove existing entry if present (match by ISBN-13)
-      const filtered = items.filter((item) => item.isbn13 !== book.isbn13);
+      // Normalize incoming ISBN for de-duplication
+      const key = normalizeISBN(book.isbn13 || book.isbn10 || book.isbn || "");
+      // Remove existing entry if present (match by normalized ISBN)
+      const filtered = items.filter((item) => {
+        const itemKey = normalizeISBN(
+          item.isbn13 || item.isbn10 || item.isbn || "",
+        );
+        return itemKey !== key;
+      });
 
       // Add to top
       items = [book, ...filtered].slice(0, MAX_HISTORY_ITEMS);
-
-      // console.log(`[History Store] Added: ${book.title} (${book.isbn13})`);
+      saveHistoryToStorage(items);
     },
 
     /**
      * Remove a single book from history by ISBN-13
      */
     remove(isbn13: string): void {
-      items = items.filter((item) => item.isbn13 !== isbn13);
+      const key = normalizeISBN(isbn13 || "");
+      items = items.filter(
+        (item) =>
+          normalizeISBN(item.isbn13 || item.isbn10 || item.isbn || "") !== key,
+      );
+      saveHistoryToStorage(items);
       // console.log(`[History Store] Removed: ${isbn13}`);
     },
 
@@ -105,6 +117,7 @@ function createHistoryStore() {
      */
     clear(): void {
       items = [];
+      saveHistoryToStorage(items);
       // console.log("[History Store] Cleared all history");
     },
 

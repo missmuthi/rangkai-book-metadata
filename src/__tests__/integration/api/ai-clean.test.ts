@@ -104,6 +104,48 @@ describe("POST /api/ai/clean - Integration", () => {
     expect(data.lcc).toBe("QA76.73.J38");
   });
 
+  it("updates existing scan if user+isbn already present, avoiding duplicate insert", async () => {
+    const { generateObject } = (await import("ai")) as any;
+    (generateObject as any).mockResolvedValue({
+      object: {
+        title: "Existing Book",
+        ddc: "005.123",
+        lcc: "QA76.12",
+      },
+    });
+
+    // Mock DB with an existing scan (id 42) returned on SELECT
+    const statements: Array<{ sql: string; params: unknown[] }> = [];
+    const db = {
+      _statements: statements,
+      prepare(sql: string) {
+        return {
+          bind: (...args: unknown[]) => ({
+            run: async () => ({ meta: { last_row_id: 999, changes: 1 } }),
+            first: async () => ({ id: 42 }),
+          }),
+          first: async () => ({ id: 42 }),
+          run: async () => ({ meta: { last_row_id: 42, changes: 1 } }),
+        } as any;
+      },
+    } as any;
+
+    const body = {
+      title: "Existing Book",
+      authors: ["Existing Author"],
+      isbn13: "9780132350884",
+    };
+    const event = createMockEvent({ body });
+    // Override platform DB to our mocked DB
+    event.platform.env.DB = db;
+
+    const res = await POST(event as any);
+    const data = (await parseJsonSafe(res)) as any;
+
+    expect(res.status).toBe(200);
+    expect(data.scan_id).toBe(42);
+  });
+
   it("falls back to generateText when model does not support json_schema", async () => {
     const { generateObject, generateText } = (await import("ai")) as any;
     (generateObject as any).mockRejectedValue(

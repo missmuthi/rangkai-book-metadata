@@ -85,15 +85,20 @@ export const handle: Handle = async ({ event, resolve }) => {
       const testCookie = event.cookies.get("test_session");
       if (testHeader === "1" || testParam === "1" || testCookie === "1") {
         // Inject test session and user into locals
-        event.locals.session = {
-          id: "test-session",
-          expires: Date.now() + 3600000,
-        } as any;
-        event.locals.user = {
+        const testUser = {
           id: "test-user",
           email: "test@example.com",
           name: "Playwright Test",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        event.locals.session = {
+          id: "test-session",
+          userId: "test-user",
+          expiresAt: new Date(Date.now() + 3600000),
+          user: testUser,
         } as any;
+        event.locals.user = testUser as any;
         logger.debug("test_session_injected", {
           path: event.url.pathname,
           header: testHeader,

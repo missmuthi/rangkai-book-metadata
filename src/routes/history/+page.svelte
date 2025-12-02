@@ -1,5 +1,8 @@
 <script lang="ts">
-        import type { PageData } from './$types';
+		import type { PageData } from './$types';
+		import { parseJsonStringSafe } from '$lib/utils/json';
+		import { scanHistory } from '$lib/stores/history.svelte';
+		import { normalizeISBN } from '$lib/isbn-helpers';
         import { Card, Button, EmptyState, Alert, Input } from '$lib/components/ui';
         import BookDetailModal from '$lib/components/BookDetailModal.svelte';
         import type { MergedBookData } from '$lib/types';
@@ -26,8 +29,34 @@
 
 	// Filter state
 	let searchQuery = $state('');
+
+	// create merged scans combining server-side and client-side history
+	function mergeServerAndClientScans(serverScans: Scan[], clientScans: any[]): Scan[] {
+		const keySet = new Set<string>();
+		const merged: Scan[] = [];
+
+		serverScans.forEach((s) => {
+			merged.push(s);
+			const json = parseJsonStringSafe(s.json_data) ?? {};
+			keySet.add(normalizeISBN(json.isbn13 || json.isbn10 || s.isbn || json.isbn || ''));
+		});
+
+		clientScans.forEach((c) => {
+			const key = normalizeISBN(c.isbn13 || c.isbn10 || c.isbn || '');
+			if (!keySet.has(key)) {
+				// Convert client scan shape to server Scan-like object
+				merged.push({ id: c.scan_id || Date.now(), title: c.title || '', isbn: c.isbn13 || c.isbn10 || c.isbn || '', created_at: c.enhanced_at || Date.now(), json_data: JSON.stringify(c) } as Scan);
+				keySet.add(key);
+			}
+		});
+
+		// Sort by created_at desc (newer items first)
+		merged.sort((a, b) => Number(new Date(b.created_at)) - Number(new Date(a.created_at)));
+		return merged;
+	}
+
 	let filteredScans = $derived(
-		(data.scans as Scan[]).filter((scan: Scan) => {
+			mergeServerAndClientScans(data.scans as Scan[], scanHistory.getAll()).filter((scan: Scan) => {
 			if (!searchQuery) return true;
 			const query = searchQuery.toLowerCase();
 			return (
@@ -67,14 +96,19 @@
                 }
         }
 
-        function openScanDetails(scan: Scan) {
-                try {
-                        selectedBook = JSON.parse(scan.json_data) as MergedBookData;
-				} catch (err) {
-					clientLog('error', '[History] Failed to parse scan json_data', err);
-                        selectedBook = null;
-                }
-        }
+		function openScanDetails(scan: Scan) {
+			try {
+				// Parse JSON safely (handles both string/object types)
+						const parsed = parseJsonStringSafe(scan.json_data) as MergedBookData | null;
+				if (!parsed) throw new Error('Failed to parse json_data');
+				// Ensure the modal has the scan ID so AI clean updates the same DB row
+				parsed.scan_id = scan.id;
+				selectedBook = parsed;
+			} catch (err) {
+			    clientLog('error', '[History] Failed to parse scan json_data', err);
+				selectedBook = null;
+			}
+		}
 
         function handleRowKeydown(event: KeyboardEvent, scan: Scan) {
                 if (event.key === 'Enter' || event.key === ' ') {
@@ -182,6 +216,7 @@
 						</thead>
 						<tbody class="divide-y divide-gray-200">
 							{#each filteredScans as scan (scan.id)}
+								{@const json = parseJsonStringSafe(scan.json_data) ?? {}}
 								<tr
 									class="hover:bg-blue-50/50 transition-colors cursor-pointer group"
 									onclick={() => openScanDetails(scan)}
@@ -189,8 +224,8 @@
 									<td class="px-6 py-4">
 										<div class="flex items-center">
 											<div class="flex-shrink-0 h-10 w-8 bg-gray-100 rounded overflow-hidden">
-												{#if JSON.parse(scan.json_data).cover && JSON.parse(scan.json_data).cover !== '-'}
-													<img src={JSON.parse(scan.json_data).cover} alt="" class="h-full w-full object-cover" />
+												{#if json.cover && json.cover !== '-'}
+													<img src={json.cover} alt="" class="h-full w-full object-cover" />
 												{:else}
 													<div class="flex items-center justify-center h-full text-gray-300">
 														<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l-5.5 9h11z"/></svg>
@@ -199,7 +234,7 @@
 											</div>
 											<div class="ml-4">
 												<div class="text-sm font-medium text-gray-900 line-clamp-1">{scan.title || 'Untitled'}</div>
-												<div class="text-xs text-gray-500 line-clamp-1">{JSON.parse(scan.json_data).author || 'Unknown Author'}</div>
+												<div class="text-xs text-gray-500 line-clamp-1">{json.author || 'Unknown Author'}</div>
 											</div>
 										</div>
 									</td>
@@ -224,6 +259,7 @@
 			<!-- Mobile Card View -->
 			<div class="md:hidden space-y-4">
 				{#each filteredScans as scan (scan.id)}
+					{@const json = parseJsonStringSafe(scan.json_data) ?? {}}
 					<div
 						class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:scale-[0.99] transition-transform"
 						role="button"
@@ -234,9 +270,9 @@
 						<div class="flex gap-4">
 							<!-- Cover Thumbnail -->
 							<div class="w-16 h-24 bg-gray-100 rounded-md flex-shrink-0 overflow-hidden shadow-sm">
-								{#if JSON.parse(scan.json_data).cover && JSON.parse(scan.json_data).cover !== '-'}
+								{#if json.cover && json.cover !== '-'}
 									<img
-										src={JSON.parse(scan.json_data).cover}
+										src={json.cover}
 										alt={scan.title}
 										class="w-full h-full object-cover"
 										loading="lazy"
@@ -266,11 +302,11 @@
 								</h3>
 
 								<p class="text-sm text-gray-600 line-clamp-1">
-									{JSON.parse(scan.json_data).author || 'Unknown Author'}
+									{json.author || 'Unknown Author'}
 								</p>
 
 								<div class="mt-2 flex items-center text-xs text-gray-500">
-									<span class="truncate max-w-[150px]">{JSON.parse(scan.json_data).publisher || 'Unknown Publisher'}</span>
+									<span class="truncate max-w-[150px]">{json.publisher || 'Unknown Publisher'}</span>
 								</div>
 							</div>
 						</div>

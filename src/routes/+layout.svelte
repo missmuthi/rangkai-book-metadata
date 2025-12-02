@@ -60,6 +60,17 @@ onMount(() => {
 		showInstallButton = false;
 		deferredPrompt = null;
 	});
+
+	// If redirected return from OAuth, force a hard reload to ensure server session is picked up
+	try {
+		const params = new URL(window.location.href).searchParams;
+		if (params.get('loginSuccess') === '1') {
+			// Replace url (remove query param) and reload to force server layout revalidation
+			window.location.replace('/');
+		}
+	} catch (e) {
+		clientLog('error', 'Failed to process loginSuccess param', e);
+	}
 });
 
 async function handleInstallApp() {

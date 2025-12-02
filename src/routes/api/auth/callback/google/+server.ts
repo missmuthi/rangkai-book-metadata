@@ -269,8 +269,8 @@ export const GET: RequestHandler = async ({
 
     logger.info("oauth_login_success", { email: googleUser.email });
 
-    // Redirect to home page (stable route)
-    throw redirect(303, "/");
+    // Redirect to home page (stable route) — add a query param to force client revalidation
+    throw redirect(303, "/?loginSuccess=1");
   } catch (error) {
     // ⚠️ CRITICAL: SvelteKit throws redirects as errors - we must re-throw them!
     if (isRedirect(error)) {

@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/d1";
 import type { D1Database } from "@cloudflare/workers-types";
 import { eq, and, like, desc, or, isNull, sql, count } from "drizzle-orm";
 import { z } from "zod";
+import { normalizeISBN } from "$lib/isbn-helpers";
 import { logger, LogEvents } from "../logger";
 import { bookSchema as mergedBookSchema } from "../../schemas";
 import { scans, users, accounts, sessions, verification } from "./schema";
@@ -362,6 +363,7 @@ export async function createScan(
   lcc?: string,
 ): Promise<number> {
   const authorsStr = Array.isArray(authors) ? authors.join("; ") : authors;
+  const isbnClean = normalizeISBN(isbn || "");
   const d = drizzle(db);
 
   try {
@@ -371,7 +373,7 @@ export async function createScan(
       .insert(scans)
       .values({
         user_id: userId,
-        isbn,
+        isbn: isbnClean,
         title,
         json_data: jsonData,
         status,
