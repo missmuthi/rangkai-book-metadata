@@ -1,0 +1,28 @@
+{
+  "isbn13": "9780684835396",
+  "isbn10": "0684835398",
+  "title": "I Don't Want to Talk About It",
+  "author": "Terrence Real",
+  "authors": ["Terrence Real"],
+  "publisherString": "Simon and Schuster",
+  "publishedDate": "1998",
+  "gmd": "book",
+  "callNumber": "362.20 R39",
+  "collation": "400 pages",
+  "language": "en",
+  "ddc": "362.20",
+  "lcc": "RC537.R44",
+  "classification": "362.20",
+  "description": "Overcoming the secret legacy of male depression.",
+  "subjects": "Family & Relationships; Men; Depression",
+  "infoLink": "https://books.google.com/books?id=Hf1kCQAAQBAJ",
+  "cover": "https://books.google.com/books/content?id=Hf1kCQAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+  "dataSource": "google",
+  "meta": {
+    "isbn": "9780684835396",
+    "sources": { "google": true, "openlibrary": false, "loc": false },
+    "fetchDuration": 10,
+    "totalDuration": 12,
+    "timestamp": "2025-12-01T00:00:00.000Z"
+  }
+}
