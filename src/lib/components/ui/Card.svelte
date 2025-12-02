@@ -21,9 +21,6 @@
 	}: Props = $props();
 	
 	const baseClasses = 'bg-white rounded-lg border border-gray-200 shadow-sm';
-	const interactiveClasses = interactive 
-		? 'cursor-pointer hover:border-gray-300 hover:shadow-md transition-all'
-		: '';
 	
 	const paddingClasses = {
 		sm: 'p-4',
@@ -31,7 +28,7 @@
 		lg: 'p-8'
 	};
 	
-	const classes = `${baseClasses} ${interactiveClasses} ${paddingClasses[padding]} ${className}`;
+	let classes = $derived(`${baseClasses} ${interactive ? 'cursor-pointer hover:border-gray-300 hover:shadow-md transition-all' : ''} ${paddingClasses[padding]} ${className}`);
 </script>
 
 {#if onclick}

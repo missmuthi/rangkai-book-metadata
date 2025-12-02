@@ -14,9 +14,10 @@
 	let {
 		variant = 'rectangular',
 		width = '100%',
-		height = variant === 'text' ? '1rem' : '100%',
 		class: className = ''
 	}: Props = $props();
+	
+	let height = $derived(variant === 'text' ? '1rem' : '100%');
 	
 	const variantClasses = {
 		text: 'h-4 rounded',

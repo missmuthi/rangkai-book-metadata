@@ -39,7 +39,7 @@
 		lg: 'px-6 py-3 text-lg'
 	};
 	
-	const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;
+	let classes = $derived(`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`);
 </script>
 
 <button
