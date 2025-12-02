@@ -3,9 +3,6 @@ import type { D1Database } from "@cloudflare/workers-types";
 import {
   searchUserScansByTitle,
   searchUserScansByISBN,
-  getUserStats,
-  countUserScans,
-  createScan,
   parseJsonSafe,
 } from "./index";
 

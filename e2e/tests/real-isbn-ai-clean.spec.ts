@@ -851,7 +851,7 @@ test.describe("Real ISBN AI Clean Test", () => {
       // Wait for AI response
       try {
         aiResponse = await aiResponsePromise;
-      } catch (e) {
+      } catch (_e) {
         const screenshot = await captureScreenshot(page, "ai-timeout");
         throw new Error(
           `AI Clean API did not respond within 60s. Screenshot: ${screenshot}`,

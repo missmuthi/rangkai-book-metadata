@@ -1,6 +1,5 @@
 import { generateObject, generateText } from "ai";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { RequestEvent } from "@sveltejs/kit";
 import { parseJsonSafe } from "$lib/utils/json";
 import { POST } from "../../../routes/api/ai/clean/+server";
 
