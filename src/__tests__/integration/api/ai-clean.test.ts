@@ -1,6 +1,17 @@
+import { generateObject, generateText } from "ai";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { RequestEvent } from "@sveltejs/kit";
 import { parseJsonSafe } from "$lib/utils/json";
 import { POST } from "../../../routes/api/ai/clean/+server";
+
+interface CleanedData {
+  scan_id?: number;
+  ddc?: string;
+  lcc?: string;
+  title?: string;
+  code?: string;
+  [key: string]: unknown;
+}
 
 // Mock dependencies
 vi.mock("ai", () => ({ generateObject: vi.fn(), generateText: vi.fn() }));
@@ -11,8 +22,11 @@ vi.mock("$lib/server/logger", () => ({
 
 // Mock DB helper
 vi.mock("$lib/server/db", () => ({
-  getRawDb: vi.fn((platform: any) => platform.env.DB || null),
-  getDrizzleDB: vi.fn((_platform: any) => undefined),
+  getRawDb: vi.fn(
+    (platform: Record<string, unknown>) =>
+      (platform.env as Record<string, unknown>).DB || null,
+  ),
+  getDrizzleDB: vi.fn((_platform: Record<string, unknown>) => undefined),
 }));
 
 // Simple helper to create a mock D1-like database
@@ -20,15 +34,15 @@ function createMockDB() {
   const statements: Array<{ sql: string; params: unknown[] }> = [];
   const db = {
     _statements: statements,
-    prepare(sql: string) {
+    prepare(_sql: string) {
       return {
-        bind: (...args: unknown[]) => ({
+        bind: (..._args: unknown[]) => ({
           run: async () => ({ meta: { last_row_id: 999, changes: 1 } }),
           first: async () => null,
         }),
         first: async () => null,
         run: async () => ({ meta: { last_row_id: 999, changes: 1 } }),
-      } as any;
+      };
     },
   };
   return db;
@@ -71,22 +85,21 @@ describe("POST /api/ai/clean - Integration", () => {
       body: { title: "Test" },
       isAuthenticated: false,
     });
-    const res = await POST(event as any);
+    const res = await POST(event);
     expect(res.status).toBe(401);
-    const data = (await parseJsonSafe(res)) as any;
+    const data = (await parseJsonSafe(res)) as CleanedData;
     expect(data.code).toBe("NO_SESSION");
   });
 
   it("saves cleaned metadata and returns scan_id when AI returns success", async () => {
-    const { generateObject } = (await import("ai")) as any;
-    (generateObject as any).mockResolvedValue({
+    vi.mocked(generateObject).mockResolvedValue({
       object: {
         title: "Clean Code",
         ddc: "005.133",
         lcc: "QA76.73.J38",
         changes: ["Generated DDC: 005.133", "Generated LCC: QA76.73.J38"],
       },
-    });
+    } as any);
 
     const body = {
       title: "Clean Code",
@@ -95,8 +108,8 @@ describe("POST /api/ai/clean - Integration", () => {
     };
     const event = createMockEvent({ body });
 
-    const res = await POST(event as any);
-    const data = (await parseJsonSafe(res)) as any;
+    const res = await POST(event);
+    const data = (await parseJsonSafe(res)) as CleanedData;
     console.warn("FALLBACK POST RESPONSE", { status: res.status, body: data });
     expect(res.status).toBe(200);
     expect(data.scan_id).toBeDefined();
@@ -105,30 +118,29 @@ describe("POST /api/ai/clean - Integration", () => {
   });
 
   it("updates existing scan if user+isbn already present, avoiding duplicate insert", async () => {
-    const { generateObject } = (await import("ai")) as any;
-    (generateObject as any).mockResolvedValue({
+    vi.mocked(generateObject).mockResolvedValue({
       object: {
         title: "Existing Book",
         ddc: "005.123",
         lcc: "QA76.12",
       },
-    });
+    } as any);
 
     // Mock DB with an existing scan (id 42) returned on SELECT
     const statements: Array<{ sql: string; params: unknown[] }> = [];
     const db = {
       _statements: statements,
-      prepare(sql: string) {
+      prepare(_sql: string) {
         return {
-          bind: (...args: unknown[]) => ({
+          bind: (..._args: unknown[]) => ({
             run: async () => ({ meta: { last_row_id: 999, changes: 1 } }),
             first: async () => ({ id: 42 }),
           }),
           first: async () => ({ id: 42 }),
           run: async () => ({ meta: { last_row_id: 42, changes: 1 } }),
-        } as any;
+        };
       },
-    } as any;
+    };
 
     const body = {
       title: "Existing Book",
@@ -137,18 +149,17 @@ describe("POST /api/ai/clean - Integration", () => {
     };
     const event = createMockEvent({ body });
     // Override platform DB to our mocked DB
-    event.platform.env.DB = db;
+    (event.platform.env as Record<string, unknown>).DB = db;
 
-    const res = await POST(event as any);
-    const data = (await parseJsonSafe(res)) as any;
+    const res = await POST(event);
+    const data = (await parseJsonSafe(res)) as CleanedData;
 
     expect(res.status).toBe(200);
     expect(data.scan_id).toBe(42);
   });
 
   it("falls back to generateText when model does not support json_schema", async () => {
-    const { generateObject, generateText } = (await import("ai")) as any;
-    (generateObject as any).mockRejectedValue(
+    vi.mocked(generateObject).mockRejectedValue(
       new Error("This model does not support response format `json_schema`"),
     );
     const textOutput = JSON.stringify({
@@ -157,11 +168,13 @@ describe("POST /api/ai/clean - Integration", () => {
       lcc: "QA76.1",
       changes: ["Generated DDC: 005.100"],
     });
-    (generateText as any).mockResolvedValue({ output_text: textOutput });
+    vi.mocked(generateText).mockResolvedValue({
+      output_text: textOutput,
+    } as any);
 
     const event = createMockEvent({ body: { title: "Fallback" } });
-    const res = await POST(event as any);
-    const data = (await parseJsonSafe(res)) as any;
+    const res = await POST(event);
+    const data = (await parseJsonSafe(res)) as CleanedData;
     console.warn("FALLBACK POST RESPONSE", { status: res.status, body: data });
     expect(res.status).toBe(200);
     expect(data.title).toBe("Fallback Title");

@@ -229,7 +229,7 @@ export const GET: RequestHandler = async ({
           responseData.ddc,
           responseData.lcc,
         );
-      } catch (drizzleErr) {
+      } catch (_drizzleErr) {
         // Fallback to existing raw SQL function
         scanId = await createScan(
           db,

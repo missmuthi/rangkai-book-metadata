@@ -20,7 +20,7 @@ import { test, expect } from "@playwright/test";
  */
 
 test.describe("Complete Workflow: Login → Scan → AI Clean → History", () => {
-  test.skip(({ browserName }) => {
+  test.skip(({ _browserName }) => {
     // Skip if no database is available
     return !process.env.TEST_DATABASE_URL;
   }, "Requires test database");

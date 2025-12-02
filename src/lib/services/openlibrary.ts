@@ -1,12 +1,20 @@
 import { error } from "@sveltejs/kit";
 import { logger } from "$lib/server/logger";
 import { parseJsonSafe } from "$lib/utils/json";
+import type {
+  OpenLibraryBookData,
+  OpenLibrarySearchResponse,
+} from "$lib/types";
 
 export async function queryOpenLibrary(
   query: string,
   isIsbn: boolean,
   limit: string | number = 10,
-) {
+): Promise<
+  | OpenLibraryBookData
+  | OpenLibrarySearchResponse
+  | { error: string; retryAfter?: string | null }
+> {
   if (!query) {
     throw error(400, { message: 'Query parameter "q" is required' });
   }
@@ -46,7 +54,7 @@ export async function queryOpenLibrary(
     }
 
     const data = await parseJsonSafe(response);
-    return data as any;
+    return data as OpenLibraryBookData | OpenLibrarySearchResponse;
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
     logger.error("openlibrary_fetch_error", { error: errorMessage });

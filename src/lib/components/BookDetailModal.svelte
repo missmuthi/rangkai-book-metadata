@@ -225,14 +225,14 @@
 							throw new Error(errorMessage);
 					}
 						
-						const cleaned = await parseJsonSafe(res) as any;
+						const cleaned = await parseJsonSafe(res) as Partial<BookWithScanId>;
 						
 						// 🔍 DIAGNOSTIC: Log successful response
 						clientLog('info', '✅ [AI Clean] Success');
 						clientLog('info', '📋 Cleaned Title:', cleaned.title);
 						clientLog('info', '📊 DDC:', cleaned.ddc);
 						clientLog('info', '🏛️ LCC:', cleaned.lcc);
-						clientLog('info', '💾 Saved:', cleaned.saved);
+						clientLog('info', '💾 Saved:', (cleaned as any).saved);
 						clientLog('info', '🆔 Scan ID:', cleaned.scan_id);
 						
 						// CRITICAL: Store the returned scan_id so future operations update the same row
@@ -245,7 +245,7 @@
 						book = { ...book, ...cleaned, scan_id: book.scan_id };
 						
 						// Check if save was successful
-						if (cleaned.saved === true || cleaned.scan_id) {
+						if ((cleaned as any).saved === true || cleaned.scan_id) {
 								saveStatus = 'saved';
 								toast = 'Metadata cleaned & saved ✓';
 
@@ -254,7 +254,7 @@
 								const key = normalizeISBN(cleaned.isbn13 || cleaned.isbn10 || cleaned.isbn || book.isbn13 || book.isbn10 || book.isbn || '');
 								const all = scanHistory.getAll();
 								const existing = all.find((i) => normalizeISBN(i.isbn13 || i.isbn10 || i.isbn || '') === key);
-								const updatedEntry = { ...(existing || {}), ...cleaned, scan_id: cleaned.scan_id } as any;
+								const updatedEntry = { ...(existing || {}), ...cleaned, scan_id: cleaned.scan_id } as BookWithScanId;
 								if (existing) {
 									// Remove old and re-add updated (keeps top order)
 									scanHistory.remove(existing.isbn13 || existing.isbn10 || existing.isbn || '');
@@ -265,9 +265,9 @@
 							} catch (e) {
 								clientLog('warn', 'Failed to update client history after AI clean', e);
 							}
-						} else if (cleaned.saveError) {
+						} else if ((cleaned as any).saveError) {
 								saveStatus = 'error';
-								toast = `Cleaned but save failed: ${cleaned.saveError}`;
+								toast = `Cleaned but save failed: ${(cleaned as any).saveError}`;
 						} else {
 								saveStatus = 'saved';
 								toast = 'Metadata cleaned & saved ✓';

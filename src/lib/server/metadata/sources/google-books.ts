@@ -5,6 +5,7 @@
  * Part of the metadata engine's source adapters.
  */
 
+import type { KVNamespace } from "../../types";
 import type { GoogleBooksResponse } from "$lib/types";
 import { Analytics } from "$lib/services/analytics";
 import { logger, LogEvents } from "$lib/server/logger";
@@ -103,7 +104,7 @@ export async function fetchGoogleBooksWithTimeout(
   maxResults = 1,
   timeoutMs = DEFAULT_TIMEOUT,
 ): Promise<GoogleBooksResponse | null> {
-  const kv = getKV(platform);
+  const kv = getKV(platform) as KVNamespace | null;
   const breaker = new CircuitBreaker(kv, "google");
 
   if (await breaker.isOpen()) {

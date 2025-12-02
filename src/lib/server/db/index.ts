@@ -1,10 +1,9 @@
 import { drizzle } from "drizzle-orm/d1";
 import type { D1Database } from "@cloudflare/workers-types";
-import { eq, and, like, desc, or, isNull, sql, count } from "drizzle-orm";
+import { eq, and, like, desc, or, count } from "drizzle-orm";
 import { z } from "zod";
 import { normalizeISBN } from "$lib/isbn-helpers";
 import { logger, LogEvents } from "../logger";
-import { bookSchema as mergedBookSchema } from "../../schemas";
 import { scans, users, accounts, sessions, verification } from "./schema";
 import type { Scan, User } from "../types";
 
@@ -439,6 +438,7 @@ export async function createAnonymousScan(
   const result = await d
     .insert(scans)
     .values({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       user_id: null as any, // Allow null for anonymous? Schema says user_id is notNull() but previous code used NULL.
       // Wait, schema.ts says: user_id: text("user_id").notNull()
       // But createAnonymousScan in db.ts explicitly inserted NULL.

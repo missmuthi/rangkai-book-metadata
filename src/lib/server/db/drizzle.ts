@@ -60,22 +60,27 @@ export async function createScanDrizzle(
     }
 
     // Insert new
-    await db
-      .insert(scans)
-      .values({
-        user_id: userId as any,
-        isbn,
-        title,
-        json_data: jsonData,
-        status,
-        authors: (authorsStr || null) as any,
-        subjects: subjects || null,
-        ddc: ddc || null,
-        lcc: lcc || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .run();
+    if (userId) {
+      await db
+        .insert(scans)
+        .values({
+          user_id: userId,
+          isbn,
+          title,
+          json_data: jsonData,
+          status,
+          authors: authorsStr || null,
+          subjects: subjects || null,
+          ddc: ddc || null,
+          lcc: lcc || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .run();
+    } else {
+      // Anonymous scan, do not insert
+      return 0;
+    }
 
     // Query inserted record to get id
     if (userId) {

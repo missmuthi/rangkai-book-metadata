@@ -1,5 +1,4 @@
 import type { KVNamespace } from "$lib/server/types";
-import { logger } from "$lib/server/logger";
 
 /**
  * Timeout Wrapper

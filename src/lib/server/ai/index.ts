@@ -175,6 +175,17 @@ Return the cleaned AND completed fields with a comprehensive changes log.`,
       if (!object && lastError && String(lastError).includes("json_schema")) {
         try {
           const prompt = `Return ONLY a valid JSON object matching this schema: ${cleanedBookSchema.toString()}\n\nINPUT:\n${JSON.stringify(bookContext, null, 2)}`;
+          interface TextContent {
+            type: string;
+            text: string;
+          }
+
+          interface TextResult {
+            output_text?: string;
+            output?: {
+              content?: TextContent[];
+            }[];
+          }
           const textResult = await generateText({
             model: groq("llama-3.3-70b-versatile"),
             prompt,
@@ -184,11 +195,11 @@ Return the cleaned AND completed fields with a comprehensive changes log.`,
 
           // Try to pull the textual output in a few known shapes
           const text =
-            (textResult as any).output_text ||
-            (textResult as any).output?.[0]?.content?.find(
-              (c: any) => c.type === "output_text",
+            (textResult as TextResult).output_text ||
+            (textResult as TextResult).output?.[0]?.content?.find(
+              (c: TextContent) => c.type === "output_text",
             )?.text ||
-            (textResult as any).output?.[0]?.content?.[0]?.text;
+            (textResult as TextResult).output?.[0]?.content?.[0]?.text;
           if (typeof text === "string") {
             try {
               const parsed = JSON.parse(text);

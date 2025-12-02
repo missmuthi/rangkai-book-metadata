@@ -17,7 +17,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
   const data = await queryOpenLibrary(query, isIsbn, limit);
 
-  if (data.error) {
+  if ("error" in data && data.error) {
     if (data.error.includes("temporarily unavailable")) {
       return json({ error: data.error }, { status: 503 });
     }

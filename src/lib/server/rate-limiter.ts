@@ -28,7 +28,9 @@ export class RateLimiter {
     const key = `ratelimit:${identifier}:${windowKey}`;
 
     try {
-      const countStr = await this.kv.get(key);
+      const countStr = (await (this.kv as KVNamespace).get(key)) as
+        | string
+        | null;
       const count = countStr ? parseInt(countStr, 10) : 0;
 
       if (count >= this.limit) {
@@ -37,7 +39,7 @@ export class RateLimiter {
 
       // Increment count
       // Note: This is not atomic without durable objects, but good enough for KV rate limiting
-      await this.kv.put(key, (count + 1).toString(), {
+      await (this.kv as KVNamespace).put(key, (count + 1).toString(), {
         expirationTtl: this.window * 2, // Keep a bit longer for debugging
       });
 
@@ -59,7 +61,9 @@ export class RateLimiter {
     const key = `ratelimit:${identifier}:${windowKey}`;
 
     try {
-      const countStr = await this.kv.get(key);
+      const countStr = (await (this.kv as KVNamespace).get(key)) as
+        | string
+        | null;
       const count = countStr ? parseInt(countStr, 10) : 0;
       return Math.max(0, this.limit - count);
     } catch {

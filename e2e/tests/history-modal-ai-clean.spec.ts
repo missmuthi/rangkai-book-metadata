@@ -264,7 +264,7 @@ test.describe("History Modal AI Clean Test", () => {
         },
       });
 
-      let scanData: any = {};
+      let scanData: Record<string, unknown> = {};
       if (scanResponse.ok()) {
         try {
           scanData = await scanResponse.json();
@@ -687,7 +687,7 @@ async function setupMocks(
   initialScanSaved: boolean = false,
 ): Promise<void> {
   let scanSaved = initialScanSaved;
-  let scanId = 1001;
+  const scanId = 1001;
 
   // Mock scans API - used by getScanHistory in +page.server.ts
   await page.route("**/api/scans**", (route) => {
@@ -779,45 +779,45 @@ async function setupMocks(
 // Report Summary Printer
 // ============================================================================
 function printReportSummary(report: TestReport, reportPath: string): void {
-  console.log("\n" + "=".repeat(80));
-  console.log("HISTORY MODAL AI CLEAN TEST REPORT");
-  console.log("=".repeat(80));
-  console.log(`Status: ${report.status === "PASS" ? "✅ PASS" : "❌ FAIL"}`);
-  console.log(`Duration: ${(report.duration / 1000).toFixed(2)}s`);
-  console.log(`ISBN: ${report.isbn}`);
-  console.log(`Expected Title: ${report.expectedTitle}`);
-  console.log(`Mocks Enabled: ${report.usedMocks}`);
-  console.log(
+  console.warn("\n" + "=".repeat(80));
+  console.warn("HISTORY MODAL AI CLEAN TEST REPORT");
+  console.warn("=".repeat(80));
+  console.warn(`Status: ${report.status === "PASS" ? "✅ PASS" : "❌ FAIL"}`);
+  console.warn(`Duration: ${(report.duration / 1000).toFixed(2)}s`);
+  console.warn(`ISBN: ${report.isbn}`);
+  console.warn(`Expected Title: ${report.expectedTitle}`);
+  console.warn(`Mocks Enabled: ${report.usedMocks}`);
+  console.warn(
     `\nSteps: ${report.summary.passedSteps}/${report.summary.totalSteps} passed`,
   );
-  console.log("\nStep Results:");
+  console.warn("\nStep Results:");
 
   report.steps.forEach((step, index) => {
     const icon = step.status === "PASS" ? "✅" : "❌";
     const duration = `(${step.duration}ms)`;
-    console.log(`  ${icon} ${index + 1}. ${step.name} ${duration}`);
+    console.warn(`  ${icon} ${index + 1}. ${step.name} ${duration}`);
     if (step.status === "FAIL" && step.error) {
-      console.log(`     Error: ${step.error}`);
+      console.warn(`     Error: ${step.error}`);
     }
   });
 
   const apiResponses = report.apiCalls.filter((c) => c.type === "response");
   if (apiResponses.length > 0) {
-    console.log(`\n📡 API Calls (${apiResponses.length} responses):`);
+    console.warn(`\n📡 API Calls (${apiResponses.length} responses):`);
     apiResponses.forEach((call) => {
       const statusIcon = call.status === 200 ? "✅" : "❌";
       const url = call.url?.split("?")[0] || "unknown";
-      console.log(`  ${statusIcon} ${call.status} ${url}`);
+      console.warn(`  ${statusIcon} ${call.status} ${url}`);
     });
   }
 
   if (report.summary.failedSteps > 0 && report.networkErrors.length > 0) {
-    console.log(`\n⚠️  Network Errors (${report.networkErrors.length}):`);
+    console.warn(`\n⚠️  Network Errors (${report.networkErrors.length}):`);
     report.networkErrors.slice(0, 5).forEach((err) => {
-      console.log(`  - ${err}`);
+      console.warn(`  - ${err}`);
     });
   }
 
-  console.log(`\n📊 Full report saved to: ${reportPath}`);
-  console.log("=".repeat(80) + "\n");
+  console.warn(`\n📊 Full report saved to: ${reportPath}`);
+  console.warn("=".repeat(80) + "\n");
 }

@@ -6,6 +6,7 @@
  * Priority source for LCC (Library of Congress Classification).
  */
 
+import type { KVNamespace } from "../../types";
 import type { LoCBookData } from "$lib/types";
 import { Analytics } from "$lib/services/analytics";
 import { logger, LogEvents } from "$lib/server/logger";
@@ -122,7 +123,7 @@ export async function fetchLibraryOfCongressWithTimeout(
   isbn: string,
   timeoutMs = DEFAULT_TIMEOUT,
 ): Promise<LoCBookData | null> {
-  const kv = getKV(platform);
+  const kv = getKV(platform) as KVNamespace | null;
   const breaker = new CircuitBreaker(kv, "loc");
 
   if (await breaker.isOpen()) {

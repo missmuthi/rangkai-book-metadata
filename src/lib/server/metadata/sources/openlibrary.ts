@@ -5,6 +5,7 @@
  * Part of the metadata engine's source adapters.
  */
 
+import type { KVNamespace } from "../../types";
 import type {
   OpenLibraryBookData,
   OpenLibrarySearchResponse,
@@ -124,11 +125,10 @@ export async function fetchOpenLibrary(
 
     if (isIsbn) {
       const key = `ISBN:${query}`;
-      // data is typed as OpenLibrary response or object; access via any index
-      return (data as any)[key] || null;
+      return (data as Record<string, OpenLibraryBookData>)[key] || null;
     }
 
-    return data as any;
+    return data as OpenLibrarySearchResponse | null;
   } catch (error) {
     const duration = Math.round(performance.now() - startTime);
     Analytics.track("api_timing", {
@@ -157,7 +157,7 @@ export async function fetchOpenLibraryWithTimeout(
   limit = 1,
   timeoutMs = DEFAULT_TIMEOUT,
 ): Promise<OpenLibraryBookData | OpenLibrarySearchResponse | null> {
-  const kv = getKV(platform);
+  const kv = getKV(platform) as KVNamespace | null;
   const breaker = new CircuitBreaker(kv, "openlibrary");
 
   if (await breaker.isOpen()) {

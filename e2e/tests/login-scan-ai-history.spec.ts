@@ -173,7 +173,7 @@ test.describe("Login → Scan → AI Clean → History (Mocked)", () => {
     expect(count).toBeLessThanOrEqual(1);
 
     // Log API call summary for debugging
-    console.log("API Call Summary:", apiCalls);
+    console.warn("API Call Summary:", apiCalls);
   });
 
   test.skip("History shows scans immediately without refresh", async ({

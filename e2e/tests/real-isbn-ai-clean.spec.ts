@@ -279,8 +279,8 @@ test.describe("Real ISBN AI Clean Test", () => {
             // Allow camera activation
             await page.waitForTimeout(300);
           }
-        } catch (e) {
-          // ignore
+        } catch (_e) {
+          // ignore, part of fallback
         }
 
         await page.evaluate((isbn) => {
@@ -354,7 +354,7 @@ test.describe("Real ISBN AI Clean Test", () => {
               page.locator(`text="${EXPECTED_TITLE}"`).first(),
             ).toBeVisible({ timeout: 10_000 });
             return { method: "site-search-fallback", isbn: TEST_ISBN };
-          } catch (err) {
+          } catch (_err) {
             // If this fallback fails, return original camera method and let the caller handle error
             return { method: "camera-scan-simulation", isbn: TEST_ISBN };
           }
@@ -515,7 +515,7 @@ test.describe("Real ISBN AI Clean Test", () => {
             foundTitle = true;
             matchedSelector = "history-entry";
           }
-        } catch (err) {
+        } catch (_err) {
           // ignore and fall through to the final error below
         }
 
@@ -551,7 +551,7 @@ test.describe("Real ISBN AI Clean Test", () => {
             // Wait and click the injected history scan item
             const histSel = page
               .locator(
-                `(role=\"button\"):has-text("${TEST_ISBN}"), (role=\"button\"):has-text("${EXPECTED_TITLE}")`,
+                `(role="button"):has-text("${TEST_ISBN}"), (role="button"):has-text("${EXPECTED_TITLE}")`,
               )
               .first();
             await expect(histSel).toBeVisible({ timeout: 5_000 });
@@ -663,7 +663,7 @@ test.describe("Real ISBN AI Clean Test", () => {
             await histitem.click();
             clicked = true;
           }
-        } catch (err) {
+        } catch (_err) {
           // If this fails, throw a clear error
           throw new Error("Could not find book card/title to click");
         }
@@ -781,7 +781,7 @@ test.describe("Real ISBN AI Clean Test", () => {
           },
         );
 
-        let resolvedButtonAttributes: any[] = [];
+        let resolvedButtonAttributes: Record<string, unknown>[] = [];
         try {
           resolvedButtonAttributes = await Promise.all(buttonAttributes);
 
@@ -1064,8 +1064,8 @@ test.describe("Real ISBN AI Clean Test", () => {
       try {
         await page.screenshot({ path: filepath, fullPage: true });
         return filepath;
-      } catch (e) {
-        console.warn("Screenshot failed:", e);
+      } catch (_e) {
+        console.warn("Screenshot failed:", _e);
         return "";
       }
     }
@@ -1141,60 +1141,62 @@ async function setupMocks(
 function printReportSummary(report: TestReport, reportPath: string): void {
   const divider = "=".repeat(80);
 
-  console.log("\n" + divider);
-  console.log("TEST REPORT SUMMARY");
-  console.log(divider);
-  console.log(`Status: ${report.status === "PASS" ? "✅ PASS" : "❌ FAIL"}`);
-  console.log(`Duration: ${(report.duration / 1000).toFixed(2)}s`);
-  console.log(`ISBN: ${report.isbn}`);
-  console.log(`Expected Title: ${report.expectedTitle}`);
-  console.log(`Mocks Enabled: ${report.usedMocks}`);
-  console.log("");
-  console.log(
+  console.warn("\n" + divider);
+  console.warn("TEST REPORT SUMMARY");
+  console.warn(divider);
+  console.warn(`Status: ${report.status === "PASS" ? "✅ PASS" : "❌ FAIL"}`);
+  console.warn(`Duration: ${(report.duration / 1000).toFixed(2)}s`);
+  console.warn(`ISBN: ${report.isbn}`);
+  console.warn(`Expected Title: ${report.expectedTitle}`);
+  console.warn(`Mocks Enabled: ${report.usedMocks}`);
+  console.warn("");
+  console.warn(
     `Steps: ${report.summary.passedSteps}/${report.summary.totalSteps} passed`,
   );
 
-  console.log("\nStep Results:");
+  console.warn("\nStep Results:");
   report.steps.forEach((step, idx) => {
     const icon =
       step.status === "PASS" ? "✅" : step.status === "FAIL" ? "❌" : "⏭️";
-    console.log(`  ${icon} ${idx + 1}. ${step.name} (${step.duration}ms)`);
+    console.warn(`  ${icon} ${idx + 1}. ${step.name} (${step.duration}ms)`);
     if (step.error) {
-      console.log(`     ⚠️  Error: ${step.error.substring(0, 200)}`);
+      console.warn(`     ⚠️  Error: ${step.error.substring(0, 200)}`);
     }
     if (step.screenshot) {
-      console.log(`     📸 Screenshot: ${step.screenshot}`);
+      console.warn(`     📸 Screenshot: ${step.screenshot}`);
     }
   });
 
   if (report.networkErrors.length > 0) {
-    console.log("\n⚠️  Network Errors:");
-    report.networkErrors.forEach((err) => console.log(`  - ${err}`));
+    console.warn("\n⚠️  Network Errors:");
+    report.networkErrors.forEach((err) => console.warn(`  - ${err}`));
   }
 
   const consoleErrors = report.consoleMessages.filter(
     (m) => m.type === "error",
   );
   if (consoleErrors.length > 0) {
-    console.log(`\n⚠️  Console Errors (${consoleErrors.length}):`);
+    console.warn(`\n⚠️  Console Errors (${consoleErrors.length}):`);
     consoleErrors
       .slice(0, 5)
-      .forEach((e) => console.log(`  - ${e.text.substring(0, 100)}`));
+      .forEach((e) => console.warn(`  - ${e.text.substring(0, 100)}`));
     if (consoleErrors.length > 5) {
-      console.log(`  ... and ${consoleErrors.length - 5} more`);
+      console.warn(`  ... and ${consoleErrors.length - 5} more`);
     }
   }
 
   // API calls summary
   const apiResponses = report.apiCalls.filter((c) => c.type === "response");
   if (apiResponses.length > 0) {
-    console.log(`\n📡 API Calls (${apiResponses.length} responses):`);
+    console.warn(`\n📡 API Calls (${apiResponses.length} responses):`);
     apiResponses.forEach((res) => {
       const statusIcon = res.status && res.status < 400 ? "✅" : "❌";
-      console.log(`  ${statusIcon} ${res.status} ${res.url?.substring(0, 60)}`);
+      console.warn(
+        `  ${statusIcon} ${res.status} ${res.url?.substring(0, 60)}`,
+      );
     });
   }
 
-  console.log("\n📊 Full report saved to:", reportPath);
-  console.log(divider + "\n");
+  console.warn("\n📊 Full report saved to:", reportPath);
+  console.warn(divider + "\n");
 }

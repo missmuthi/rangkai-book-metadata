@@ -31,14 +31,14 @@
 	let searchQuery = $state('');
 
 	// create merged scans combining server-side and client-side history
-	function mergeServerAndClientScans(serverScans: Scan[], clientScans: any[]): Scan[] {
+	function mergeServerAndClientScans(serverScans: Scan[], clientScans: MergedBookData[]): Scan[] {
 		const keySet = new Set<string>();
 		const merged: Scan[] = [];
 
 		serverScans.forEach((s) => {
 			merged.push(s);
 			const json = parseJsonStringSafe(s.json_data) ?? {};
-			keySet.add(normalizeISBN(json.isbn13 || json.isbn10 || s.isbn || json.isbn || ''));
+			keySet.add(normalizeISBN((json as any).isbn13 || (json as any).isbn10 || s.isbn || (json as any).isbn || ''));
 		});
 
 		clientScans.forEach((c) => {
@@ -224,8 +224,8 @@
 									<td class="px-6 py-4">
 										<div class="flex items-center">
 											<div class="flex-shrink-0 h-10 w-8 bg-gray-100 rounded overflow-hidden">
-												{#if json.cover && json.cover !== '-'}
-													<img src={json.cover} alt="" class="h-full w-full object-cover" />
+												{#if (json as any).cover && (json as any).cover !== '-'}
+													<img src={(json as any).cover} alt="" class="h-full w-full object-cover" />
 												{:else}
 													<div class="flex items-center justify-center h-full text-gray-300">
 														<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l-5.5 9h11z"/></svg>
@@ -234,7 +234,7 @@
 											</div>
 											<div class="ml-4">
 												<div class="text-sm font-medium text-gray-900 line-clamp-1">{scan.title || 'Untitled'}</div>
-												<div class="text-xs text-gray-500 line-clamp-1">{json.author || 'Unknown Author'}</div>
+												<div class="text-xs text-gray-500 line-clamp-1">{(json as any).author || 'Unknown Author'}</div>
 											</div>
 										</div>
 									</td>
@@ -270,9 +270,9 @@
 						<div class="flex gap-4">
 							<!-- Cover Thumbnail -->
 							<div class="w-16 h-24 bg-gray-100 rounded-md flex-shrink-0 overflow-hidden shadow-sm">
-								{#if json.cover && json.cover !== '-'}
+								{#if (json as any).cover && (json as any).cover !== '-'}
 									<img
-										src={json.cover}
+										src={(json as any).cover}
 										alt={scan.title}
 										class="w-full h-full object-cover"
 										loading="lazy"
@@ -302,11 +302,11 @@
 								</h3>
 
 								<p class="text-sm text-gray-600 line-clamp-1">
-									{json.author || 'Unknown Author'}
+									{(json as any).author || 'Unknown Author'}
 								</p>
 
 								<div class="mt-2 flex items-center text-xs text-gray-500">
-									<span class="truncate max-w-[150px]">{json.publisher || 'Unknown Publisher'}</span>
+									<span class="truncate max-w-[150px]">{(json as any).publisher || 'Unknown Publisher'}</span>
 								</div>
 							</div>
 						</div>

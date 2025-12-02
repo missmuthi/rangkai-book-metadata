@@ -32,7 +32,7 @@ export const CacheTTL = {
  * Helper to get KV namespace safely
  * @deprecated KV is removed. Returns null.
  */
-export function getKV(platform: any): any | null {
+export function getKV(_platform: unknown): unknown | null {
   return null;
 }
 
@@ -40,7 +40,10 @@ export function getKV(platform: any): any | null {
  * Generic wrapper to get data from KV with error handling
  * @deprecated KV is removed. Always returns null.
  */
-export async function cacheGet<T>(kv: any, key: string): Promise<T | null> {
+export async function cacheGet<T>(
+  _kv: unknown,
+  _key: string,
+): Promise<T | null> {
   return null;
 }
 
@@ -49,10 +52,10 @@ export async function cacheGet<T>(kv: any, key: string): Promise<T | null> {
  * @deprecated KV is removed. No-op.
  */
 export async function cacheSet(
-  kv: any,
-  key: string,
-  value: unknown,
-  ttl: number,
+  _kv: unknown,
+  _key: string,
+  _value: unknown,
+  _ttl: number,
 ): Promise<void> {
   return;
 }
@@ -61,6 +64,6 @@ export async function cacheSet(
  * Generic wrapper to delete data from KV
  * @deprecated KV is removed. No-op.
  */
-export async function cacheDelete(kv: any, key: string): Promise<void> {
+export async function cacheDelete(_kv: unknown, _key: string): Promise<void> {
   return;
 }

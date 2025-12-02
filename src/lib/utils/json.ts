@@ -2,7 +2,9 @@
  * Safe JSON parsing helper that narrows `unknown` to `Record<string, unknown>`
  * while keeping compiler happy. Use sparingly for external responses.
  */
-export async function parseJsonSafe<T = any>(response: Response): Promise<T> {
+export async function parseJsonSafe<T = unknown>(
+  response: Response,
+): Promise<T> {
   const data = await response.json();
   if (typeof data === "object" && data !== null) {
     return data as T;
@@ -16,7 +18,7 @@ export function isErrorObject(obj: unknown): obj is { error: string } {
     typeof obj === "object" &&
     obj !== null &&
     "error" in obj &&
-    typeof (obj as any).error === "string"
+    typeof (obj as Record<string, unknown>).error === "string"
   );
 }
 
@@ -24,7 +26,7 @@ export function isErrorObject(obj: unknown): obj is { error: string } {
  * Parse a JSON field that may be a string or an already-parsed object.
  * Returns null if parsing fails.
  */
-export function parseJsonStringSafe<T = any>(
+export function parseJsonStringSafe<T = unknown>(
   value: string | object | null | undefined,
 ): T | null {
   if (value == null) return null;

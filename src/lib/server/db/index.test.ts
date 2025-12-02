@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { D1Database } from "@cloudflare/workers-types";
 import {
   searchUserScansByTitle,
   searchUserScansByISBN,
@@ -7,7 +8,7 @@ import {
   createScan,
   parseJsonSafe,
 } from "./index";
-import { scans } from "./schema";
+
 import { z } from "zod";
 
 // Mock Drizzle and D1
@@ -40,10 +41,10 @@ vi.mock("../logger", () => ({
 }));
 
 describe("DB Operations", () => {
-  let mockDb: any;
+  let mockDb: D1Database;
 
   beforeEach(() => {
-    mockDb = {}; // Mock D1Database object
+    mockDb = {} as D1Database;
     vi.clearAllMocks();
   });
 

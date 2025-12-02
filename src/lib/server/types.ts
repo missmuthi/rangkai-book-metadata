@@ -5,13 +5,16 @@
  * Import server types for type consistency
  * This ensures App.Locals types match lib/server/types.ts
  */
-import type { D1Database as CloudflareD1Database } from "@cloudflare/workers-types";
+import type {
+  D1Database as CloudflareD1Database,
+  KVNamespace as CloudflareKVNamespace,
+} from "@cloudflare/workers-types";
 
 // Re-export D1Database for use in other files
 export type D1Database = CloudflareD1Database;
 
-// Mock KVNamespace for legacy imports (will be removed later)
-export type KVNamespace = any;
+// Re-export KVNamespace for use in other files
+export type KVNamespace = CloudflareKVNamespace;
 
 export type User = {
   id: string;

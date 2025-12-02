@@ -153,7 +153,7 @@ export class BookApiService {
 
       if (isIsbn) {
         const key = `ISBN:${query}`;
-        return (data as any)[key] || null;
+        return (data as Record<string, OpenLibraryBookData>)[key] || null;
       }
       return data as OpenLibraryBookData | OpenLibrarySearchResponse | null;
     } catch (error) {

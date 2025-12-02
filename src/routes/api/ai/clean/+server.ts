@@ -171,7 +171,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
             prompt: `Complete the bibliographic record for: "${book.title || "Unknown Title"}" by ${book.author || "Unknown Author"}. ISBN: ${book.isbn13 || book.isbn10 || book.isbn || "N/A"}`,
           });
           break; // Success
-        } catch (e: any) {
+        } catch (e: unknown) {
           attempt++;
           lastError = e;
           const errorMessage = e instanceof Error ? e.message : String(e);
@@ -202,17 +202,28 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       ) {
         try {
           logger.info("ai_clean_groq_fallback_to_generateText_loop", {});
+          interface TextContent {
+            type: string;
+            text: string;
+          }
+
+          interface TextResult {
+            output_text?: string;
+            output?: {
+              content?: TextContent[];
+            }[];
+          }
           const fallbackPromptLoop = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
           const textResultLoop = await generateText({
             model: groq("llama-3.3-70b-versatile"),
             prompt: fallbackPromptLoop,
           });
           const outputTextLoop =
-            (textResultLoop as any).output_text ||
-            (textResultLoop as any).output?.[0]?.content?.find(
-              (c: any) => c.type === "output_text",
+            (textResultLoop as TextResult).output_text ||
+            (textResultLoop as TextResult).output?.[0]?.content?.find(
+              (c: TextContent) => c.type === "output_text",
             )?.text ||
-            (textResultLoop as any).output?.[0]?.content?.[0]?.text;
+            (textResultLoop as TextResult).output?.[0]?.content?.[0]?.text;
           if (typeof outputTextLoop === "string") {
             rawAiResult = JSON.parse(outputTextLoop);
             try {
@@ -246,6 +257,17 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
         try {
           logger.info("ai_clean_groq_fallback_to_generateText", {});
           logger.debug("ai_clean_fallback_invoking_generateText_start", {});
+          interface TextContent {
+            type: string;
+            text: string;
+          }
+
+          interface TextResult {
+            output_text?: string;
+            output?: {
+              content?: TextContent[];
+            }[];
+          }
           const fallbackPrompt = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
           const textResult = await generateText({
             model: groq("llama-3.3-70b-versatile"),
@@ -253,11 +275,11 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           });
           logger.debug("ai_clean_fallback_invoking_generateText_end", {});
           const outputText =
-            (textResult as any).output_text ||
-            (textResult as any).output?.[0]?.content?.find(
-              (c: any) => c.type === "output_text",
+            (textResult as TextResult).output_text ||
+            (textResult as TextResult).output?.[0]?.content?.find(
+              (c: TextContent) => c.type === "output_text",
             )?.text ||
-            (textResult as any).output?.[0]?.content?.[0]?.text;
+            (textResult as TextResult).output?.[0]?.content?.[0]?.text;
           if (typeof outputText === "string") {
             try {
               rawAiResult = JSON.parse(outputText);
@@ -359,12 +381,12 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       ...existingJson,
       ...cleanAiResult,
       // Explicitly set these to ensure they aren't lost in nesting
-      ddc: (cleanAiResult as any).ddc,
-      lcc: (cleanAiResult as any).lcc,
-      language: (cleanAiResult as any).language,
-      subjects: (cleanAiResult as any).subjects,
-      series: (cleanAiResult as any).series,
-      edition: (cleanAiResult as any).edition,
+      ddc: (cleanAiResult as Partial<MergedBookData>).ddc,
+      lcc: (cleanAiResult as Partial<MergedBookData>).lcc,
+      language: (cleanAiResult as Partial<MergedBookData>).language,
+      subjects: (cleanAiResult as Partial<MergedBookData>).subjects,
+      series: (cleanAiResult as Partial<MergedBookData>).series,
+      edition: (cleanAiResult as Partial<MergedBookData>).edition,
     };
 
     // 5. AUDIT LOG (Smart Tracking)

@@ -7,7 +7,7 @@
         import { BookApiService, googleCache, openLibraryCache, locCache } from '$lib/api';
         import { retry, isOnline } from '$lib/utils';
         import { cleanISBN } from '$lib/isbn-helpers';
-	import SkeletonCard from '$lib/SkeletonCard.svelte';
+	
 	import { Analytics } from '$lib/services/analytics';
 
 	// --- TypeScript Interfaces ---
@@ -186,9 +186,7 @@
 	let mergedData = $state<MergedBookData | null>(null);
 	let isPartialData = $state(false); // Track when OpenLibrary failed
 
-	// Raw data for debugging
-	let googleRaw = $state('');
-	let openLibraryRaw = $state('');
+
 
 	// Scanner Mode: Input reference for auto-focus
         let searchInputRef: HTMLInputElement | null = null;
@@ -291,8 +289,6 @@
 		mergedData = null;
 		googleResults = [];
 		openLibraryResults = [];
-		googleRaw = '';
-		openLibraryRaw = '';
 	}
 
 	// --- Input Debouncing (Manual Typing Only) ---
@@ -381,8 +377,6 @@
 		mergedData = null;
 		googleResults = [];
 		openLibraryResults = [];
-		googleRaw = 'Fetching...';
-		openLibraryRaw = 'Fetching...';
 		currentView = 'search';
 
 		try {
@@ -400,10 +394,6 @@
 			const hasGoogle = meta.sources?.google || false;
 			const hasOpenLib = meta.sources?.openlibrary || false;
 			const hasLoC = meta.sources?.loc || false;
-			
-			// Set raw data for debugging (show merged result)
-			googleRaw = JSON.stringify(mergedData, null, 2);
-			openLibraryRaw = `Serverless API Response\n\nCache: ${meta.cacheHit ? 'HIT' : 'MISS'}\nFetch: ${meta.fetchDuration}ms\nTotal: ${meta.totalDuration}ms\nSources: ${JSON.stringify(meta.sources, null, 2)}`;
 
 			if (!mergedData || mergedData.title === '-') {
 				error = 'No data found from any source for this ISBN.';
@@ -566,7 +556,6 @@
 
 		const selectedItem = googleResults[index];
 		const googleData = selectedItem.volumeInfo;
-		googleRaw = JSON.stringify(googleData, null, 2);
 
 		const isbn = googleData.industryIdentifiers?.find((id) => id.type === 'ISBN_13')?.identifier;
 
@@ -585,11 +574,7 @@
 				} catch (err) {
 				clientLog('warn', '[Book Selection] OpenLibrary fetch failed:', err);
 			}
-			openLibraryRaw = JSON.stringify(openLibraryData, null, 2) || 'No data found from OpenLibrary for this ISBN.';
-		} else {
-			openLibraryRaw = 'No ISBN found in Google data to search OpenLibrary for DDC/LCC.';
 		}
-
 		mergedData = processAndRenderMergedData(googleData, openLibraryData);
 		currentView = 'result'; // Show the card
 		isLoading = false;
@@ -625,7 +610,6 @@
 			},
 			cover: selectedDoc.cover_i ? { large: `https://covers.openlibrary.org/b/id/${selectedDoc.cover_i}-L.jpg` } : undefined
 		};
-		openLibraryRaw = JSON.stringify(openLibraryData, null, 2);
 
 		const isbn = openLibraryData?.identifiers?.isbn_13?.[0];
 		let googleData: GoogleBookItem['volumeInfo'] | null = null;
@@ -648,11 +632,7 @@
 			} catch (err) {
 				clientLog('warn', '[OpenLibrary Selection] API fetch failed:', err);
 			}
-			googleRaw = JSON.stringify(googleData, null, 2) || 'No data found from Google for this ISBN.';
-		} else {
-			googleRaw = 'No ISBN found in OpenLibrary data to search Google/LoC.';
 		}
-
 		mergedData = processAndRenderMergedData(googleData, openLibraryData, locData);
 		currentView = 'result'; // Show the card
 		isLoading = false;

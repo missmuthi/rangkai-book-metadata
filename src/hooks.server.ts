@@ -2,6 +2,7 @@ import type { Handle, HandleServerError } from "@sveltejs/kit";
 import { logger } from "$lib/server/logger";
 import { RateLimiter } from "$lib/server/rate-limiter";
 import { getKV } from "$lib/server/cache";
+import type { KVNamespace } from "$lib/server/types";
 
 /**
  * Global error handler for server-side errors
@@ -91,14 +92,15 @@ export const handle: Handle = async ({ event, resolve }) => {
           name: "Playwright Test",
           createdAt: new Date(),
           updatedAt: new Date(),
+          emailVerified: true,
         };
         event.locals.session = {
           id: "test-session",
           userId: "test-user",
           expiresAt: new Date(Date.now() + 3600000),
           user: testUser,
-        } as any;
-        event.locals.user = testUser as any;
+        };
+        event.locals.user = testUser;
         logger.debug("test_session_injected", {
           path: event.url.pathname,
           header: testHeader,
@@ -133,7 +135,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.url.pathname.startsWith("/api/") &&
     !event.url.pathname.startsWith("/api/auth")
   ) {
-    const kv = getKV(event.platform);
+    const kv = getKV(event.platform) as KVNamespace | null;
     // Check for session token to determine authentication status (simple check before full session load)
     const sessionToken = event.cookies.get("session");
 
