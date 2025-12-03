@@ -9,7 +9,10 @@
                 scan_id?: number;
         }
 
-        let { book, onClose }: { book: BookWithScanId; onClose: () => void } = $props();
+        let { book: initialBook, onClose }: { book: BookWithScanId; onClose: () => void } = $props();
+        
+        // Create mutable local state from the prop - allows updates after AI Clean
+        let book = $state<BookWithScanId>({ ...initialBook });
 
 		// Client-side log helper - no-op in production
 		function clientLog(level: 'log' | 'warn' | 'error' | 'info' | 'debug', ...args: unknown[]) {
@@ -32,6 +35,16 @@
         let isRateLimited = $state(false);
         let rateLimitCountdown = $state(0);
         let rateLimitTimer: ReturnType<typeof setInterval> | undefined;
+
+        // Sync local book state when parent prop changes (e.g., switching between books)
+        $effect(() => {
+                // Only reset if the initialBook changes (different ISBN/scan_id)
+                const currentISBN = book.isbn13 || book.isbn10 || book.isbn || '';
+                const incomingISBN = initialBook.isbn13 || initialBook.isbn10 || initialBook.isbn || '';
+                if (normalizeISBN(currentISBN) !== normalizeISBN(incomingISBN)) {
+                        book = { ...initialBook };
+                }
+        });
 
         onMount(() => {
                 // Component mounted - client-side rendering confirmed
