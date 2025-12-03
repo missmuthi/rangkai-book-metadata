@@ -1,7 +1,7 @@
 # 🤖 Rangkai Book Metadata - AI Agent Documentation
 
-**Version:** 3.0.0  
-**Last Updated:** December 1, 2025  
+**Version:** 3.0.2  
+**Last Updated:** December 3, 2025  
 **Project:** Rangkai Book Metadata Harvester
 
 > Comprehensive guide for AI agents and developers working on Rangkai Book Metadata. This document defines agent responsibilities, system prompts, architectural patterns, and deployment procedures.
@@ -153,13 +153,16 @@ Why Drizzle?
 - Safer queries through typed schema accessors
 - Easier to maintain and refactor than raw SQL strings
 
-Current status (v3.0.0):
+Current status (v3.0.2):
 
 - Drizzle schema & adapters introduced in `src/lib/server/db/schema.ts` and `src/lib/server/db/index.ts`.
 - Core helpers migrated to Drizzle with safe fallbacks: `getUserScans`, `getScanById`, `createScan` (with race-safe raw fallback), `updateScanStatus`, `deleteScan`, `findUserById` and `findUserByEmail`.
 - Helper wrappers for Drizzle-specific operations implemented in `src/lib/server/db/drizzle.ts`.
 - Client code now prefers `getRawDb(event.platform)` and re-exports it from `src/lib/server/index.ts`.
 - A `drizzle-kit` generation script was added to `package.json` and a CI job to detect drift is included (`.github/workflows/drizzle-migrations-check.yml`).
+- **v3.0.2:** Added `organization`, `member`, and `invitation` tables for Better Auth organization support.
+- **v3.0.2:** Auth module refactored from `auth-simple.ts` → `auth.ts` with client helpers in `auth-client.ts`.
+- **v3.0.2:** Centralized route protection in `hooks.server.ts` with public routes safe-list.
 
 Migration approach & rules:
 
@@ -543,6 +546,6 @@ When handing off between agents:
 ---
 
 **End of Document**  
-**Last Updated:** December 1, 2025  
+**Last Updated:** December 3, 2025  
 **Maintained By:** Documentation Synchronizer Agent  
-**Version:** 3.0.0 (Serverless Architecture)
+**Version:** 3.0.2 (Serverless Architecture + Organization Support)
