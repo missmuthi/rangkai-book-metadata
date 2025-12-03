@@ -173,8 +173,9 @@ describe("POST /api/ai/clean - Integration", () => {
       lcc: "QA76.1",
       changes: ["Generated DDC: 005.100"],
     });
+    // The Vercel AI SDK returns `text` directly on the result object
     vi.mocked(generateText).mockResolvedValue({
-      output_text: textOutput,
+      text: textOutput,
     } as unknown as ReturnType<typeof generateText> extends Promise<infer T>
       ? T
       : never);

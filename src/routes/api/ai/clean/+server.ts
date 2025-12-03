@@ -239,30 +239,29 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           logger.info("ai_clean_groq_fallback_to_generateText_loop", {
             requestId,
           });
-          interface TextContent {
-            type: string;
-            text: string;
-          }
-
-          interface TextResult {
-            output_text?: string;
-            output?: {
-              content?: TextContent[];
-            }[];
-          }
-          const fallbackPromptLoop = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
+          const fallbackPromptLoop = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema. Do not include any markdown formatting, code blocks, or explanations - just the raw JSON object.`;
           const textResultLoop = await generateText({
             model: groq("llama-3.3-70b-versatile"),
             prompt: fallbackPromptLoop,
           });
-          const outputTextLoop =
-            (textResultLoop as TextResult).output_text ||
-            (textResultLoop as TextResult).output?.[0]?.content?.find(
-              (c: TextContent) => c.type === "output_text",
-            )?.text ||
-            (textResultLoop as TextResult).output?.[0]?.content?.[0]?.text;
-          if (typeof outputTextLoop === "string") {
-            rawAiResult = JSON.parse(outputTextLoop);
+
+          // Vercel AI SDK returns text directly on the result object
+          const outputTextLoop = textResultLoop.text;
+          logger.debug("ai_clean_fallback_raw_text", {
+            outputTextLoop: outputTextLoop?.substring(0, 500),
+            requestId,
+          });
+
+          if (typeof outputTextLoop === "string" && outputTextLoop.trim()) {
+            // Extract JSON from potential markdown code blocks or raw text
+            let jsonStr = outputTextLoop.trim();
+            const jsonMatch =
+              jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/) ||
+              jsonStr.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              jsonStr = jsonMatch[1] || jsonMatch[0];
+            }
+            rawAiResult = JSON.parse(jsonStr.trim());
             try {
               Analytics.track("ai_fallback_used", {
                 model: "llama-3.3-70b-versatile",
@@ -295,35 +294,37 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
         try {
           logger.info("ai_clean_groq_fallback_to_generateText", {});
           logger.debug("ai_clean_fallback_invoking_generateText_start", {});
-          interface TextContent {
-            type: string;
-            text: string;
-          }
 
-          interface TextResult {
-            output_text?: string;
-            output?: {
-              content?: TextContent[];
-            }[];
-          }
-          const fallbackPrompt = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema.`;
+          const fallbackPrompt = `${systemPrompt}\n\nReturn ONLY a single valid JSON object matching the expected metadata schema. Do not include any markdown formatting, code blocks, or explanations - just the raw JSON object.`;
           const textResult = await generateText({
             model: groq("llama-3.3-70b-versatile"),
             prompt: fallbackPrompt,
           });
           logger.debug("ai_clean_fallback_invoking_generateText_end", {});
-          const outputText =
-            (textResult as TextResult).output_text ||
-            (textResult as TextResult).output?.[0]?.content?.find(
-              (c: TextContent) => c.type === "output_text",
-            )?.text ||
-            (textResult as TextResult).output?.[0]?.content?.[0]?.text;
-          if (typeof outputText === "string") {
+
+          // Vercel AI SDK returns text directly on the result object
+          const outputText = textResult.text;
+          logger.debug("ai_clean_fallback_raw_text", {
+            outputText: outputText?.substring(0, 500),
+          });
+
+          if (typeof outputText === "string" && outputText.trim()) {
             try {
-              rawAiResult = JSON.parse(outputText);
-              logger.debug("ai_clean_fallback_raw", { rawAiResult });
+              // Extract JSON from potential markdown code blocks or raw text
+              let jsonStr = outputText.trim();
+              const jsonMatch =
+                jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/) ||
+                jsonStr.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                jsonStr = jsonMatch[1] || jsonMatch[0];
+              }
+              rawAiResult = JSON.parse(jsonStr.trim());
+              logger.debug("ai_clean_fallback_parsed", { rawAiResult });
             } catch (parseErr) {
-              logger.warn("ai_clean_generateText_parse_failed", { parseErr });
+              logger.warn("ai_clean_generateText_parse_failed", {
+                parseErr,
+                outputText: outputText?.substring(0, 200),
+              });
             }
             try {
               Analytics.track("ai_fallback_used", {
