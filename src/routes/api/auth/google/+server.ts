@@ -1,4 +1,4 @@
-import { createGoogleAuth } from "$lib/auth-simple";
+import { createGoogleAuth } from "$lib/auth";
 import { redirect, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { logger } from "$lib/server/logger";

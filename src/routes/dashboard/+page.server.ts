@@ -1,11 +1,14 @@
 import type { PageServerLoad } from "./$types";
-import { requireSession } from "$lib/server/auth";
+import { redirect } from "@sveltejs/kit";
 import { getDashboardData } from "$modules/dashboard";
 import { logger } from "$lib/server/logger";
 
 export const load: PageServerLoad = async (event) => {
-  // Protect this route - require authentication (throws redirect if not logged in)
-  const session = await requireSession(event);
+  const { session } = event.locals;
+  if (!session) {
+    // Should be handled by hooks, but safe fallback for types
+    throw redirect(303, "/login");
+  }
 
   try {
     // Fetch dashboard data using dashboard module

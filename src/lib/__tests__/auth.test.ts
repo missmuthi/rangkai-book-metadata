@@ -5,14 +5,14 @@ import {
   createSession as _createSession,
   deleteSession as _deleteSession,
   getSession as _getSession,
-} from "../auth-simple";
+} from "../auth";
 
 // Mock D1 Database
 const mockD1 = {
   prepare: vi.fn(),
 };
 
-describe("auth-simple", () => {
+describe("auth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

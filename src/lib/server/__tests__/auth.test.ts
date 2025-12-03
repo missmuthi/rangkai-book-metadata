@@ -14,7 +14,7 @@ import { getSession, requireSession, requireOwnership } from "../auth";
 import type { RequestEvent } from "@sveltejs/kit";
 
 // Mock dependencies
-vi.mock("$lib/auth-simple", () => ({
+vi.mock("$lib/auth", () => ({
   getSession: vi.fn(async (_db: any, token: string) => {
     if (token === "valid-session-token") {
       return {
@@ -171,7 +171,7 @@ describe("Auth Helpers - Integration Tests", () => {
 
     it("should handle DB errors gracefully", async () => {
       const { getSession: getSessionPrimitive } =
-        await import("$lib/auth-simple");
+        await import("$lib/auth");
       vi.mocked(getSessionPrimitive).mockRejectedValueOnce(
         new Error("Database error"),
       );

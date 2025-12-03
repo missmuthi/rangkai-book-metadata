@@ -3,7 +3,7 @@ import {
   generateSessionToken,
   createSession,
   upsertUser,
-} from "$lib/auth-simple";
+} from "$lib/auth";
 import { redirect, isRedirect, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { logger } from "$lib/server/logger";
