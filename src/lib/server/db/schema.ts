@@ -65,6 +65,25 @@ export const scans = sqliteTable("scans", {
   enhanced_at: integer("enhanced_at"),
 });
 
+// Scans history table — full snapshot versioning for audit & recovery
+export const scans_history = sqliteTable("scans_history", {
+  history_id: integer("history_id").primaryKey({ autoIncrement: true }),
+  scan_id: integer("scan_id").notNull(),
+  version: integer("version").notNull(),
+  snapshot_at: integer("snapshot_at").notNull(),
+  // Snapshot of all scan fields
+  user_id: text("user_id").notNull(),
+  isbn: text("isbn").notNull(),
+  title: text("title"),
+  json_data: text("json_data"),
+  status: text("status"),
+  created_at: text("created_at"),
+  updated_at: text("updated_at"),
+  ai_log: text("ai_log"),
+  is_ai_enhanced: integer("is_ai_enhanced"),
+  enhanced_at: integer("enhanced_at"),
+});
+
 // Organization tables (Better Auth)
 export const organization = sqliteTable("organization", {
   id: text("id").primaryKey(),
@@ -111,6 +130,7 @@ export type Session = typeof sessions.$inferSelect;
 export type Account = typeof accounts.$inferSelect;
 export type Verification = typeof verification.$inferSelect;
 export type Scan = typeof scans.$inferSelect;
+export type ScanHistory = typeof scans_history.$inferSelect;
 export type Organization = typeof organization.$inferSelect;
 export type Member = typeof member.$inferSelect;
 export type Invitation = typeof invitation.$inferSelect;

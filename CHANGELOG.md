@@ -5,6 +5,138 @@ All notable changes to the Rangkai Book Metadata Harvester project will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.3] - 2025-12-03 - **Row-Version History System** 📚
+
+### ✨ New Features
+
+- **Row-Version History System**: Full-snapshot versioning for scan records
+  - `scans_history` table stores complete snapshots of scan states
+  - Automatic snapshot creation before AI cleaning updates
+  - Version tracking with incremental version numbers per scan
+  - Full audit trail of all metadata changes
+  - Recovery capability to restore any previous version
+  - Migration: `migrations/20251203_add_scans_history.sql`
+
+### 🔧 API Endpoints
+
+- **GET /api/scans/[id]/history**: Retrieve version history for a scan
+  - Returns all versions ordered by version number
+  - Includes complete snapshot data for each version
+  - Protected by user ownership verification
+
+- **POST /api/scans/[id]/history**: Restore scan to previous version
+  - Request body: `{ "version": number }`
+  - Creates snapshot before restoring (maintains audit trail)
+  - Protected by user ownership verification
+
+### 📦 New Modules
+
+- **`src/lib/server/versioning.ts`**: Core versioning utilities
+  - `createScanSnapshot()`: Create snapshot before updates
+  - `getScanHistory()`: Retrieve all versions of a scan
+  - `restoreScanVersion()`: Restore to specific version
+
+### 🛡️ Safety Enhancements
+
+- **AI Cleaning Protection**: Snapshots created before every AI update
+  - Prevents data loss from AI cleaning errors
+  - Enables rollback if AI produces incorrect metadata
+  - Maintains complete change history for debugging
+
+### 📊 Database Schema Updates
+
+- **`scans_history` table**: Full-snapshot versioning
+  - `history_id`: Primary key (auto-increment)
+  - `scan_id`: Reference to original scan
+  - `version`: Version number (increments per scan)
+  - `snapshot_at`: Unix timestamp of snapshot creation
+  - Complete copy of all scan fields at that moment
+
+- **Performance Indexes**:
+  - `idx_scans_history_scan_id`: Lookup versions by scan
+  - `idx_scans_history_isbn`: Lookup by ISBN
+  - `idx_scans_history_snapshot_at`: Time-based queries
+  - `idx_scans_history_scan_version`: Composite index for version lookup
+
+### 📝 Documentation
+
+- **`docs/ROW_VERSION_HISTORY.md`**: Comprehensive usage guide
+  - Architecture overview and key features
+  - API usage examples (GET/POST history endpoints)
+  - Code examples for versioning utilities
+  - Use cases: AI recovery, audit trails, version comparison
+  - Performance considerations and best practices
+  - Troubleshooting guide and security notes
+
+### 🔄 Modified Components
+
+- **`src/routes/api/ai/clean/+server.ts`**: Integrated snapshot creation
+  - Creates snapshot before updating existing scans
+  - Applies to all update paths (scan_id, ISBN lookup, race conditions)
+  - Includes requestId for tracing and debugging
+
+- **`src/lib/server/db/schema.ts`**: Added history table schema
+  - New `scans_history` table definition
+  - Exported `ScanHistory` type for TypeScript
+
+- **`schema.sql`**: Updated base schema
+  - Added `scans_history` table definition
+  - Added performance indexes for history queries
+
+### 🎯 Use Cases Enabled
+
+1. **AI Recovery**: Restore metadata if AI cleaning goes wrong
+2. **Audit Trail**: Track all changes made to book records
+3. **Version Comparison**: Compare metadata across versions
+4. **Debugging**: Trace when and how data changed
+5. **Compliance**: Maintain complete change history
+
+### ⚡ Performance Impact
+
+- **Storage**: Additional INSERT per update (~2KB per snapshot)
+- **Query**: No impact on read operations
+- **Write**: ~5-10ms additional latency per update
+- **Mitigation**: Indexes optimize common queries
+
+### 🔄 Upgrade Path from v3.0.2
+
+#### Database Migration
+
+```bash
+# Production (Cloudflare D1)
+wrangler d1 execute DB --file=migrations/20251203_add_scans_history.sql
+
+# Local Development
+npm run db:migrate
+```
+
+#### No Code Changes Required
+
+The versioning system integrates automatically with existing AI cleaning workflow. No changes needed to existing API calls.
+
+#### Optional: Access Version History
+
+```javascript
+// Get version history for a scan
+const response = await fetch("/api/scans/123/history");
+const { versions } = await response.json();
+
+// Restore to previous version
+await fetch("/api/scans/123/history", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ version: 2 }),
+});
+```
+
+### 📚 References
+
+- [Wikipedia: Temporal Table](https://en.wikipedia.org/wiki/Log_trigger)
+- [Simon Willison: SQLite History](https://simonwillison.net/2023/Apr/15/sqlite-history/)
+- [Medium: Audit Tables with SQLite](https://medium.com/@dgramaciotti/creating-audit-tables-with-sqlite-and-sql-triggers-751f8e13cf73)
+
+---
+
 ## [3.0.2] - 2025-12-03 - **Organization Support & Code Quality** 🏢
 
 ### ✨ New Features

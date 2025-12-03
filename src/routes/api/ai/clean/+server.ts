@@ -8,6 +8,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { deepClean, normalizeKeys } from "$lib/utils/metadata";
 import { normalizeISBN } from "$lib/isbn-helpers";
 import type { MergedBookData } from "$lib/types";
+import { createScanSnapshot } from "$lib/server/versioning";
 
 // Define the Schema STRICTLY
 const metadataSchema = z.object({
@@ -524,6 +525,9 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
      * 1. If scan_id provided → UPDATE that specific row (verify ownership)
      * 2. Else → Check if scan exists for this user+isbn → UPDATE if found
      * 3. Else → INSERT new scan
+     *
+     * NOTE: Before updating existing scans, creates a snapshot in scans_history
+     * for audit and recovery purposes.
      */
     const upsertToDatabase = async (): Promise<{
       scanId: number | null;
@@ -536,6 +540,10 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
             scan_id,
             requestId,
           });
+
+          // Create snapshot before updating
+          await createScanSnapshot(DB, scan_id, requestId);
+
           const result = await DB.prepare(
             `
 						UPDATE scans 
@@ -568,12 +576,16 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
             .first<{ id: number }>();
 
           if (existing?.id) {
-            // Found existing scan → UPDATE it
+            // Found existing scan → Create snapshot then UPDATE it
             logger.debug("ai_clean_found_existing_scan_updating", {
               isbn: isbnValue,
               id: existing.id,
               requestId,
             });
+
+            // Create snapshot before updating
+            await createScanSnapshot(DB, existing.id, requestId);
+
             await DB.prepare(
               `
 							UPDATE scans 
@@ -595,7 +607,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           }
         }
 
-        // CASE 3: No existing scan → INSERT new
+        // CASE 3: No existing scan → INSERT new (no snapshot needed)
         logger.debug("ai_clean_inserting_new_scan", {
           isbn: isbnValue,
           requestId,
@@ -636,6 +648,9 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
 
             if (fallback?.id) {
               // Update the existing row that won the race
+              // Create snapshot before updating
+              await createScanSnapshot(DB, fallback.id, requestId);
+
               await DB.prepare(
                 `
 								UPDATE scans 

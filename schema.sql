@@ -73,6 +73,26 @@ CREATE TABLE IF NOT EXISTS scans (
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 );
 
+-- Scans history table — full snapshot versioning for audit & recovery
+CREATE TABLE IF NOT EXISTS scans_history (
+    history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER NOT NULL,
+    version INTEGER NOT NULL,
+    snapshot_at INTEGER NOT NULL,
+    -- Snapshot of all scan fields
+    user_id TEXT NOT NULL,
+    isbn TEXT NOT NULL,
+    title TEXT,
+    json_data TEXT,
+    status TEXT,
+    created_at DATETIME,
+    updated_at DATETIME,
+    ai_log TEXT,
+    is_ai_enhanced INTEGER,
+    enhanced_at INTEGER,
+    FOREIGN KEY (scan_id) REFERENCES scans(id) ON DELETE CASCADE
+);
+
 -- ============================================
 -- INDEXES FOR PERFORMANCE
 -- ============================================
@@ -92,6 +112,12 @@ CREATE INDEX IF NOT EXISTS idx_scans_status ON scans(status);
 
 -- Composite index for user-specific queries
 CREATE INDEX IF NOT EXISTS idx_scans_user_created ON scans(user_id, created_at DESC);
+
+-- History table indexes
+CREATE INDEX IF NOT EXISTS idx_scans_history_scan_id ON scans_history(scan_id);
+CREATE INDEX IF NOT EXISTS idx_scans_history_isbn ON scans_history(isbn);
+CREATE INDEX IF NOT EXISTS idx_scans_history_snapshot_at ON scans_history(snapshot_at DESC);
+CREATE INDEX IF NOT EXISTS idx_scans_history_scan_version ON scans_history(scan_id, version DESC);
 
 -- ============================================
 -- SAMPLE QUERY PATTERNS (v2.0)
