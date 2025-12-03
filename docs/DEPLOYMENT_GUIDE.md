@@ -166,16 +166,22 @@ wrangler d1 execute rangkai-scans --file=./schema.sql
 # List tables
 wrangler d1 execute rangkai-scans --command="SELECT name FROM sqlite_master WHERE type='table';"
 
-# Expected output:
-# ┌────────────────┐
-# │ name           │
-# ├────────────────┤
-# │ user           │
-# │ session        │
-# │ account        │
-# │ scan_history   │
-# └────────────────┘
+# Expected output (v3.0.2+):
+# ┌──────────────┐
+# │ name         │
+# ├──────────────┤
+# │ user         │
+# │ session      │
+# │ account      │
+# │ verification │
+# │ scans        │
+# │ organization │
+# │ member       │
+# │ invitation   │
+# └──────────────┘
 ```
+
+> **Note:** The `organization`, `member`, and `invitation` tables were added in v3.0.2 for Better Auth organization support. If these tables are missing, run the migration in the [Database Migrations](#database-migrations) section.
 
 ### Step 3: Create KV Namespace
 
@@ -365,6 +371,44 @@ git push origin main
 
 **⚠️ CRITICAL:** Database migrations must be executed manually using `wrangler d1 execute` when schema changes occur. This is a required step separate from code deployment.
 
+### Current Schema (v3.0.2)
+
+The D1 database should contain these tables after all migrations are applied:
+
+| Table          | Purpose                                    | Added In |
+| -------------- | ------------------------------------------ | -------- |
+| `user`         | User accounts (Better Auth)                | v1.0.0   |
+| `session`      | Active login sessions                      | v1.0.0   |
+| `account`      | OAuth provider links (Google, GitHub, etc) | v1.0.0   |
+| `verification` | Email verification tokens                  | v1.0.0   |
+| `scans`        | Book scan history per user                 | v1.0.0   |
+| `organization` | Multi-tenant organization support          | v3.0.2   |
+| `member`       | User-organization membership               | v3.0.2   |
+| `invitation`   | Pending organization invitations           | v3.0.2   |
+
+**Quick Check - Verify All Tables Exist:**
+
+```bash
+# Local
+npx wrangler d1 execute rangkai-scans --local --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
+
+# Production
+npx wrangler d1 execute rangkai-scans --remote --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
+```
+
+### Migration Files
+
+All migration files are stored in the `/migrations` directory:
+
+| File                                   | Description                                    | Status     |
+| -------------------------------------- | ---------------------------------------------- | ---------- |
+| `schema.sql`                           | Initial schema (user, session, account, scans) | ✅ Applied |
+| `v2.0-auth-migration.sql`              | Better Auth schema updates                     | ✅ Applied |
+| `20251128_dedupe_and_unique_index.sql` | Deduplication + unique index                   | ✅ Applied |
+| `20251201_add_ai_log.sql`              | AI enhancement audit logging                   | ✅ Applied |
+| `20251202_add_ai_flags.sql`            | AI enhancement flags                           | ✅ Applied |
+| `20251203_add_organization_tables.sql` | Organization, member, invitation tables        | ✅ Applied |
+
 ### Migration Workflow
 
 When the codebase includes schema changes (e.g., new tables, columns, indexes), follow this protocol:
@@ -474,15 +518,34 @@ wrangler d1 execute rangkai-scans --file=./migrations/20250122120001_rollback_ad
 
 ### Migration Checklist
 
-- [ ] Create migration file with timestamp
-- [ ] Write forward migration SQL
+- [ ] Create migration file with timestamp (e.g., `20251204_add_feature.sql`)
+- [ ] Write forward migration SQL (use `IF NOT EXISTS` for idempotency)
 - [ ] Write rollback migration SQL (if possible)
-- [ ] Test on local D1 database
+- [ ] Test on local D1 database (`--local` flag)
 - [ ] Backup production data (if destructive)
 - [ ] Apply migration during low-traffic period
 - [ ] Verify changes with test query
 - [ ] Monitor application for errors
 - [ ] Keep rollback migration ready
+- [ ] Update this doc's "Migration Files" table
+
+### Applied Migrations Log (v3.0.2)
+
+**Last verified:** December 3, 2025
+
+```bash
+# Verify organization tables exist in production
+npx wrangler d1 execute rangkai-scans --remote --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('organization','member','invitation');"
+
+# Expected output:
+# ┌──────────────┐
+# │ name         │
+# ├──────────────┤
+# │ organization │
+# │ member       │
+# │ invitation   │
+# └──────────────┘
+```
 
 ---
 
@@ -754,3 +817,14 @@ return json(data, {
 - What's the process for rotating API keys without downtime?
 - How do we handle secrets in CI/CD for external contributors?
 - What's the backup strategy for D1 database?
+
+---
+
+## Changelog
+
+| Version | Date       | Changes                                                             |
+| ------- | ---------- | ------------------------------------------------------------------- |
+| v3.0.2  | 2025-12-03 | Added organization tables migration, updated schema reference       |
+| v3.0.0  | 2025-12-01 | Major rewrite for serverless architecture, Drizzle ORM, Better Auth |
+| v2.0.0  | 2025-11-28 | Added authentication, D1 database, KV caching                       |
+| v1.0.0  | 2025-11-15 | Initial deployment guide                                            |
