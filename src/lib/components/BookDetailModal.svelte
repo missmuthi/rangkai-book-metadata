@@ -11,8 +11,25 @@
 
         let { book: initialBook, onClose }: { book: BookWithScanId; onClose: () => void } = $props();
         
-        // Create mutable local state from the prop - allows updates after AI Clean
+        // Track the last prop we received to detect when parent changes the book
+        let lastPropId = $state<string>('');
+        
+        // Mutable local copy that can be updated by AI Clean
         let book = $state<BookWithScanId>({ ...initialBook });
+        
+        // Get a unique identifier for the book (scan_id or ISBN)
+        function getBookId(b: BookWithScanId): string {
+                return String(b.scan_id || normalizeISBN(b.isbn13 || b.isbn10 || b.isbn || '') || Math.random());
+        }
+        
+        // Sync local book state when parent prop changes (e.g., opening a different book)
+        $effect(() => {
+                const incomingId = getBookId(initialBook);
+                if (incomingId !== lastPropId) {
+                        book = { ...initialBook };
+                        lastPropId = incomingId;
+                }
+        });
 
 		// Client-side log helper - no-op in production
 		function clientLog(level: 'log' | 'warn' | 'error' | 'info' | 'debug', ...args: unknown[]) {
@@ -36,17 +53,9 @@
         let rateLimitCountdown = $state(0);
         let rateLimitTimer: ReturnType<typeof setInterval> | undefined;
 
-        // Sync local book state when parent prop changes (e.g., switching between books)
-        $effect(() => {
-                // Only reset if the initialBook changes (different ISBN/scan_id)
-                const currentISBN = book.isbn13 || book.isbn10 || book.isbn || '';
-                const incomingISBN = initialBook.isbn13 || initialBook.isbn10 || initialBook.isbn || '';
-                if (normalizeISBN(currentISBN) !== normalizeISBN(incomingISBN)) {
-                        book = { ...initialBook };
-                }
-        });
-
         onMount(() => {
+                // Initialize lastPropId on mount
+                lastPropId = getBookId(initialBook);
                 // Component mounted - client-side rendering confirmed
                 _mounted = true;
                 return () => {
