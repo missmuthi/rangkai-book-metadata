@@ -154,7 +154,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   try {
     // Only attempt to get session if we have platform context and DB and it's not already injected
     if (!event.locals.session && event.platform?.env?.DB) {
-      const { getSession } = await import("$lib/auth-simple");
+      const { getSession } = await import("$lib/auth");
       const sessionToken = event.cookies.get("session");
 
       if (sessionToken) {
@@ -201,6 +201,29 @@ export const handle: Handle = async ({ event, resolve }) => {
         event.locals.session = null;
         event.locals.user = null;
       }
+    }
+
+    // === Centralized Route Protection ===
+    // Define "Safe List" of public routes
+    const publicRoutes = ["/", "/login", "/features", "/privacy", "/terms"];
+    const isPublic =
+      publicRoutes.includes(event.url.pathname) ||
+      event.url.pathname.startsWith("/api/auth/") ||
+      event.url.pathname.startsWith("/favicon.ico") ||
+      event.url.pathname.startsWith("/robots.txt"); // Allow static assets handled by routes
+
+    if (!isPublic && !event.locals.session) {
+      // API routes return 401
+      if (event.url.pathname.startsWith("/api/")) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+
+      // Pages redirect to login
+      // We use 303 for redirect (See SvelteKit docs)
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/login" },
+      });
     }
 
     const response = await resolve(event);

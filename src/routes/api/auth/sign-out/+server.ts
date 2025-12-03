@@ -1,4 +1,4 @@
-import { deleteSession } from "$lib/auth-simple";
+import { deleteSession } from "$lib/auth";
 import type { RequestHandler } from "./$types";
 import { logger } from "$lib/server/logger";
 

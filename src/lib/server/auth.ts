@@ -61,7 +61,7 @@
  *
  * - **User isolation**: All DB queries MUST scope to `user_id`
  * - **No cross-user access**: Use `requireOwnership()` for resource checks
- * - **Session expiry**: Sessions expire after 7 days (configured in auth-simple.ts)
+ * - **Session expiry**: Sessions expire after 7 days (configured in auth.ts)
  * - **No @auth/sveltekit or better-auth**: We use a custom auth stack
  *
  * @module lib/server/auth
@@ -70,7 +70,7 @@
 import { redirect } from "@sveltejs/kit";
 import type { RequestEvent } from "@sveltejs/kit";
 import type { SessionData, User } from "./types";
-import { getSession as getSessionPrimitive } from "$lib/auth-simple";
+import { getSession as getSessionPrimitive } from "$lib/auth";
 import { logger, LogEvents } from "./logger";
 
 /**
