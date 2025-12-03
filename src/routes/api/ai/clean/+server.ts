@@ -35,6 +35,20 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Helpers
+function safeString(value: unknown) {
+  try {
+    if (value === undefined) return "<undefined>";
+    if (value === null) return "<null>";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  } catch (_e) {
+    return "<unserializable>";
+  }
+}
+
+// NOTE: isValueEmpty could be added back if needed; keeping small helpers minimal to avoid lint
+
 /**
  * AI Clean Endpoint
  *
@@ -46,6 +60,8 @@ function delay(ms: number) {
  * NOTE: KV Cache usage has been removed (optimization).
  */
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
+  const requestStart = Date.now();
+  const requestId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   // Enhanced authentication check with detailed error logging
   logger.debug("ai_clean_auth_check_started", {
     sessionExists: !!locals.session,
@@ -53,6 +69,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
     platformExists: !!platform,
     envExists: !!platform?.env,
     dbExists: !!platform?.env?.DB,
+    requestId,
   });
 
   if (!locals.session || !locals.user) {
@@ -77,6 +94,16 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
       mode?: string;
     };
     const { scan_id, mode: _mode = "fill_gaps", ...book } = body;
+
+    // Log request metadata for tracing
+    logger.info("ai_clean_request_received", {
+      userId: locals.user?.id,
+      scan_id,
+      mode: _mode,
+      title: book?.title ?? undefined,
+      isbn: book?.isbn ?? book?.isbn13 ?? book?.isbn10 ?? undefined,
+      requestId,
+    });
 
     if (!book) {
       logger.warn("ai_clean_no_book_provided", {});
@@ -162,7 +189,8 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       let lastError: unknown = null;
 
       // RETRY LOGIC for 429 Errors
-      while (attempt < 3) {
+      const MAX_ATTEMPTS = 3;
+      while (attempt < MAX_ATTEMPTS) {
         try {
           gen = await generateObject({
             model: groq("llama-3.3-70b-versatile"),
@@ -178,9 +206,13 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           const isRateLimit =
             errorMessage.includes("quota") || errorMessage.includes("429");
 
-          if (isRateLimit && attempt < 3) {
-            const waitTime = 2000 * Math.pow(2, attempt - 1); // 2s, 4s
-            logger.warn("ai_clean_rate_limit_retry", { attempt, waitTime });
+          if (isRateLimit && attempt < MAX_ATTEMPTS) {
+            const waitTime = Math.min(2000 * Math.pow(2, attempt - 1), 10000); // cap to 10s
+            logger.warn("ai_clean_rate_limit_retry", {
+              attempt,
+              waitTime,
+              requestId,
+            });
             await delay(waitTime);
             continue;
           }
@@ -201,7 +233,9 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
         String(lastError).includes("json_schema")
       ) {
         try {
-          logger.info("ai_clean_groq_fallback_to_generateText_loop", {});
+          logger.info("ai_clean_groq_fallback_to_generateText_loop", {
+            requestId,
+          });
           interface TextContent {
             type: string;
             text: string;
@@ -232,6 +266,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
                 provider: "groq",
                 isbn: isbn || undefined,
                 reason: "json_schema_unsupported",
+                requestId,
               });
             } catch (analyticsErr) {
               logger.debug("analytics_track_failed", { analyticsErr });
@@ -245,7 +280,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       }
 
       const duration = Date.now() - startTime;
-      logger.info("ai_clean_groq_success", { duration });
+      logger.info("ai_clean_groq_success", { duration, requestId });
     } catch (aiError) {
       const errorMessage =
         aiError instanceof Error ? aiError.message : String(aiError);
@@ -293,6 +328,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
                 provider: "groq",
                 isbn: isbn || undefined,
                 reason: "json_schema_unsupported",
+                requestId,
               });
             } catch (analyticsErr) {
               logger.debug("analytics_track_failed", { analyticsErr });
@@ -319,6 +355,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
         errorCode = "AI_NOT_CONFIGURED";
         logger.warn("ai_clean_fix_suggestion", {
           suggestion: "Add GROQ_API_KEY to Cloudflare Pages env",
+          requestId,
         });
       } else if (
         errorMessage.includes("quota") ||
@@ -334,6 +371,12 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
         userMessage = "AI service timed out. Please try again.";
         errorCode = "AI_TIMEOUT";
       }
+
+      logger.info("ai_clean_error_response", {
+        code: errorCode,
+        message: userMessage,
+        requestId,
+      });
 
       return json(
         {
@@ -352,11 +395,20 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       logger.warn("ai_clean_no_ai_result", {});
     }
     logger.debug("ai_clean_raw_result", { rawAiResult });
+    // moved log to after aiResult/cleanAiResult are defined below
     const aiResult = normalizeKeys(
       (rawAiResult ?? {}) as import("$lib/utils/metadata").AIResultInput,
     );
     const cleanAiResult = deepClean(aiResult) ?? {};
     logger.debug("ai_clean_normalized", { aiResult, cleanAiResult });
+    // Additional parsed AI result information for tracing without logging sensitive or large payloads
+    logger.debug("ai_clean_parsed_ai_result", {
+      requestId,
+      keys: Object.keys(cleanAiResult || {}),
+      title: safeString((cleanAiResult as Record<string, unknown>)?.title),
+      ddc: safeString((cleanAiResult as Record<string, unknown>)?.ddc),
+      lcc: safeString((cleanAiResult as Record<string, unknown>)?.lcc),
+    });
 
     // 4. DEEP MERGE (The Fix for Data Loss)
     // Parse existing JSON from book data (may be in json_data field or scattered in book object)
@@ -399,17 +451,17 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       // FIX: Prioritize bookRecord if key exists (even if empty/null) to detect filling gaps
       // properly. Original logic `bookRecord[key] || existingRecord[key]` masked empty fields
       // by falling back to potentially stale existingRecord.
-      const oldVal =
-        key in bookRecord ? bookRecord[key] : existingRecord[key];
+      const oldVal = key in bookRecord ? bookRecord[key] : existingRecord[key];
       const newVal = cleanRecord[key];
 
       logger.debug(`ai_clean_compare_${key}`, {
         key,
-        oldVal: String(oldVal),
-        newVal: String(newVal),
+        oldVal: safeString(oldVal),
+        newVal: safeString(newVal),
         oldType: typeof oldVal,
         newType: typeof newVal,
         match: oldVal === newVal,
+        requestId,
       });
 
       if (newVal && oldVal !== newVal) {
@@ -422,6 +474,19 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       model: "Llama 3.3 70B Versatile",
       changes: changes.length > 0 ? changes : ["No changes detected"],
     };
+
+    if (changes.length === 0) {
+      logger.warn("ai_clean_no_changes", {
+        requestId,
+        title: book.title || undefined,
+        isbn: book.isbn || book.isbn13 || book.isbn10 || undefined,
+      });
+    } else {
+      logger.info("ai_clean_changes_detected", {
+        requestId,
+        changesCount: changes.length,
+      });
+    }
 
     // Parse existing ai_log
     let existingLog: Array<{
@@ -465,7 +530,10 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
       try {
         // CASE 1: scan_id provided → UPDATE existing (verify user ownership)
         if (scan_id) {
-          logger.debug("ai_clean_updating_existing_scan", { scan_id });
+          logger.debug("ai_clean_updating_existing_scan", {
+            scan_id,
+            requestId,
+          });
           const result = await DB.prepare(
             `
 						UPDATE scans 
@@ -481,7 +549,10 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
             return { scanId: scan_id, error: null };
           }
           // scan_id not found for this user, fall through to lookup by isbn
-          logger.debug("ai_clean_scanid_not_found_checking_isbn", { scan_id });
+          logger.debug("ai_clean_scanid_not_found_checking_isbn", {
+            scan_id,
+            requestId,
+          });
         }
 
         // CASE 2: No scan_id or update failed → Check if scan exists for this user+isbn
@@ -499,6 +570,7 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
             logger.debug("ai_clean_found_existing_scan_updating", {
               isbn: isbnValue,
               id: existing.id,
+              requestId,
             });
             await DB.prepare(
               `
@@ -522,7 +594,10 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
         }
 
         // CASE 3: No existing scan → INSERT new
-        logger.debug("ai_clean_inserting_new_scan", { isbn: isbnValue });
+        logger.debug("ai_clean_inserting_new_scan", {
+          isbn: isbnValue,
+          requestId,
+        });
         const result = await DB.prepare(
           `
 					INSERT INTO scans (user_id, isbn, title, json_data, ai_log, status)
@@ -544,7 +619,10 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           errorMsg.includes("UNIQUE constraint failed") ||
           errorMsg.includes("SQLITE_CONSTRAINT")
         ) {
-          logger.warn("ai_clean_race_condition_detected", { isbn: isbnValue });
+          logger.warn("ai_clean_race_condition_detected", {
+            isbn: isbnValue,
+            requestId,
+          });
           try {
             const fallback = await DB.prepare(
               `
@@ -572,7 +650,10 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
                 )
                 .run();
 
-              logger.info("ai_clean_race_resolved", { id: fallback.id });
+              logger.info("ai_clean_race_resolved", {
+                id: fallback.id,
+                requestId,
+              });
               return { scanId: fallback.id, error: null };
             }
           } catch (fallbackError) {
@@ -580,15 +661,15 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
           }
         }
 
-        logger.error("ai_clean_db_error", { dbError });
+        logger.error("ai_clean_db_error", { dbError, requestId });
         return { scanId: null, error: errorMsg };
       }
     };
 
     // Execute upsert SYNCHRONOUSLY
-    const result = await upsertToDatabase();
-    savedScanId = result.scanId;
-    saveError = result.error;
+    const dbResult = await upsertToDatabase();
+    savedScanId = dbResult.scanId;
+    saveError = dbResult.error;
 
     // Merge cleaned fields with original data
     const cleanedBook = {
@@ -606,6 +687,22 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
     };
 
     // Return cleaned book with save status
+    logger.info("ai_clean_complete", {
+      requestId,
+      savedScanId,
+      changesCount: changes.length,
+      saved: !saveError,
+    });
+
+    try {
+      // Track basic latency and success as a scan_latency event
+      Analytics.track("scan_latency", {
+        duration: Date.now() - requestStart,
+      });
+    } catch (analyticsErr) {
+      logger.debug("analytics_track_failed", { analyticsErr });
+    }
+
     return json({
       ...cleanedBook,
       saved: !saveError,
