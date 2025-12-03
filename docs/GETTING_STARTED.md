@@ -102,6 +102,7 @@ Add your Google Books API key:
 ```bash
 # .env.local
 VITE_GOOGLE_BOOKS_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+GOOGLE_BOOKS_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX # Optional: server-side key for higher rate limits
 ```
 
 **How to get a Google Books API key:**

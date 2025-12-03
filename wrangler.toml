@@ -15,3 +15,10 @@ database_id = "c3d6dcc2-e7b8-4537-8b23-67d8921b3233"
 # Uncomment if using Cloudflare AI features
 # [ai]
 # binding = "AI"
+
+# Add environment variables / secrets below.
+# For local & dev, `wrangler dev` reads environment variables from your shell or `.env`.
+# For production, use `wrangler secret put` to add secrets to your Cloudflare Workers account.
+# Example (not committed):
+# [vars]
+# GOOGLE_BOOKS_API_KEY = ""

@@ -339,6 +339,16 @@ jobs:
    - Account → D1 → Edit (if running migrations)
 5. Copy token (only shown once!)
 
+**Add Worker Secret (Optional)**
+
+If you're also deploying directly with `wrangler` or using Cloudflare Workers, add server-side secrets using `wrangler secret put` so they are available to `platform.env` at runtime:
+
+```bash
+wrangler secret put GOOGLE_BOOKS_API_KEY
+```
+
+This ensures your `GOOGLE_BOOKS_API_KEY` remains encrypted and is not committed to your repo.
+
 **Test CI/CD:**
 
 ```bash

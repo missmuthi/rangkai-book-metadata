@@ -24,10 +24,23 @@ export async function fetchGoogleBooks(
   query: string,
   isIsbn: boolean,
   maxResults = 1,
+  apiKey?: string,
 ): Promise<GoogleBooksResponse | null> {
   const startTime = performance.now();
   const q = isIsbn ? `isbn:${query}` : `intitle:${query}`;
-  const url = `${GOOGLE_BOOKS_BASE}?q=${encodeURIComponent(q)}&maxResults=${maxResults}`;
+  let url = `${GOOGLE_BOOKS_BASE}?q=${encodeURIComponent(q)}&maxResults=${maxResults}`;
+
+  // Add API key if available (Hybrid Fetch Strategy)
+  if (apiKey) {
+    url += `&key=${apiKey}`;
+  }
+
+  const authType = apiKey ? "Authenticated" : "Public";
+  logger.info("google_books_fetch", {
+    query: isIsbn ? undefined : query,
+    isIsbn,
+    authType,
+  });
 
   try {
     const response = await fetchFn(url);
@@ -39,11 +52,14 @@ export async function fetchGoogleBooks(
           ? "api_503"
           : response.status === 429
             ? "rate_limit"
-            : "unknown";
+            : response.status === 403
+              ? "quota_exceeded"
+              : "unknown";
       Analytics.track("error_occurred", {
         error_type: errorType,
         source: "google",
         message: `${response.status} ${response.statusText}`,
+        authType,
       });
       if (response.status === 503 || response.status === 429) {
         logger.warn(LogEvents.METADATA_SOURCE_DEGRADED, {
@@ -60,9 +76,12 @@ export async function fetchGoogleBooks(
         });
       }
 
-      throw new Error(
+      const err = new Error(
         `Google Books API error: ${response.status} ${response.statusText}`,
       );
+      // Attach status for callers to make decisions (e.g., retry without API key)
+      (err as any).status = response.status;
+      throw err;
     }
 
     const data = (await parseJsonSafe(response)) as GoogleBooksResponse;
@@ -72,6 +91,7 @@ export async function fetchGoogleBooks(
       endpoint: isIsbn ? "isbn_search" : "title_search",
       duration_ms: duration,
       success: true,
+      authType,
     });
 
     return data;
@@ -82,12 +102,14 @@ export async function fetchGoogleBooks(
       endpoint: isIsbn ? "isbn_search" : "title_search",
       duration_ms: duration,
       success: false,
+      authType,
     });
     logger.error(LogEvents.METADATA_FETCH_FAILED, {
       provider: "google_books",
       query,
       isIsbn,
       error: error instanceof Error ? error.message : "Unknown error",
+      authType,
     });
     throw error;
   }
@@ -95,6 +117,9 @@ export async function fetchGoogleBooks(
 
 /**
  * Fetch with timeout wrapper and circuit breaker
+ * Implements Hybrid Fetch Strategy:
+ * 1. Try with API key if available (higher limits)
+ * 2. Fallback to public endpoint on 403 quota exceeded
  */
 export async function fetchGoogleBooksWithTimeout(
   platform: App.Platform | undefined,
@@ -112,20 +137,68 @@ export async function fetchGoogleBooksWithTimeout(
     return null;
   }
 
+  // Get API key from platform environment (optional)
+  const apiKey = platform?.env?.GOOGLE_BOOKS_API_KEY as string | undefined;
+
   try {
+    // First attempt: with API key if available
     const result = await withTimeout(
-      fetchGoogleBooks(fetchFn, query, isIsbn, maxResults),
+      fetchGoogleBooks(fetchFn, query, isIsbn, maxResults, apiKey),
       timeoutMs,
       "Google Books API timeout",
     );
     await breaker.success();
     return result;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStatus =
+      (error as any)?.status ??
+      (errorMessage.includes("403") ? 403 : undefined);
+
+    // Hybrid Fetch Fallback: If authenticated request failed with 403 quota exceeded,
+    // retry without API key (using public IP quota)
+    if (apiKey && errorStatus === 403) {
+      logger.warn("google_books_quota_fallback", {
+        query,
+        isIsbn,
+        message: "API key quota exceeded, retrying with public endpoint",
+      });
+      Analytics.track("metadata_source_degraded", {
+        provider: "google",
+        status: 403,
+        reason: "quota_exceeded",
+        fallback: "public_endpoint",
+        query: isIsbn ? undefined : query,
+      });
+
+      try {
+        const fallbackResult = await withTimeout(
+          fetchGoogleBooks(fetchFn, query, isIsbn, maxResults, undefined),
+          timeoutMs,
+          "Google Books API timeout (fallback)",
+        );
+        await breaker.success();
+        return fallbackResult;
+      } catch (fallbackError) {
+        await breaker.failure();
+        logger.error("google_books_fallback_failed", {
+          query,
+          isIsbn,
+          error:
+            fallbackError instanceof Error
+              ? fallbackError.message
+              : String(fallbackError),
+        });
+        return null;
+      }
+    }
+
+    // No fallback applicable or fallback not attempted
     await breaker.failure();
     logger.error("google_books_request_failed", {
       query,
       isIsbn,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     });
     return null;
   }

@@ -42,10 +42,10 @@ declare global {
         GOOGLE_CLIENT_ID: string;
         /** Google OAuth Client Secret */
         GOOGLE_CLIENT_SECRET: string;
+        /** Google Books API Key for higher rate limits - optional */
+        GOOGLE_BOOKS_API_KEY?: string;
         /** (Legacy) Google Generative AI API Key for AI cleaning - optional */
         GOOGLE_GENERATIVE_AI_API_KEY: string;
-        /** Groq / OpenAI-compatible API Key for AI cleaning (llama-3.3) */
-        GROQ_API_KEY: string;
         /** Groq / OpenAI-compatible API Key for AI cleaning (llama-3.3) */
         GROQ_API_KEY: string;
       };
