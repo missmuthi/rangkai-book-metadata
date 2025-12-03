@@ -5,7 +5,89 @@ All notable changes to the Rangkai Book Metadata Harvester project will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.2] - 2025-12-03 - **Organization Support & Code Quality** 🏢
+
+### ✨ New Features
+
+- **Organization Tables**: Added Better Auth organization support
+  - Organization, Member, and Invitation tables for multi-tenant support
+  - Foreign key relationships to User table
+  - Performance indexes on organization queries
+  - Migration: `migrations/20251203_add_organization_tables.sql`
+
+### 🧪 Testing Improvements
+
+- **Route Protection Tests**: Comprehensive test suite for centralized authentication
+  - Tests for public routes (/, /login, /features, /privacy, /terms)
+  - Tests for protected API routes returning 401 for unauthenticated requests
+  - Tests for protected page routes redirecting to /login
+  - Tests for security headers (CSP, X-Frame-Options, etc.)
+  - File: `src/__tests__/route-protection.test.ts`
+
+### 🧹 Code Quality
+
+- **Lint Cleanup**: Removed all `no-explicit-any` warnings
+  - Replaced `any` casts with proper TypeScript types
+  - Fixed type assertions in test files using proper type inference
+  - Fixed console statement warnings in scripts
+  - All ESLint checks now passing with zero warnings
+
+### 📝 Documentation
+
+- **Migration Guide**: Added upgrade notes for authentication and session handling
+  - Environment variable requirements (GROQ_API_KEY, session secrets)
+  - Database migration steps for organization tables
+  - Session configuration changes in Better Auth
+
+### 🔄 Upgrade Path from v3.0.1
+
+#### Required Environment Variables
+
+Ensure these secrets are configured in your Cloudflare Workers environment:
+
+```bash
+# AI Service
+GROQ_API_KEY=<your-groq-api-key>
+
+# Optional: Google Books API (for higher rate limits)
+GOOGLE_BOOKS_API_KEY=<your-google-books-api-key>
+```
+
+#### Database Migration
+
+Run the organization tables migration:
+
+```bash
+# Local development
+npx wrangler d1 execute DB --local --file=migrations/20251203_add_organization_tables.sql
+
+# Production
+npx wrangler d1 execute DB --file=migrations/20251203_add_organization_tables.sql
+```
+
+#### Session Handling Changes
+
+- Better Auth sessions are now managed via `getSession()` helper in `$lib/auth`
+- Session token stored in `session` cookie (httpOnly, secure in production)
+- Centralized route protection in `hooks.server.ts`
+- Test mode bypass available for E2E tests via `x-playwright-test-session` header
+
+#### Deployment Checklist
+
+1. ✅ Update environment variables in Cloudflare dashboard
+2. ✅ Run database migration for organization tables
+3. ✅ Deploy updated code via `npm run deploy` or Wrangler
+4. ✅ Verify authentication flow works correctly
+5. ✅ Test protected routes return 401/redirect as expected
+
 ## [3.0.0] - 2025-12-01 - **Smart Search API & Database Optimization** 🔍
+
+### ✅ Validation Summary (Release)
+
+- Type Check: 0 errors, 0 warnings
+- Lint: 0 errors, 0 warnings
+- Tests: 315 passing (all tests included route protection suite)
+- Build: `npm run build` completed successfully and artifacts exist in `.svelte-kit/cloudflare`
 
 ## [3.0.1] - 2025-12-01 - **AI Provider Migration: Google Gemini → Groq (Llama 3.3)** 🔄
 

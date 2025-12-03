@@ -132,7 +132,7 @@ Library staff scan barcodes with USB scanners or mobile cameras. The system:
 | `merge.ts`              | Data merging logic (waterfall prioritization)              | ⚠️ YES    |
 | `cutter.ts`             | Cutter-Sanborn call number generation                      | ⚠️ YES    |
 | `export.ts`             | SLiMS CSV/MARC XML export                                  | ⚠️ YES    |
-| `auth-simple.ts`        | Better Auth configuration                                  | ⚠️ YES    |
+| `auth.ts`               | Better Auth configuration                                  | ⚠️ YES    |
 | `isbn-helpers.ts`       | ISBN validation, normalization, extraction                 | Medium    |
 | `services/analytics.ts` | Telemetry, performance tracking                            | Low       |
 | `components/`           | Reusable UI components (CameraScanner, etc.)               | Medium    |

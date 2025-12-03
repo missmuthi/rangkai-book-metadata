@@ -62,7 +62,9 @@ describe("aiService.cleanMetadata", () => {
 
     vi.mocked(generateObject).mockResolvedValue({
       object: mockAIObject,
-    } as any);
+    } as ReturnType<typeof generateObject> extends Promise<infer T>
+      ? T
+      : never);
 
     const result = await aiService.cleanMetadata(
       createMockBook({ title: "Clean Code" }),
@@ -101,7 +103,9 @@ describe("aiService.cleanMetadata", () => {
 
     vi.mocked(generateText).mockResolvedValue({
       output_text: textOutput,
-    } as any);
+    } as unknown as ReturnType<typeof generateText> extends Promise<infer T>
+      ? T
+      : never);
 
     const result = await aiService.cleanMetadata(
       createMockBook({ title: "Test" }),

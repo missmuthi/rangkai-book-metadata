@@ -78,7 +78,9 @@ export const GET: RequestHandler = async ({
 
   // === STEP 1: HTTP Cache Check (CDN) ===
   // Use Cloudflare Cache API (caches.default)
-  const cache = (globalThis as any).caches?.default;
+  const cache = (
+    globalThis as typeof globalThis & { caches?: { default?: Cache } }
+  ).caches?.default;
   let cacheKey: Request | undefined;
 
   if (cache) {

@@ -232,7 +232,7 @@
 						clientLog('info', '📋 Cleaned Title:', cleaned.title);
 						clientLog('info', '📊 DDC:', cleaned.ddc);
 						clientLog('info', '🏛️ LCC:', cleaned.lcc);
-						clientLog('info', '💾 Saved:', (cleaned as any).saved);
+						clientLog('info', '💾 Saved:', (cleaned as BookWithScanId & { saved?: boolean }).saved);
 						clientLog('info', '🆔 Scan ID:', cleaned.scan_id);
 						
 						// CRITICAL: Store the returned scan_id so future operations update the same row
@@ -245,7 +245,7 @@
 						book = { ...book, ...cleaned, scan_id: book.scan_id };
 						
 						// Check if save was successful
-						if ((cleaned as any).saved === true || cleaned.scan_id) {
+						if ((cleaned as BookWithScanId & { saved?: boolean }).saved === true || cleaned.scan_id) {
 								saveStatus = 'saved';
 								toast = 'Metadata cleaned & saved ✓';
 
@@ -265,9 +265,9 @@
 							} catch (e) {
 								clientLog('warn', 'Failed to update client history after AI clean', e);
 							}
-						} else if ((cleaned as any).saveError) {
+						} else if ((cleaned as BookWithScanId & { saveError?: string }).saveError) {
 								saveStatus = 'error';
-								toast = `Cleaned but save failed: ${(cleaned as any).saveError}`;
+								toast = `Cleaned but save failed: ${(cleaned as BookWithScanId & { saveError?: string }).saveError}`;
 						} else {
 								saveStatus = 'saved';
 								toast = 'Metadata cleaned & saved ✓';

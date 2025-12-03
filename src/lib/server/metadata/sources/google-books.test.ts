@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fetchGoogleBooksWithTimeout, fetchGoogleBooks } from "./google-books";
 import { Analytics } from "$lib/services/analytics";
 import { logger } from "$lib/server/logger";
-import { CircuitBreaker } from "$lib/server/utils/resilience";
 
 // Mock dependencies
 vi.mock("$lib/services/analytics");
@@ -118,7 +117,7 @@ describe("Google Books Adapter", () => {
       });
 
       const result = await fetchGoogleBooksWithTimeout(
-        mockPlatform as any,
+        mockPlatform as App.Platform,
         mockFetch,
         "isbn123",
         true,
@@ -144,7 +143,7 @@ describe("Google Books Adapter", () => {
         });
 
       const result = await fetchGoogleBooksWithTimeout(
-        mockPlatform as any,
+        mockPlatform as App.Platform,
         mockFetch,
         "isbn123",
         true,
@@ -184,7 +183,7 @@ describe("Google Books Adapter", () => {
         });
 
       const result = await fetchGoogleBooksWithTimeout(
-        mockPlatform as any,
+        mockPlatform as App.Platform,
         mockFetch,
         "isbn123",
         true,
@@ -216,7 +215,7 @@ describe("Google Books Adapter", () => {
       });
 
       const result = await fetchGoogleBooksWithTimeout(
-        disabledPlatform as any,
+        disabledPlatform as App.Platform,
         mockFetch,
         "isbn123",
         true,

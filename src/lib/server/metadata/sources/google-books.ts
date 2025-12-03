@@ -49,7 +49,7 @@ export async function fetchGoogleBooks(
     const duration = Math.round(performance.now() - startTime);
 
     if (!response.ok) {
-      let errorType: any = "unknown";
+      let errorType: string = "unknown";
       if (response.status === 503) errorType = "api_503";
       else if (response.status === 429) errorType = "rate_limit";
       else if (response.status === 403) {
@@ -80,9 +80,9 @@ export async function fetchGoogleBooks(
 
       const err = new Error(
         `Google Books API error: ${response.status} ${response.statusText}`,
-      );
+      ) as Error & { status?: number };
       // Attach status for callers to make decisions (e.g., retry without API key)
-      (err as any).status = response.status;
+      err.status = response.status;
       throw err;
     }
 
@@ -155,7 +155,7 @@ export async function fetchGoogleBooksWithTimeout(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStatus =
-      (error as any)?.status ??
+      (error as Error & { status?: number })?.status ??
       (errorMessage.includes("403") ? 403 : undefined);
 
     // Hybrid Fetch Fallback: If authenticated request failed with 403 quota exceeded,

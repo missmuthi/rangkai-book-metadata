@@ -101,7 +101,6 @@ export const logger = {
    */
   warn(event: string, context?: LogContext) {
     const formatted = formatLog("warn", event, context);
-    // eslint-disable-next-line no-console
     console.warn(formatted);
     // Transport to external log aggregators removed - logs sent to console only
   },

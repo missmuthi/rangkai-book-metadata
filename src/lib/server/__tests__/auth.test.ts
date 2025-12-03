@@ -170,12 +170,7 @@ describe("Auth Helpers - Integration Tests", () => {
     });
 
     it("should handle DB errors gracefully", async () => {
-<<<<<<< HEAD
-      const { getSession: getSessionPrimitive } =
-        await import("$lib/auth");
-=======
       const { getSession: getSessionPrimitive } = await import("$lib/auth");
->>>>>>> a86837a (refactor(auth): centralize route protection, rename auth module to auth; add client helpers; add org/member/invitation schema)
       vi.mocked(getSessionPrimitive).mockRejectedValueOnce(
         new Error("Database error"),
       );

@@ -57,21 +57,21 @@ function createMockEvent({
   return {
     request: {
       json: async () => body,
-    },
+    } as Request,
     locals: {
       session: isAuthenticated ? { id: "session-1" } : null,
       user: isAuthenticated
         ? { id: "user-1", email: "test@example.com" }
         : null,
-    },
+    } as App.Locals,
     platform: {
       env: {
         DB: createMockDB(),
         GROQ_API_KEY: "TEST_KEY",
         GOOGLE_GENERATIVE_AI_API_KEY: "TEST_KEY",
       },
-    },
-  } as any;
+    } as App.Platform,
+  } as Parameters<typeof POST>[0];
 }
 
 describe("POST /api/ai/clean - Integration", () => {
@@ -98,7 +98,9 @@ describe("POST /api/ai/clean - Integration", () => {
         lcc: "QA76.73.J38",
         changes: ["Generated DDC: 005.133", "Generated LCC: QA76.73.J38"],
       },
-    } as any);
+    } as ReturnType<typeof generateObject> extends Promise<infer T>
+      ? T
+      : never);
 
     const body = {
       title: "Clean Code",
@@ -123,7 +125,9 @@ describe("POST /api/ai/clean - Integration", () => {
         ddc: "005.123",
         lcc: "QA76.12",
       },
-    } as any);
+    } as ReturnType<typeof generateObject> extends Promise<infer T>
+      ? T
+      : never);
 
     // Mock DB with an existing scan (id 42) returned on SELECT
     const statements: Array<{ sql: string; params: unknown[] }> = [];
@@ -148,7 +152,9 @@ describe("POST /api/ai/clean - Integration", () => {
     };
     const event = createMockEvent({ body });
     // Override platform DB to our mocked DB
-    (event.platform.env as Record<string, unknown>).DB = db;
+    if (event.platform) {
+      (event.platform.env as Record<string, unknown>).DB = db;
+    }
 
     const res = await POST(event);
     const data = (await parseJsonSafe(res)) as CleanedData;
@@ -169,7 +175,9 @@ describe("POST /api/ai/clean - Integration", () => {
     });
     vi.mocked(generateText).mockResolvedValue({
       output_text: textOutput,
-    } as any);
+    } as unknown as ReturnType<typeof generateText> extends Promise<infer T>
+      ? T
+      : never);
 
     const event = createMockEvent({ body: { title: "Fallback" } });
     const res = await POST(event);

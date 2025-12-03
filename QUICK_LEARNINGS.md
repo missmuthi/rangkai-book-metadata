@@ -143,7 +143,7 @@ npm run db:migrate:prod  # Run database migrations
   ├── /lib
   │   ├── merge.ts          # Data merging logic
   │   ├── api.ts            # API helper functions
-  │   ├── auth-simple.ts    # Auth utilities
+  │   ├── auth.ts           # Auth utilities
   │   └── /components       # Svelte components
   ├── /routes
   │   ├── +layout.server.ts # Layout with session
