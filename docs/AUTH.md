@@ -75,7 +75,7 @@ Rangkai uses a lightweight, custom authentication system built on:
 
 | File                                             | Purpose                                                |
 | ------------------------------------------------ | ------------------------------------------------------ |
-| `src/lib/auth-simple.ts`                         | Core auth functions (session management, OAuth client) |
+| `src/lib/auth.ts`                                | Core auth functions (session management, OAuth client) |
 | `src/hooks.server.ts`                            | Request interception, session injection                |
 | `src/routes/api/auth/google/+server.ts`          | OAuth initiation endpoint                              |
 | `src/routes/api/auth/callback/google/+server.ts` | OAuth callback handler                                 |

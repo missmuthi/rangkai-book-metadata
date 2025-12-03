@@ -133,7 +133,7 @@ export async function createSession(
     await db
       .prepare(
         `INSERT INTO session (id, token, userId, expiresAt, userAgent, createdAt, updatedAt)
-				 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         crypto.randomUUID(), // Generate session id
@@ -243,7 +243,7 @@ export async function upsertUser(
     await db
       .prepare(
         `INSERT INTO user (id, email, name, image, emailVerified, createdAt, updatedAt)
-				 VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+			 VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       )
       .bind(userId, email, name, image)
       .run();

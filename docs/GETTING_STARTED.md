@@ -174,7 +174,7 @@ rangkai-book-metadata/
 │   │   ├── merge.ts            # ⭐ Data merging logic
 │   │   ├── cutter.ts           # Call number generation
 │   │   ├── export.ts           # SLiMS export formats
-│   │   ├── auth-simple.ts      # Better Auth config
+│   │   ├── auth.ts      # Better Auth config
 │   │   └── components/         # Reusable UI components
 │   │       └── CameraScanner.svelte  # Barcode scanning
 │   │

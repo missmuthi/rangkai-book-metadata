@@ -33,7 +33,7 @@ if (!locals.session || !locals.user) {
 ```typescript
 // Lines 84-109
 if (event.platform?.env?.DB) {
-  const { getSession } = await import("$lib/auth-simple");
+  const { getSession } = await import("$lib/auth");
   const sessionToken = event.cookies.get("session");
 
   if (sessionToken) {

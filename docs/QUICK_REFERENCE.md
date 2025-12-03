@@ -112,7 +112,7 @@ wrangler pages deployment tail --method POST
 | `src/lib/api.ts`                        | External API fetchers   |
 | `src/lib/merge.ts`                      | Data merging logic      |
 | `src/lib/cutter.ts`                     | Call number generation  |
-| `src/lib/auth-simple.ts`                | Better Auth config      |
+| `src/lib/auth.ts`                       | Better Auth config      |
 
 ### Configuration
 
