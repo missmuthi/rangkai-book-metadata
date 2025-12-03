@@ -396,8 +396,22 @@ Complete ALL fields with accurate, SLiMS-compatible values. Every empty or missi
     const cleanRecord = cleanAiResult as Record<string, unknown>;
 
     Object.keys(cleanAiResult).forEach((key) => {
-      const oldVal = bookRecord[key] || existingRecord[key];
+      // FIX: Prioritize bookRecord if key exists (even if empty/null) to detect filling gaps
+      // properly. Original logic `bookRecord[key] || existingRecord[key]` masked empty fields
+      // by falling back to potentially stale existingRecord.
+      const oldVal =
+        key in bookRecord ? bookRecord[key] : existingRecord[key];
       const newVal = cleanRecord[key];
+
+      logger.debug(`ai_clean_compare_${key}`, {
+        key,
+        oldVal: String(oldVal),
+        newVal: String(newVal),
+        oldType: typeof oldVal,
+        newType: typeof newVal,
+        match: oldVal === newVal,
+      });
+
       if (newVal && oldVal !== newVal) {
         changes.push(`Updated ${key}: ${String(newVal)}`);
       }
