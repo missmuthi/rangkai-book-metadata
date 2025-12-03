@@ -9,13 +9,19 @@
                 scan_id?: number;
         }
 
-        let { book: initialBook, onClose }: { book: BookWithScanId; onClose: () => void } = $props();
-        
-        // Track the last prop we received to detect when parent changes the book
-        let lastPropId = $state<string>('');
+        interface Props {
+                book: BookWithScanId;
+                onClose: () => void;
+        }
+
+        let { book: propBook, onClose }: Props = $props();
         
         // Mutable local copy that can be updated by AI Clean
-        let book = $state<BookWithScanId>({ ...initialBook });
+        // We initialize this reactively using $derived.by to pick up propBook changes
+        let localBook = $state<BookWithScanId>({ title: '' } as BookWithScanId);
+        
+        // Track the book ID we're currently showing to detect prop changes
+        let currentBookId = $state<string>('');
         
         // Get a unique identifier for the book (scan_id or ISBN)
         function getBookId(b: BookWithScanId): string {
@@ -24,12 +30,18 @@
         
         // Sync local book state when parent prop changes (e.g., opening a different book)
         $effect(() => {
-                const incomingId = getBookId(initialBook);
-                if (incomingId !== lastPropId) {
-                        book = { ...initialBook };
-                        lastPropId = incomingId;
+                // Access propBook inside $effect to create dependency
+                const incomingId = getBookId(propBook);
+                if (incomingId !== currentBookId) {
+                        // Create a new object copy to ensure reactivity
+                        localBook = { ...propBook };
+                        currentBookId = incomingId;
                 }
         });
+        
+        // Use localBook for all reads (it's synced with propBook)
+        // Rename to 'book' for simpler migration (existing code uses 'book')
+        let book = $derived(localBook);
 
 		// Client-side log helper - no-op in production
 		function clientLog(level: 'log' | 'warn' | 'error' | 'info' | 'debug', ...args: unknown[]) {
@@ -54,8 +66,11 @@
         let rateLimitTimer: ReturnType<typeof setInterval> | undefined;
 
         onMount(() => {
-                // Initialize lastPropId on mount
-                lastPropId = getBookId(initialBook);
+                // Initialize localBook on mount if $effect hasn't run yet
+                if (!currentBookId) {
+                        localBook = { ...propBook };
+                        currentBookId = getBookId(propBook);
+                }
                 // Component mounted - client-side rendering confirmed
                 _mounted = true;
                 return () => {
@@ -260,11 +275,11 @@
 						// CRITICAL: Store the returned scan_id so future operations update the same row
 						// This prevents duplicate scans when user cleans the same book multiple times
 						if (cleaned.scan_id && typeof cleaned.scan_id === 'number') {
-							book.scan_id = cleaned.scan_id;
+							localBook.scan_id = cleaned.scan_id;
 						}
 
 						// Update local state by merging cleaned data onto existing book
-						book = { ...book, ...cleaned, scan_id: book.scan_id };
+						localBook = { ...localBook, ...cleaned, scan_id: localBook.scan_id };
 						
 						// Check if save was successful
 						if ((cleaned as BookWithScanId & { saved?: boolean }).saved === true || cleaned.scan_id) {
