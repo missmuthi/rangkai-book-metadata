@@ -79,8 +79,10 @@ export const logger = {
    */
   debug(event: string, context?: LogContext) {
     if (process.env.NODE_ENV === "development") {
+      const formatted = formatLog("debug", event, context);
       // eslint-disable-next-line no-console
-      console.debug(formatLog("debug", event, context));
+      console.debug(formatted);
+      // Transport to external log aggregators removed - logs sent to console only
     }
   },
 
@@ -88,15 +90,20 @@ export const logger = {
    * Info-level logs (normal operations)
    */
   info(event: string, context?: LogContext) {
+    const formatted = formatLog("info", event, context);
     // eslint-disable-next-line no-console
-    console.log(formatLog("info", event, context));
+    console.log(formatted);
+    // Transport to external log aggregators removed - logs sent to console only
   },
 
   /**
    * Warning-level logs (degraded but recoverable)
    */
   warn(event: string, context?: LogContext) {
-    console.warn(formatLog("warn", event, context));
+    const formatted = formatLog("warn", event, context);
+    // eslint-disable-next-line no-console
+    console.warn(formatted);
+    // Transport to external log aggregators removed - logs sent to console only
   },
 
   /**
@@ -105,14 +112,7 @@ export const logger = {
   error(event: string, context?: LogContext) {
     const formatted = formatLog("error", event, context);
     console.error(formatted);
-    // Async transport to log aggregator (Loki/Grafana)
-    if (lokiTransport.enabled) {
-      lokiTransport.send(formatted, "error", event, context).catch((e) => {
-        // On failure, don't crash the request - just log locally
-        // eslint-disable-next-line no-console
-        console.debug("[logger] loki transport failed", e);
-      });
-    }
+    // Transport to external log aggregators removed - logs sent to console only
   },
 };
 
@@ -153,76 +153,4 @@ export const LogEvents = {
   CACHE_GET_FAILED: "cache_get_failed",
 } as const;
 
-// ---- Loki Transport ----
-type LokiOptions = {
-  url: string; // full /loki/api/v1/push URL
-  basicAuth?: string; // Basic auth header value, or API key bearer token
-  defaultLabels?: Record<string, string>;
-  defaultHeaders?: Record<string, string>;
-};
-
-const lokiTransport = {
-  enabled: false,
-  options: undefined as LokiOptions | undefined,
-  setOptions(options: LokiOptions) {
-    this.options = options;
-    this.enabled = true;
-  },
-  async send(
-    logLine: string,
-    level: LogLevel,
-    event: string,
-    context?: LogContext,
-  ) {
-    if (!this.options || !this.enabled) return;
-    try {
-      // Build payload for Loki push API
-      const { url, basicAuth, defaultLabels, defaultHeaders } = this.options;
-      const labels = {
-        job: "rangkai",
-        level: level.toLowerCase(),
-        event,
-        ...defaultLabels,
-      } as Record<string, string>;
-
-      // Labels must be in the form {key="value",...} — but Loki API expects JS object with string values
-      // We'll send labels as an object in streams[0].stream
-      const payload = {
-        streams: [
-          {
-            stream: labels,
-            values: [[new Date().toISOString(), logLine]],
-          },
-        ],
-      };
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...(defaultHeaders ?? {}),
-      };
-      if (basicAuth) {
-        // If basicAuth starts with 'Bearer ' or 'Basic ', pass directly
-        headers["Authorization"] = basicAuth;
-      }
-
-      // Use fetch to send logs to Loki (Cloudflare Workers supports fetch in server-side)
-      // Not awaiting to avoid blocking, but we still return the Promise and callers can await if needed
-      return fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
-    } catch (err) {
-      // Bubble up for caller to log locally
-      throw err;
-    }
-  },
-};
-
-/**
- * Enable Loki/Grafana transport for server logs. Call with NODE-level envs (e.g., inside request handler)
- * @param options LokiOptions – full loki push url and optional auth
- */
-export function enableLokiTransport(options: LokiOptions) {
-  lokiTransport.setOptions(options);
-}
+// Transport to external log aggregators removed; logger now writes to console only

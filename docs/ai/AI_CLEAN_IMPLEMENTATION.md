@@ -201,33 +201,12 @@ These are intentionally implemented as structured logs (JSON) and are safe to sh
 4. If `ai_clean_no_changes` appears but AI produced useful metadata, check `ai_clean_parsed_ai_result` and `ai_clean_raw_result` to see if AI produced values but your client-side normalization or cleaning suppressed them.
 5. If a DB upsert did not occur, verify the sequence of `ai_clean_inserting_new_scan` or `ai_clean_existing_scan_updated` logs.
 
-### Grafana Loki Integration (optional)
+### Logging & Observability
 
-We support forwarding structured logs to Grafana Loki (Grafana Cloud or self-hosted Loki) for better observability and correlation. Configure the following environment variables on your Cloudflare Pages / deployment to enable Loki forwarding:
+Structured logs are intentionally implemented as JSON and safe to ship to log aggregators. Where possible, PII is sanitized.
 
-- `GRAFANA_LOKI_URL`: The full Loki push endpoint, e.g. `https://logs-prod-us-central.grafana.net/loki/api/v1/push`
-- `GRAFANA_LOKI_API_KEY`: A Grafana Cloud API key or bearer token with the `logs:write` scope.
+Use `requestId` to correlate logs across components and systems. For tracing and metric correlation, consider using OpenTelemetry (OTLP) in the future as a unified solution for logs, traces, and metrics.
 
-How it works:
-
-- The server sets `job=rangkai-ai-clean` and includes `level` and `event` as labels for easy filtering.
-- Every log will be forwarded as a JSON line under `streams` payload. Use `requestId` to correlate logs across components.
-
-Grafana query example:
-
-```
-{job="rangkai-ai-clean", level="ERROR"} |= "requestId" | json | requestId
-```
-
-Loki label suggestions for dashboards:
-
-- job=rangkai-ai-clean
-- event=ai_clean_groq_failed OR ai_clean_complete
-- level=error / warn / info
-
-Security & rate limits:
-
-- Loki will have retention and rate limits on ingestion. Avoid sending verbose payloads in high-volume scenarios.
 - Use `defaultLabels` to include environment and other low-cardinality labels, and avoid user identifiers in labels to prevent high cardinality.
 
 ## Environment Requirements

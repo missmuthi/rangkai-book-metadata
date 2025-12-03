@@ -1,7 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { generateObject, generateText } from "ai";
-import { logger, enableLokiTransport } from "$lib/server/logger";
+import { logger } from "$lib/server/logger";
 import { Analytics } from "$lib/services/analytics";
 import { z } from "zod";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -63,26 +63,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
   const requestStart = Date.now();
   const requestId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
-  // If the Grafana Loki URL is configured in env, enable Loki transport for this request
-  try {
-    // platform.env has typed properties – use `any` to access optional env keys
-    const envAny =
-      (platform?.env as unknown as Record<string, string | undefined>) || {};
-    const lokiUrl = envAny.GRAFANA_LOKI_URL;
-    const lokiKey = envAny.GRAFANA_LOKI_API_KEY;
-    if (lokiUrl) {
-      enableLokiTransport({
-        url: lokiUrl,
-        basicAuth: lokiKey ? `Bearer ${lokiKey}` : undefined,
-        defaultLabels: {
-          job: "rangkai-ai-clean",
-          env: envAny.NODE_ENV || process.env.NODE_ENV || "unknown",
-        },
-      });
-    }
-  } catch (err) {
-    logger.debug("ai_clean_loki_init_failed", { err: String(err), requestId });
-  }
+  // No log aggregator transport configured for this request (removed per repo cleanup)
   // Enhanced authentication check with detailed error logging
   logger.debug("ai_clean_auth_check_started", {
     sessionExists: !!locals.session,

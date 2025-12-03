@@ -554,8 +554,9 @@ GROUP BY cache_type
    - Update `logProdMode()` in `analytics.ts`
 
 2. **Create Monitoring Dashboards**
-   - Set up Grafana/Kibana for real-time monitoring
-   - Create alerts for high error rates
+
+- Set up a monitoring platform (Prometheus, Kibana, or other suitable solution) for real-time monitoring
+- Create alerts for high error rates
 
 3. **A/B Testing**
    - Track feature usage to inform UX decisions
