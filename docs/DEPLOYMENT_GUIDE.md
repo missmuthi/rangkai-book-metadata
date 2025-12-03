@@ -363,6 +363,52 @@ git push origin main
 
 ## Database Migrations
 
+**⚠️ CRITICAL:** Database migrations must be executed manually using `wrangler d1 execute` when schema changes occur. This is a required step separate from code deployment.
+
+### Migration Workflow
+
+When the codebase includes schema changes (e.g., new tables, columns, indexes), follow this protocol:
+
+**1. Identify Pending Migrations:**
+
+```bash
+# Check migrations directory for new files
+ls -l migrations/
+
+# Example output:
+# 20251203_add_organization_tables.sql (NEW)
+```
+
+**2. Apply to Local Environment (Dev Testing):**
+
+```bash
+# Execute migration against local D1 database
+npx wrangler d1 execute rangkai-scans --local --file migrations/20251203_add_organization_tables.sql
+
+# Verify tables were created
+npx wrangler d1 execute rangkai-scans --local --command "PRAGMA table_info(organization);"
+```
+
+**3. Apply to Remote Environment (Production):**
+
+```bash
+# Pre-flight check: verify migration not already applied
+npx wrangler d1 execute rangkai-scans --remote --command "SELECT name FROM sqlite_master WHERE type='table' AND name='organization';"
+
+# If empty result, proceed with migration
+npx wrangler d1 execute rangkai-scans --remote --file migrations/20251203_add_organization_tables.sql
+
+# Verify migration succeeded
+npx wrangler d1 execute rangkai-scans --remote --command "SELECT count(*) FROM organization;"
+```
+
+**⚠️ Important Notes:**
+
+- **Migrations are NOT automatic** - you must run them manually before deploying code that depends on schema changes
+- **Remote migrations require confirmation** - Wrangler will prompt before executing (database becomes unavailable during migration)
+- **Test locally first** - always verify migrations on local D1 before applying to production
+- **Idempotent migrations** - use `CREATE TABLE IF NOT EXISTS` to allow safe re-runs
+
 ### Creating a New Migration
 
 **1. Create Migration File:**
@@ -370,36 +416,36 @@ git push origin main
 ```bash
 # Create timestamped migration file
 mkdir -p migrations
-touch migrations/$(date +%Y%m%d%H%M%S)_add_book_tags.sql
+touch migrations/$(date +%Y%m%d)_add_book_tags.sql
 ```
 
 **2. Write Migration SQL:**
 
 ```sql
--- migrations/20250122120000_add_book_tags.sql
+-- migrations/20251204_add_book_tags.sql
 
 -- Add tags column to scan_history
 ALTER TABLE scan_history ADD COLUMN tags TEXT;
 
 -- Create index for faster tag searches
-CREATE INDEX idx_scan_history_tags ON scan_history(tags);
+CREATE INDEX IF NOT EXISTS idx_scan_history_tags ON scan_history(tags);
 ```
 
-**3. Test Locally (Optional):**
+**3. Test Locally:**
 
 ```bash
 # Run against local D1 database
-wrangler d1 execute rangkai-scans --local --file=./migrations/20250122120000_add_book_tags.sql
+npx wrangler d1 execute rangkai-scans --local --file migrations/20251204_add_book_tags.sql
 ```
 
 **4. Apply to Production:**
 
 ```bash
 # Execute migration on production D1
-wrangler d1 execute rangkai-scans --file=./migrations/20250122120000_add_book_tags.sql
+npx wrangler d1 execute rangkai-scans --remote --file migrations/20251204_add_book_tags.sql
 
 # Verify changes
-wrangler d1 execute rangkai-scans --command="PRAGMA table_info(scan_history);"
+npx wrangler d1 execute rangkai-scans --remote --command "PRAGMA table_info(scan_history);"
 ```
 
 ### Rollback Strategy
