@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  fetchGoogleBooksWithTimeout,
-  fetchGoogleBooks,
-} from "./google-books";
+import { fetchGoogleBooksWithTimeout, fetchGoogleBooks } from "./google-books";
 import { Analytics } from "$lib/services/analytics";
 import { logger } from "$lib/server/logger";
 import { CircuitBreaker } from "$lib/server/utils/resilience";
@@ -15,11 +12,13 @@ vi.mock("$lib/server/utils/resilience", async () => {
     withTimeout: vi.fn((promise) => promise), // Pass through
     CircuitBreaker: class {
       constructor() {}
-      async isOpen() { return false; }
+      async isOpen() {
+        return false;
+      }
       async success() {}
       async failure() {}
       async open() {}
-    }
+    },
   };
 });
 vi.mock("$lib/server/cache", () => ({
@@ -162,9 +161,9 @@ describe("Google Books Adapter", () => {
       expect(Analytics.track).toHaveBeenCalledWith(
         "metadata_source_degraded",
         expect.objectContaining({
-            reason: "quota_exceeded",
-            fallback: "public_endpoint"
-        })
+          reason: "quota_exceeded",
+          fallback: "public_endpoint",
+        }),
       );
 
       expect(result).not.toBeNull();
@@ -197,7 +196,7 @@ describe("Google Books Adapter", () => {
       // Should log error
       expect(logger.error).toHaveBeenCalledWith(
         "google_books_fallback_failed",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -230,7 +229,7 @@ describe("Google Books Adapter", () => {
       // Should NOT have logged fallback warning
       expect(logger.warn).not.toHaveBeenCalledWith(
         "google_books_quota_fallback",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });

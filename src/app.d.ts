@@ -44,6 +44,8 @@ declare global {
         GOOGLE_CLIENT_SECRET: string;
         /** Google Books API Key for higher rate limits - optional */
         GOOGLE_BOOKS_API_KEY?: string;
+        /** Feature flag to disable Google Books fallback to public endpoint - optional */
+        DISABLE_GOOGLE_BOOKS_FALLBACK?: string;
         /** (Legacy) Google Generative AI API Key for AI cleaning - optional */
         GOOGLE_GENERATIVE_AI_API_KEY: string;
         /** Groq / OpenAI-compatible API Key for AI cleaning (llama-3.3) */
