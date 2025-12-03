@@ -25,6 +25,7 @@ export async function fetchGoogleBooks(
   isIsbn: boolean,
   maxResults = 1,
   apiKey?: string,
+  isFallback = false,
 ): Promise<GoogleBooksResponse | null> {
   const startTime = performance.now();
   const q = isIsbn ? `isbn:${query}` : `intitle:${query}`;
@@ -40,6 +41,7 @@ export async function fetchGoogleBooks(
     query: isIsbn ? undefined : query,
     isIsbn,
     authType,
+    isFallback,
   });
 
   try {
@@ -47,14 +49,14 @@ export async function fetchGoogleBooks(
     const duration = Math.round(performance.now() - startTime);
 
     if (!response.ok) {
-      const errorType =
-        response.status === 503
-          ? "api_503"
-          : response.status === 429
-            ? "rate_limit"
-            : response.status === 403
-              ? "quota_exceeded"
-              : "unknown";
+      let errorType: any = "unknown";
+      if (response.status === 503) errorType = "api_503";
+      else if (response.status === 429) errorType = "rate_limit";
+      else if (response.status === 403) {
+        // Granular Quota Tracking
+        errorType = apiKey ? "quota_exceeded_auth" : "quota_exceeded_public";
+      }
+
       Analytics.track("error_occurred", {
         error_type: errorType,
         source: "google",
@@ -92,6 +94,7 @@ export async function fetchGoogleBooks(
       duration_ms: duration,
       success: true,
       authType,
+      fallback_triggered: isFallback,
     });
 
     return data;
@@ -157,7 +160,10 @@ export async function fetchGoogleBooksWithTimeout(
 
     // Hybrid Fetch Fallback: If authenticated request failed with 403 quota exceeded,
     // retry without API key (using public IP quota)
-    if (apiKey && errorStatus === 403) {
+    const disableFallback =
+      platform?.env?.DISABLE_GOOGLE_BOOKS_FALLBACK === "true";
+
+    if (apiKey && errorStatus === 403 && !disableFallback) {
       logger.warn("google_books_quota_fallback", {
         query,
         isIsbn,
@@ -173,7 +179,14 @@ export async function fetchGoogleBooksWithTimeout(
 
       try {
         const fallbackResult = await withTimeout(
-          fetchGoogleBooks(fetchFn, query, isIsbn, maxResults, undefined),
+          fetchGoogleBooks(
+            fetchFn,
+            query,
+            isIsbn,
+            maxResults,
+            undefined,
+            true, // isFallback
+          ),
           timeoutMs,
           "Google Books API timeout (fallback)",
         );
