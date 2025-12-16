@@ -32,7 +32,7 @@
     "tsx:verify": "tsx ./scripts/tsx-check.ts"
   },
   "devDependencies": {
-    "@better-auth/cli": "^1.4.4",
+    "@better-auth/cli": "^1.4.7",
     "@cloudflare/workers-types": "4.20251202.0",
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.44.0",
@@ -69,7 +69,7 @@
     "@ai-sdk/openai": "2.0.76",
     "ai": "5.0.106",
     "arctic": "^3.7.0",
-    "better-auth": "^1.4.4",
+    "better-auth": "^1.4.7",
     "html5-qrcode": "^2.3.8",
     "kysely": "^0.28.8",
     "kysely-d1": "^0.4.0",
