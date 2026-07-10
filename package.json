@@ -69,7 +69,7 @@
     "@ai-sdk/openai": "2.0.76",
     "ai": "5.0.106",
     "arctic": "^3.7.0",
-    "better-auth": "^1.4.4",
+    "better-auth": "^1.6.13",
     "html5-qrcode": "^2.3.8",
     "kysely": "^0.28.8",
     "kysely-d1": "^0.4.0",
