@@ -66,8 +66,8 @@
     "wrangler": "^4.51.0"
   },
   "dependencies": {
-    "@ai-sdk/openai": "2.0.76",
-    "ai": "5.0.106",
+    "@ai-sdk/openai": "2.0.125",
+    "ai": "5.0.253",
     "arctic": "^3.7.0",
     "better-auth": "^1.4.4",
     "html5-qrcode": "^2.3.8",
